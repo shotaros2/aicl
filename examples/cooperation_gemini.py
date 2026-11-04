@@ -25,6 +25,9 @@ import aicl
 from aicl import tokens
 from aicl.build import form, nl
 from aicl.coop import Agent, Bus, Hub, LLMAgent, LLMPlanner, SkillAgent
+from aicl.env import load_dotenv
+
+load_dotenv()
 
 OUT = ROOT / "out"
 RULEBOOK = (ROOT / "prompts" / "system_prompt_dense.md").read_text(encoding="utf-8").split("---", 1)[1].strip()

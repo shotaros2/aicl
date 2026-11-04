@@ -35,6 +35,9 @@ import aicl                                   # noqa: E402
 from aicl import tokens                       # noqa: E402
 from aicl.codebook import Codebook            # noqa: E402
 from aicl.dense import ACT_CODE, KEY_CODE     # noqa: E402
+from aicl.env import load_dotenv               # noqa: E402
+
+load_dotenv()
 
 ENCODINGS = ("readable", "dense", "packed", "packed-chars")
 

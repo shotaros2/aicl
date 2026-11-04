@@ -19,6 +19,9 @@ import anthropic
 
 import aicl
 from aicl import tokens
+from aicl.env import load_dotenv
+
+load_dotenv()
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = "claude-opus-5-5"
