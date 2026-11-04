@@ -18,6 +18,7 @@ KNOWN = {
     "08_retract_and_status.aicl": ["meeting", "busy", "calendar-add", "temp"],
     "09_dola_image_specialist.aicl": [],
     "10_deadline_negotiation.aicl": ["log-summary"],
+    "11_standard_codebook.aicl": ["meeting", "busy", "calendar-add", "calendar-event"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
@@ -27,6 +28,13 @@ EXPECTED_WARNINGS = {
     "07_cross_vendor_negotiation.aicl": ["open-do"],
     "09_dola_image_specialist.aicl": ["eta-unanchored"],
     "10_deadline_negotiation.aicl": ["eta-overrun", "stale-reply", "unresolved-term", "unresolved-term"],
+    "11_standard_codebook.aicl": ["open-ask", "open-do", "status-unclosed"],
+}
+
+# Errors an example keeps on purpose, as a specimen its header explains (11: a live run where
+# the performer answered an ask with `done`).
+EXPECTED_ERRORS = {
+    "11_standard_codebook.aicl": ["done-for-ask"],
 }
 
 
@@ -78,7 +86,7 @@ class ConversationTests(unittest.TestCase):
         for p in sorted((ROOT / "examples").glob("*.aicl")):
             with self.subTest(file=p.name):
                 issues = self.conv(p.read_text(encoding="utf-8"), KNOWN[p.name])
-                self.assertEqual(codes(issues, "error"), [], [str(i) for i in issues])
+                self.assertEqual(codes(issues, "error"), EXPECTED_ERRORS.get(p.name, []), [str(i) for i in issues])
                 self.assertEqual(codes(issues, "warning"), EXPECTED_WARNINGS.get(p.name, []), [str(i) for i in issues])
 
     def test_duplicate_id(self):
@@ -152,6 +160,16 @@ class ConversationTests(unittest.TestCase):
         msgs = aicl.parse_messages("(do #a.1 @a>@b (x)) "
                                    "(ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:04+09:00 :eta PT5M)")
         self.assertIn("eta-expired", codes(validate_conversation(msgs, ["x"], now=parse_now("2026-11-04T10:30+09:00"))))
+
+    def test_status_unclosed(self):
+        # Observed live: status answered {$s done}, but the real done never came.
+        src = ("(do #a.1 @a>@b (x)) (ok #b.1 @b>@a ^a.1) "
+               "(ask #a.2 @a>@b (status (ref #a.1) $s)) (tell #b.2 @b>@a ^a.2 {$s done})")
+        self.assertIn("status-unclosed", codes(self.conv(src, ["x"])))
+        closed = src + " (done #b.3 @b>@a ^a.1 (x))"
+        self.assertNotIn("status-unclosed", codes(self.conv(closed, ["x"])))
+        pending = src.replace("{$s done}", "{$s pending}")
+        self.assertNotIn("status-unclosed", codes(self.conv(pending, ["x"])))
 
     def test_nl_ratio(self):
         msgs = aicl.parse_messages('(tell #a.1 @a>@b (nl en "hello"))')

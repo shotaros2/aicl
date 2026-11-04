@@ -1,0 +1,17 @@
+{
+  "id": "aicl.sched.1",
+  "name": "scheduling",
+  "_note": "Standard published codebook (SPEC §8.2). Immutable: any change is a new id (aicl.sched.2). Concepts are the scheduling vocabulary of examples 03/07/08; forms follow the read-back guideline (CamelCase or non-Latin, no truncations that read as English words).",
+  "concepts": {
+    "meeting":        ["Meeting", "会議"],
+    "busy":           ["Busy", "予定あり"],
+    "with":           ["With", "参加者"],
+    "dur":            ["Dur", "時間"],
+    "from":           ["From", "開始"],
+    "to":             ["To", "終了"],
+    "topic":          ["Topic", "議題"],
+    "calendar-add":   ["CalendarAdd", "予定追加"],
+    "calendar-event": ["CalendarEvent", "予定"],
+    "for":            ["For", "対象"]
+  }
+}

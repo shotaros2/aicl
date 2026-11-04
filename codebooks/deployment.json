@@ -1,0 +1,18 @@
+{
+  "id": "aicl.deploy.1",
+  "name": "deployment",
+  "_note": "Standard published codebook (SPEC §8.2). Immutable: any change is a new id (aicl.deploy.2). Concepts are the deployment/operations vocabulary of examples 02/10; forms follow the read-back guideline (CamelCase or non-Latin, no truncations that read as English words).",
+  "concepts": {
+    "deploy-status": ["DeployStatus", "デプロイ状態"],
+    "finished-at":   ["FinishedAt", "完了時刻"],
+    "finished":      ["Finished", "完了"],
+    "rollout":       ["Rollout", "展開"],
+    "error-rate":    ["ErrorRate", "エラー率"],
+    "region":        ["Region", "地域"],
+    "window":        ["Window", "窓"],
+    "ci-api":        ["CiApi", "ciApi"],
+    "metrics":       ["Metrics", "メトリクス"],
+    "log-summary":   ["LogSummary", "ログ要約"],
+    "logstore":      ["LogStore", "ログ保管"]
+  }
+}

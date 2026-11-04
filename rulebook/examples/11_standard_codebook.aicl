@@ -1,0 +1,44 @@
+; A real exchange, 2026-11-04: Claude (Opus, @a) and Gemini (Flash-Lite, @b), each given
+; the dense rulebook plus the STANDARD CODEBOOK aicl.sched.1 (SPEC §8.2) in its prompt.
+; The runner is examples/codebook_dialogue.py. Each `; wire:` comment is the packed dense
+; text actually sent; the message below it is the canonical form the harness recovered by
+; unpacking with the codebook. Domain terms: the concepts of aicl.sched.1.
+;
+; What it shows (SPEC §13 history):
+;  - Sharing a codebook BY ID works across vendors: @a asked (codebook aicl.sched.1 $digest),
+;    @b answered the digest it holds, and both packed only after they matched.
+;  - Zero rule-3 violations: every surface form sent (CalendarAdd, CalendarEvent, 予定) is in
+;    the table; nothing else was abbreviated. Measured: 370 wire tokens vs 480 readable
+;    (heuristic counter), 23 % below the readable form.
+;  - @b stamped its ok with :at + :eta unprompted (the rule added after examples/10).
+;  - A new failure at the end: @b answered status with {$s done} but never sent the real
+;    done (-> the status-unclosed warning), then answered @a's follow-up ask with a `done`
+;    act (-> the done-for-ask error). Both are kept below as specimens; the do and the last
+;    ask therefore stay open.
+;
+; wire: (A a.1>b (codebook aicl.sched.1 $digest))
+(ask  #a.1 @a>@b (codebook aicl.sched.1 $digest))
+; wire: (T b.1>a ^a.1 {$digest sha256:ce5a0e068cc7f8db})
+(tell #b.1 @b>@a ^a.1 {$digest sha256:ce5a0e068cc7f8db})
+; wire: (P a.2>b (meeting :with [@a @b] :dur PT30M :from 20261107T1300+9 :to 20261107T1330+9))
+(prop #a.2 @a>@b (meeting :dur PT30M :from 2026-11-07T13:00+09:00 :to 2026-11-07T13:30+09:00 :with [@a @b]))
+; wire: (R b.2>a ^a.2 :w (busy :from 20261107T1300+9 :to 20261107T1530+9))
+(rej  #b.2 @b>@a ^a.2 :why (busy :from 2026-11-07T13:00+09:00 :to 2026-11-07T15:30+09:00))
+; wire: (P a.3>b (meeting :with [@a @b] :dur PT30M :from 20261107T1530+9 :to 20261107T1600+9))
+(prop #a.3 @a>@b (meeting :dur PT30M :from 2026-11-07T15:30+09:00 :to 2026-11-07T16:00+09:00 :with [@a @b]))
+; wire: (C b.3>a ^a.3 (meeting :with [@a @b] :dur PT30M :from 20261107T1530+9 :to 20261107T1600+9))
+(acc  #b.3 @b>@a ^a.3 (meeting :dur PT30M :from 2026-11-07T15:30+09:00 :to 2026-11-07T16:00+09:00 :with [@a @b]))
+; wire: (D a.4>b (CalendarAdd (ref #a.3)))
+(do   #a.4 @a>@b (calendar-add (ref #a.3)))
+; wire: (K b.4>a ^a.4 :a 20261105T1200+9 :t PT1M)
+(ok   #b.4 @b>@a ^a.4 :at 2026-11-05T12:00+09:00 :eta PT1M)
+; wire: (A a.5>b (status (ref #a.4) $s))
+(ask  #a.5 @a>@b (status (ref #a.4) $s))
+; wire: (T b.5>a ^a.5 {$s done})
+(tell #b.5 @b>@a ^a.5 {$s done})
+; wire: (A a.6>b (予定 $id :for (ref #a.4)))
+(ask  #a.6 @a>@b (calendar-event $id :for (ref #a.4)))
+; wire: (Z b.6>a ^a.6 (CalendarEvent evt-5102 :For (ref #a.3)))
+(done #b.6 @b>@a ^a.6 (calendar-event evt-5102 :for (ref #a.3)))
+; wire: (X a.7>b)
+(end  #a.7 @a>@b)

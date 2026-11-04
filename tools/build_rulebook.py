@@ -23,9 +23,8 @@ FILES = {
     "SPEC.md": "SPEC.md",
     "grammar/aicl.ebnf": "grammar/aicl.ebnf",
     "schemas/cooperation.md": "schemas/cooperation.md",
-    "codebooks/bench.json": "codebooks/bench.json",
-    "codebooks/imagegen.json": "codebooks/imagegen.json",
 }
+FILES.update({f"codebooks/{p.name}": f"codebooks/{p.name}" for p in sorted((ROOT / "codebooks").glob("*.json"))})
 FILES.update({f"examples/{p.name}": f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.aicl"))})
 
 README = """# AICL rulebook / AICL ルールブック
@@ -46,8 +45,8 @@ repository by `tools/build_rulebook.py`; do not edit files here by hand.
 | `aicl-skill.zip` (`skill/aicl/`) | An app that installs Agent Skills (a `SKILL.md` with YAML name/description, e.g. Dola, Claude): upload the zip as a skill. / Agent Skills（YAML ヘッダ付き `SKILL.md`）を取り込めるアプリ（Dola、Claude など）。ZIP をスキルとしてアップロード。 |
 | `aicl-rulebook-dense.md` | An LLM agent that will talk to another LLM agent. The dense form uses ~22 % fewer tokens; paste the part after `---` as the system prompt and replace `me` with the agent's id. / LLM 同士で会話させるエージェント。`---` 以降をシステムプロンプトに貼り、`me` をエージェント名に置き換える。 |
 | `aicl-rulebook.md` | The same language in readable form: for debugging, for humans, or for an agent that only talks to you. / 同じ言語の可読形式。デバッグ用、人間用、人と話すだけのエージェント用。 |
-| `codebooks/*.json` | Only when both agents agree to use one. Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。表にある表記以外の省略は禁止。 |
-| `examples/*.aicl` | Nine complete conversations, seven written and two recorded live (Claude with a Gemini Gem; a human with Dola, which generated a real image); useful as few-shot examples. / 会話例 9 本（7 本は作成、2 本は実記録: Claude と Gemini の交渉、Dola による実際の画像生成）。few-shot の材料に。 |
+| `codebooks/*.json` | Only when both agents agree to use one. `scheduling.json` (`aicl.sched.1`) and `deployment.json` (`aicl.deploy.1`) are standard: immutable, shareable by id (SPEC §8.2). Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。`scheduling.json`（`aicl.sched.1`）と `deployment.json`（`aicl.deploy.1`）は標準コードブック: 不変で、id だけで共有できる（SPEC §8.2）。表にある表記以外の省略は禁止。 |
+| `examples/*.aicl` | Ten complete conversations, seven written and three recorded live (Claude with a Gemini Gem; a human with Dola, which generated a real image; Claude and Gemini negotiating under a deadline); useful as few-shot examples. / 会話例 10 本（7 本は作成、3 本は実記録: Claude と Gemini の交渉、Dola による実際の画像生成、締切つきの Claude と Gemini の交渉）。few-shot の材料に。 |
 | `schemas/cooperation.md` | How specialists (image, video, code, …) register, receive tasks and return artifacts through a hub: the `coop:` vocabulary. / 専門エージェントがハブを介して登録・受注・成果物返却する手順と `coop:` 語彙。 |
 | `SPEC.md`, `grammar/aicl.ebnf` | The normative specification and grammar, for implementers and for an agent that needs the exact rules. / 規範となる仕様と文法。実装者向け、正確な規則が要るエージェント向け。 |
 
@@ -76,15 +75,17 @@ Natural language only inside `(nl lang "…")`. Every request is closed.
 BUNDLE = "aicl-rulebook-bundle.md"
 BUNDLE_ORDER = ["aicl-rulebook-dense.md", "aicl-rulebook.md"] + \
     [f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.aicl"))] + \
-    ["schemas/cooperation.md", "codebooks/bench.json", "codebooks/imagegen.json", "SPEC.md", "grammar/aicl.ebnf"]
+    ["schemas/cooperation.md"] + \
+    [f"codebooks/{p.name}" for p in sorted((ROOT / "codebooks").glob("*.json"))] + \
+    ["SPEC.md", "grammar/aicl.ebnf"]
 
 
 def bundle_text() -> str:
     """Everything in one Markdown file, for chat apps that accept a single attachment."""
     parts = ["# AICL rulebook (single-file bundle)\n\n"
              "Generated from the AICL repository. Sections: the dense language reference (use this as the\n"
-             "system prompt of an LLM agent, replacing `me` with its id), the readable reference, seven example\n"
-             "conversations, two example codebooks, the specification and the grammar.\n"]
+             "system prompt of an LLM agent, replacing `me` with its id), the readable reference, the example\n"
+             "conversations, the codebooks (two standard, two examples), the specification and the grammar.\n"]
     for rel in BUNDLE_ORDER:
         text = (ROOT / FILES[rel]).read_text(encoding="utf-8").rstrip("\n")
         fence = "" if rel.endswith(".md") else ("```json\n" if rel.endswith(".json") else "```\n")

@@ -1,8 +1,8 @@
 # AICL rulebook (single-file bundle)
 
 Generated from the AICL repository. Sections: the dense language reference (use this as the
-system prompt of an LLM agent, replacing `me` with its id), the readable reference, seven example
-conversations, two example codebooks, the specification and the grammar.
+system prompt of an LLM agent, replacing `me` with its id), the readable reference, the example
+conversations, the codebooks (two standard, two examples), the specification and the grammar.
 
 
 ---
@@ -438,6 +438,57 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
+# FILE: examples/11_standard_codebook.aicl
+
+```
+; A real exchange, 2026-11-04: Claude (Opus, @a) and Gemini (Flash-Lite, @b), each given
+; the dense rulebook plus the STANDARD CODEBOOK aicl.sched.1 (SPEC §8.2) in its prompt.
+; The runner is examples/codebook_dialogue.py. Each `; wire:` comment is the packed dense
+; text actually sent; the message below it is the canonical form the harness recovered by
+; unpacking with the codebook. Domain terms: the concepts of aicl.sched.1.
+;
+; What it shows (SPEC §13 history):
+;  - Sharing a codebook BY ID works across vendors: @a asked (codebook aicl.sched.1 $digest),
+;    @b answered the digest it holds, and both packed only after they matched.
+;  - Zero rule-3 violations: every surface form sent (CalendarAdd, CalendarEvent, 予定) is in
+;    the table; nothing else was abbreviated. Measured: 370 wire tokens vs 480 readable
+;    (heuristic counter), 23 % below the readable form.
+;  - @b stamped its ok with :at + :eta unprompted (the rule added after examples/10).
+;  - A new failure at the end: @b answered status with {$s done} but never sent the real
+;    done (-> the status-unclosed warning), then answered @a's follow-up ask with a `done`
+;    act (-> the done-for-ask error). Both are kept below as specimens; the do and the last
+;    ask therefore stay open.
+;
+; wire: (A a.1>b (codebook aicl.sched.1 $digest))
+(ask  #a.1 @a>@b (codebook aicl.sched.1 $digest))
+; wire: (T b.1>a ^a.1 {$digest sha256:ce5a0e068cc7f8db})
+(tell #b.1 @b>@a ^a.1 {$digest sha256:ce5a0e068cc7f8db})
+; wire: (P a.2>b (meeting :with [@a @b] :dur PT30M :from 20261107T1300+9 :to 20261107T1330+9))
+(prop #a.2 @a>@b (meeting :dur PT30M :from 2026-11-07T13:00+09:00 :to 2026-11-07T13:30+09:00 :with [@a @b]))
+; wire: (R b.2>a ^a.2 :w (busy :from 20261107T1300+9 :to 20261107T1530+9))
+(rej  #b.2 @b>@a ^a.2 :why (busy :from 2026-11-07T13:00+09:00 :to 2026-11-07T15:30+09:00))
+; wire: (P a.3>b (meeting :with [@a @b] :dur PT30M :from 20261107T1530+9 :to 20261107T1600+9))
+(prop #a.3 @a>@b (meeting :dur PT30M :from 2026-11-07T15:30+09:00 :to 2026-11-07T16:00+09:00 :with [@a @b]))
+; wire: (C b.3>a ^a.3 (meeting :with [@a @b] :dur PT30M :from 20261107T1530+9 :to 20261107T1600+9))
+(acc  #b.3 @b>@a ^a.3 (meeting :dur PT30M :from 2026-11-07T15:30+09:00 :to 2026-11-07T16:00+09:00 :with [@a @b]))
+; wire: (D a.4>b (CalendarAdd (ref #a.3)))
+(do   #a.4 @a>@b (calendar-add (ref #a.3)))
+; wire: (K b.4>a ^a.4 :a 20261105T1200+9 :t PT1M)
+(ok   #b.4 @b>@a ^a.4 :at 2026-11-05T12:00+09:00 :eta PT1M)
+; wire: (A a.5>b (status (ref #a.4) $s))
+(ask  #a.5 @a>@b (status (ref #a.4) $s))
+; wire: (T b.5>a ^a.5 {$s done})
+(tell #b.5 @b>@a ^a.5 {$s done})
+; wire: (A a.6>b (予定 $id :for (ref #a.4)))
+(ask  #a.6 @a>@b (calendar-event $id :for (ref #a.4)))
+; wire: (Z b.6>a ^a.6 (CalendarEvent evt-5102 :For (ref #a.3)))
+(done #b.6 @b>@a ^a.6 (calendar-event evt-5102 :for (ref #a.3)))
+; wire: (X a.7>b)
+(end  #a.7 @a>@b)
+```
+
+---
+
 # FILE: schemas/cooperation.md
 
 # AICL cooperation schema (`coop:` namespace), v0.1
@@ -545,6 +596,31 @@ use skills present in the registry.
 
 ---
 
+# FILE: codebooks/deployment.json
+
+```json
+{
+  "id": "aicl.deploy.1",
+  "name": "deployment",
+  "_note": "Standard published codebook (SPEC §8.2). Immutable: any change is a new id (aicl.deploy.2). Concepts are the deployment/operations vocabulary of examples 02/10; forms follow the read-back guideline (CamelCase or non-Latin, no truncations that read as English words).",
+  "concepts": {
+    "deploy-status": ["DeployStatus", "デプロイ状態"],
+    "finished-at":   ["FinishedAt", "完了時刻"],
+    "finished":      ["Finished", "完了"],
+    "rollout":       ["Rollout", "展開"],
+    "error-rate":    ["ErrorRate", "エラー率"],
+    "region":        ["Region", "地域"],
+    "window":        ["Window", "窓"],
+    "ci-api":        ["CiApi", "ciApi"],
+    "metrics":       ["Metrics", "メトリクス"],
+    "log-summary":   ["LogSummary", "ログ要約"],
+    "logstore":      ["LogStore", "ログ保管"]
+  }
+}
+```
+
+---
+
 # FILE: codebooks/imagegen.json
 
 ```json
@@ -595,6 +671,30 @@ use skills present in the registry.
     "bridge":          ["Bridge", "橋"],
     "river":           ["River", "川"],
     "sun":             ["Sun", "太陽"]
+  }
+}
+```
+
+---
+
+# FILE: codebooks/scheduling.json
+
+```json
+{
+  "id": "aicl.sched.1",
+  "name": "scheduling",
+  "_note": "Standard published codebook (SPEC §8.2). Immutable: any change is a new id (aicl.sched.2). Concepts are the scheduling vocabulary of examples 03/07/08; forms follow the read-back guideline (CamelCase or non-Latin, no truncations that read as English words).",
+  "concepts": {
+    "meeting":        ["Meeting", "会議"],
+    "busy":           ["Busy", "予定あり"],
+    "with":           ["With", "参加者"],
+    "dur":            ["Dur", "時間"],
+    "from":           ["From", "開始"],
+    "to":             ["To", "終了"],
+    "topic":          ["Topic", "議題"],
+    "calendar-add":   ["CalendarAdd", "予定追加"],
+    "calendar-event": ["CalendarEvent", "予定"],
+    "for":            ["For", "対象"]
   }
 }
 ```
@@ -789,7 +889,8 @@ Binding maps are the only place a `$var` may appear in a `tell`.
   it MUST NOT name a source it did not consult.
 - `(status (ref #id) $s)` MAY be asked about any open request; the answer binds `$s` to
   one of `pending done failed unknown`. An agent asked for status SHOULD then close the
-  request with `done`/`fail` if it can.
+  request with `done`/`fail` if it can; answering `done`/`failed` without ever closing
+  the request is flagged (`status-unclosed`).
 - A `def` sent to one agent binds only that pair; a `def` sent to `*` binds every agent in
   the conversation. A third party using a pair-scoped term gets `clar`.
 
@@ -812,7 +913,7 @@ These heads are reserved and have fixed semantics in every AICL conversation.
 | `(amb term [c1 c2 …])` | Term is ambiguous between candidates |
 | `(unk term)` | Term is unknown |
 | `(ref #id)` | Explicit reference to the content of an earlier message |
-| `(tokenizer name)`, `(codebook id)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash |
+| `(tokenizer name)`, `(codebook id)`, `(codebook id digest)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash. `(codebook aicl.sched.1 $digest)` asks whether the counterpart holds the **standard codebook** of that name (§8.2); the answer binds `$digest` to its content hash, or is `(none)` |
 | `(status (ref #id) $s)` | Query the state of an open request; `$s` ∈ `pending done failed unknown` |
 
 ### 5.1 Time intervals
@@ -942,6 +1043,32 @@ keys, literals and ids are never packed.
 (D u.1>g (GenerateImage :Scene (city Tokyo :Time night) :Style photo) :c img2)
 ```
 
+### 8.2 Standard codebooks: sharing a table by id
+
+Two agents from different vendors should not have to exchange a JSON table before they can
+pack. A **standard codebook** is a codebook published in this repository under a versioned
+id; holding the id is holding the table.
+
+| id | domain | file | digest |
+|---|---|---|---|
+| `aicl.sched.1` | scheduling (examples 03/07/08 vocabulary) | `codebooks/scheduling.json` | `sha256:ce5a0e068cc7f8db` |
+| `aicl.deploy.1` | deployment / operations (examples 02/10 vocabulary) | `codebooks/deployment.json` | `sha256:9a2788c5d6f9c34c` |
+
+Rules:
+
+1. **A standard codebook is immutable.** Its digest is frozen by a test; any change —
+   adding a concept, adding a form — is a new codebook with a new id (`aicl.sched.2`).
+   The id names the exact table, so citing the id commits to the digest above.
+2. **Agree by id, verify by digest.** `(ask #a.1 @a>@b (codebook aicl.sched.1 $digest))`
+   is answered with `{$digest sha256:…}` if the receiver holds the table, `(none)` if not.
+   Each side compares the answer with the digest it holds (or the table above); packing
+   starts only after digests match, together with the tokenizer handshake of §8.1 rule 4.
+3. **The id is an ordinary symbol** (`aicl.sched.1` lexes as a symbol); concept ids inside
+   the codebook resolve as vocabulary, the codebook id itself does not.
+
+A domain gets a standard codebook only after its vocabulary has appeared in real
+exchanges; a data-query codebook is deferred until a live exchange grounds one.
+
 ## 9. JSON Encoding
 
 | AICL | JSON |
@@ -1027,10 +1154,12 @@ with `:at` on the `ok` the overrun was pure message arithmetic); retract finalit
 are not reserved words, §3 (the requester naturally wrote `(done (ref #id))` as a body
 term in its third message and every encoder crashed).
 
+Standard codebooks (§8.2) resolved the sharing-by-id question for the two domains with
+live vocabulary (`aicl.sched.1`, `aicl.deploy.1`); further domains (data query, …) wait
+for real exchanges to ground their vocabulary.
+
 Still open:
 
-- Standard published codebooks per domain (scheduling, deployment, data query), so
-  agents from different vendors can share one by id instead of exchanging tables.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.

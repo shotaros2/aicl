@@ -55,6 +55,44 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(a.id, Codebook({"x-thing": ["xt", "XT"]}).id)
 
 
+class StandardCodebookTests(unittest.TestCase):
+    """SPEC §8.2: standard codebooks are immutable — the id names the exact table.
+
+    If one of these digest assertions fails, you changed a published table: revert it
+    and publish the change as a NEW codebook with a new id (aicl.sched.2, …)."""
+
+    SCHED = Codebook.load(str(ROOT / "codebooks" / "scheduling.json"))
+    DEPLOY = Codebook.load(str(ROOT / "codebooks" / "deployment.json"))
+
+    def test_published_ids_and_frozen_digests(self):
+        self.assertEqual(self.SCHED.published_id, "aicl.sched.1")
+        self.assertEqual(self.SCHED.id, "sha256:ce5a0e068cc7f8db")
+        self.assertEqual(self.DEPLOY.published_id, "aicl.deploy.1")
+        self.assertEqual(self.DEPLOY.id, "sha256:9a2788c5d6f9c34c")
+
+    def test_no_warnings_and_ids_are_symbols(self):
+        from aicl.lexer import classify_atom
+        from aicl.model import Symbol
+        for cb in (self.SCHED, self.DEPLOY):
+            self.assertEqual(cb.warnings, [])
+            self.assertIsInstance(classify_atom(cb.published_id), Symbol)
+
+    def test_cover_their_domain_examples(self):
+        sched = aicl.parse((ROOT / "examples" / "03_scheduling.aicl").read_text(encoding="utf-8"))
+        packed = "\n".join(self.SCHED.pack_text(t, len) for t in sched)
+        self.assertEqual([aicl.to_text(t) for t in self.SCHED.unpack(packed)],
+                         [aicl.to_text(t) for t in sched])
+        deploy = aicl.parse((ROOT / "examples" / "02_deploy.aicl").read_text(encoding="utf-8"))
+        packed = "\n".join(self.DEPLOY.pack_text(t, len) for t in deploy)
+        self.assertEqual([aicl.to_text(t) for t in self.DEPLOY.unpack(packed)],
+                         [aicl.to_text(t) for t in deploy])
+
+    def test_handshake_form_parses(self):
+        t = aicl.parse_one("(ask #a.1 @a>@b (codebook aicl.sched.1 $digest))")
+        self.assertEqual(aicl.to_text(t), "(ask #a.1 @a>@b (codebook aicl.sched.1 $digest))")
+        self.assertEqual(aicl.validate_message(t), [])
+
+
 class PackTests(unittest.TestCase):
     def test_choose_cheapest_by_chars(self):
         best = IMG.choose(len)

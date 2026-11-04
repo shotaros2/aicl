@@ -74,15 +74,18 @@ python examples/cooperation_demo.py
   → 0.2 で `retract`、`status`、根拠の必須化（`:src` は構造か `(none)`）、半開区間、`def` の有効範囲を追加。
 - 実記録: `examples/07`（Claude と Gemini の交渉）、`examples/09`（Dola が本物の画像を AICL で納品）、
   `examples/10`（締切つき交渉。`:by` と eta-overrun / stale-reply / 発話行為語の非予約化の出どころ。
-  ランナーは `examples/deadline_dialogue.py`、時計はハーネスが `; now` 行で注入）。
+  ランナーは `examples/deadline_dialogue.py`、時計はハーネスが `; now` 行で注入）、
+  `examples/11`（標準コードブック `aicl.sched.1` を id+ダイジェストで合意してパック通信。
+  ワイヤ実測 370 vs 可読 480 トークン。status-unclosed の出どころ。ランナーは `examples/codebook_dialogue.py`）。
 - Dola は外部から呼ぶ API がなく、カスタムコネクタも未解放。自動化は Gemini 経由のゲートウェイで、Dola は人の中継で使う。
 
 ## 7. 次にやる候補
 
 1. API 課金を有効にして `AICL_IMAGE_MODEL=gemini-nano-banana-2.1` で本物の画像を MCP 経由で Claude に返す（`.env` に 1 行追加するだけ）。
 2. `examples/cooperation_gemini.py` を `aicl/gemini.py` を使う形に整理（今は同じコードが二重にある）。
-3. SPEC §13 の残課題: 領域ごとの標準コードブック、`def` の型付き署名、署名と同一性、ストリーミング tell、
-   バイナリ添付（期限の検証可能性は 2026-11-04 に解決済み: `:by` + `aicl check --now`）。
+3. SPEC §13 の残課題: `def` の型付き署名、署名と同一性、ストリーミング tell、バイナリ添付
+   （期限の検証可能性と標準コードブックは 2026-11-04 に解決済み。data-query のコードブックは
+   実会話で語彙が出てから）。
 4. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
 5. 告知: X に投稿済み（文面は会話履歴参照）。Zenn / Show HN 向けの記事は未着手。
 

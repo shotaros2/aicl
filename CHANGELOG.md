@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+Standard codebooks, from a live packed Claude–Gemini exchange on 2026-11-04
+(`examples/11`, runner `examples/codebook_dialogue.py`):
+
+- SPEC §8.2: **standard codebooks**, published in `codebooks/` under a versioned id and
+  immutable (a change is a new id; digests are frozen by a test). First two:
+  `aicl.sched.1` (scheduling) and `aicl.deploy.1` (deployment); a data-query codebook
+  waits for a live exchange to ground its vocabulary. The handshake is in-band:
+  `(ask … (codebook aicl.sched.1 $digest))` answered with the digest or `(none)`.
+  In the live run the id+digest handshake succeeded, both sides packed with zero
+  rule-3 violations, and the wire cost measured 370 tokens vs 480 readable (−23 %).
+- New warning `status-unclosed`: a status answered `done`/`failed` for a request that
+  is never then closed with `done`/`fail`. (Observed: Gemini answered `{$s done}`,
+  never sent the real `done`, then answered a follow-up ask with a `done` act —
+  the existing `done-for-ask` error caught that part.)
+- `Codebook` gains `published_id` (the JSON `id` field); `aicl codebook` prints it.
+
 Checkable deadlines and retract finality, each from a live Claude–Gemini deadline
 negotiation on 2026-11-04 run under a harness-injected clock (`examples/10`):
 

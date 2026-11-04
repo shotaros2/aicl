@@ -67,7 +67,9 @@ def cmd_codebook(a):
     counter = tokens.get_counter(a.tokenizer)
     best = cb.choose(counter)
     print(f"codebook: {cb.name or a.codebook}")
-    print(f"id:       {cb.id}")
+    if cb.published_id:
+        print(f"published id: {cb.published_id} (standard, immutable; SPEC §8.2)")
+    print(f"digest:   {cb.id}")
     print(f"concepts: {len(cb.concepts)}, forms: {len(cb.form_to_concept)}")
     for w in cb.warnings:
         print(f"warning:  {w}")

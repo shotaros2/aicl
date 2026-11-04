@@ -167,7 +167,8 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     closed_prop: Dict[str, str] = {}                    # id -> "acc" | "rej"
     pending_def: Dict[str, tuple] = {}                  # def id -> (term, pair)
     why_targets: Dict[str, str] = {}                    # why id -> id it questions
-    status_asks: Set[str] = set()
+    status_asks: Dict[str, Optional[str]] = {}          # status-ask id -> id of the request it queries
+    status_claim: Dict[str, str] = {}                   # request id -> tell that claimed it done/failed
 
     for m in msgs:
         issues.extend(validate_message(m.to_form()))
@@ -205,7 +206,8 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
         if act == "ask":
             open_asks[m.id] = m
             if m.body and isinstance(m.body[0], Form) and m.body[0].head == "status":
-                status_asks.add(m.id)
+                status_asks[m.id] = (m.body[0].args[0].args[0].name
+                                     if m.body[0].args and _is_ref_form(m.body[0].args[0]) else None)
         elif act == "do":
             pending_do[m.id] = "sent"
             by = _as_datetime(m.kw.get("by"))
@@ -228,6 +230,9 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     if not vals or not all(isinstance(v, Symbol) and v.name in STATUS_VALUES for v in vals):
                         issues.append(_warn("status-value", "answer to (status …) should be one of "
                                             + " ".join(sorted(STATUS_VALUES)), m.id))
+                    target_req = status_asks[r]
+                    if target_req and any(isinstance(v, Symbol) and v.name in ("done", "failed") for v in vals):
+                        status_claim[target_req] = m.id
                 del open_asks[r]
             if r in why_targets and "src" not in m.kw:
                 issues.append(_err("why-needs-src", "an answer to 'why' must carry :src (structured evidence or (none))", m.id))
@@ -290,6 +295,10 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 open_asks.pop(target.id, None)
                 pending_do.pop(target.id, None)
 
+    for req, mid in status_claim.items():
+        if req in pending_do or req in open_asks:
+            issues.append(_warn("status-unclosed", f"status of ^{req} was answered done/failed, but the "
+                                "request was never closed with done/fail (SPEC §4.4)", mid))
     for mid in open_asks:
         issues.append(_warn("open-ask", "ask was never answered (tell/no/fail)", mid))
     for mid, state in pending_do.items():

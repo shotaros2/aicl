@@ -33,8 +33,9 @@ Counter = Callable[[str], int]
 
 
 class Codebook:
-    def __init__(self, concepts: Dict[str, List[str]], name: str = ""):
+    def __init__(self, concepts: Dict[str, List[str]], name: str = "", published_id: str = ""):
         self.name = name
+        self.published_id = published_id      # e.g. "aicl.sched.1" for a standard codebook (SPEC §8.2)
         self.concepts: Dict[str, List[str]] = {}
         self.form_to_concept: Dict[str, str] = {}
         self.warnings: List[str] = []
@@ -95,7 +96,12 @@ class Codebook:
             data = json.load(fh)
         if not isinstance(data, dict) or "concepts" not in data:
             raise ModelError("codebook file must be a JSON object with a 'concepts' key")
-        return cls(data["concepts"], data.get("name", ""))
+        pid = data.get("id", "")
+        if pid:
+            atom = classify_atom(pid)
+            if not isinstance(atom, Symbol):
+                raise ModelError(f"codebook id {pid!r} is not an AICL symbol")
+        return cls(data["concepts"], data.get("name", ""), pid)
 
     @property
     def id(self) -> str:

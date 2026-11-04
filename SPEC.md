@@ -184,7 +184,8 @@ Binding maps are the only place a `$var` may appear in a `tell`.
   it MUST NOT name a source it did not consult.
 - `(status (ref #id) $s)` MAY be asked about any open request; the answer binds `$s` to
   one of `pending done failed unknown`. An agent asked for status SHOULD then close the
-  request with `done`/`fail` if it can.
+  request with `done`/`fail` if it can; answering `done`/`failed` without ever closing
+  the request is flagged (`status-unclosed`).
 - A `def` sent to one agent binds only that pair; a `def` sent to `*` binds every agent in
   the conversation. A third party using a pair-scoped term gets `clar`.
 
@@ -207,7 +208,7 @@ These heads are reserved and have fixed semantics in every AICL conversation.
 | `(amb term [c1 c2 …])` | Term is ambiguous between candidates |
 | `(unk term)` | Term is unknown |
 | `(ref #id)` | Explicit reference to the content of an earlier message |
-| `(tokenizer name)`, `(codebook id)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash |
+| `(tokenizer name)`, `(codebook id)`, `(codebook id digest)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash. `(codebook aicl.sched.1 $digest)` asks whether the counterpart holds the **standard codebook** of that name (§8.2); the answer binds `$digest` to its content hash, or is `(none)` |
 | `(status (ref #id) $s)` | Query the state of an open request; `$s` ∈ `pending done failed unknown` |
 
 ### 5.1 Time intervals
@@ -337,6 +338,32 @@ keys, literals and ids are never packed.
 (D u.1>g (GenerateImage :Scene (city Tokyo :Time night) :Style photo) :c img2)
 ```
 
+### 8.2 Standard codebooks: sharing a table by id
+
+Two agents from different vendors should not have to exchange a JSON table before they can
+pack. A **standard codebook** is a codebook published in this repository under a versioned
+id; holding the id is holding the table.
+
+| id | domain | file | digest |
+|---|---|---|---|
+| `aicl.sched.1` | scheduling (examples 03/07/08 vocabulary) | `codebooks/scheduling.json` | `sha256:ce5a0e068cc7f8db` |
+| `aicl.deploy.1` | deployment / operations (examples 02/10 vocabulary) | `codebooks/deployment.json` | `sha256:9a2788c5d6f9c34c` |
+
+Rules:
+
+1. **A standard codebook is immutable.** Its digest is frozen by a test; any change —
+   adding a concept, adding a form — is a new codebook with a new id (`aicl.sched.2`).
+   The id names the exact table, so citing the id commits to the digest above.
+2. **Agree by id, verify by digest.** `(ask #a.1 @a>@b (codebook aicl.sched.1 $digest))`
+   is answered with `{$digest sha256:…}` if the receiver holds the table, `(none)` if not.
+   Each side compares the answer with the digest it holds (or the table above); packing
+   starts only after digests match, together with the tokenizer handshake of §8.1 rule 4.
+3. **The id is an ordinary symbol** (`aicl.sched.1` lexes as a symbol); concept ids inside
+   the codebook resolve as vocabulary, the codebook id itself does not.
+
+A domain gets a standard codebook only after its vocabulary has appeared in real
+exchanges; a data-query codebook is deferred until a live exchange grounds one.
+
 ## 9. JSON Encoding
 
 | AICL | JSON |
@@ -422,10 +449,12 @@ with `:at` on the `ok` the overrun was pure message arithmetic); retract finalit
 are not reserved words, §3 (the requester naturally wrote `(done (ref #id))` as a body
 term in its third message and every encoder crashed).
 
+Standard codebooks (§8.2) resolved the sharing-by-id question for the two domains with
+live vocabulary (`aicl.sched.1`, `aicl.deploy.1`); further domains (data query, …) wait
+for real exchanges to ground their vocabulary.
+
 Still open:
 
-- Standard published codebooks per domain (scheduling, deployment, data query), so
-  agents from different vendors can share one by id instead of exchanging tables.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
