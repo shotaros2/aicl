@@ -24,10 +24,12 @@ dependencies = []
 [project.optional-dependencies]
 tokens = ["tiktoken>=0.7"]
 llm = ["anthropic>=1.0", "google-genai>=1.0"]
+mcp = ["mcp>=2.0", "google-genai>=1.0"]
 dev = ["pytest"]
 
 [project.scripts]
 aicl = "aicl.cli:main"
+aicl-mcp = "aicl.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/shotaros2/aicl"

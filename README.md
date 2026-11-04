@@ -257,6 +257,27 @@ turn with the validator's verdict before it becomes `fail :code parse`; and two 
 slips a small model makes (`a.1>@b`, `^#a.1`) are accepted on input because they cannot
 change meaning, while anything ambiguous is still rejected.
 
+## Let Claude fetch images from another AI on its own
+
+The end goal of the cooperation layer: a model that needs something it cannot do
+(an image, say) talks AICL to a specialist, gets the artifact, and shows it to the
+user, with no human in the loop. `aicl/mcp_server.py` exposes the gateway as an
+[MCP](https://modelcontextprotocol.io) server with five tools: `aicl_rulebook` (learn the
+language), `aicl_capabilities`, `aicl_send` (deliver AICL, get AICL replies and image
+artifacts back), `aicl_transcript` and `aicl_check`.
+
+```bash
+pip install "aicl-lang[mcp]"        # mcp SDK + google-genai; GEMINI_API_KEY in .env
+```
+
+Claude Code picks the server up from the repository's `.mcp.json`; for Claude Desktop add
+`{"mcpServers": {"aicl": {"command": "python", "args": ["-m", "aicl.mcp_server"], "cwd": "<repo>"}}}`
+to its config. Then ask Claude for a picture: it calls `aicl_rulebook`, composes
+`(D claude.1>img (coop:task t1 image-gen :in {prompt "…"}))`, receives `(K …)` and
+`(Z … (coop:artifact …))` from the image agent, and the image comes back as tool output.
+`AICL_IMAGE_MODEL=svg` (default) draws with the text model on the free tier;
+`AICL_IMAGE_MODEL=gemini-nano-banana-2.1` uses a real image model once API billing is on.
+
 ## Make an LLM speak AICL
 
 [prompts/system_prompt.md](prompts/system_prompt.md) is a ~700-token system prompt that

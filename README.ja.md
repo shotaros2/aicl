@@ -187,6 +187,16 @@ AI にはそれぞれ得意分野があります。協調レイヤー（`aicl/co
 
 `python examples/cooperation_gemini.py` はまさにそれを Gemini で行います（`GEMINI_API_KEY` が必要）。ハブの計画は Gemini が AICL で書き、画像の専門エージェントは Gemini の画像モデルを呼んで PNG を成果物として返し、コードの専門エージェントは **密形式の AICL を話す Gemini そのもの**で、タスクに `K` と `Z` のメッセージで答えます。バスはそれを検証してから受け入れます。出力は `out/`（記録、画像、ページ）に保存されます。無料枠では Gemini の画像モデルが使えない（アプリの有料プランに加入しても API の枠は変わらない）ため、既定では文章モデルが SVG で画像を描きます。API の課金を有効にしたら `--image-model gemini-nano-banana-2.1` で本物の画像モデルになります。計画役とコード役を `gemini-3.5-flash-lite` にした実走では、計画、依存する 2 タスク、成果物 2 つが 12 メッセージ、プロトコル違反 0 で依頼者に届きます。そこに至るまでに分かった 3 点はすべてコードに反映済みです。メッセージ ID はモデルではなくハーネスが管理する（次の ID と返信ヘッダを AICL のコメントで伝え、必要なら振り直す）。不正な応答には検証結果を添えて 1 回だけ修正の機会を与え、それでも駄目なら `fail :code parse` にする。小型モデルがよくやる余分な記号の揺れ 2 種（`a.1>@b`、`^#a.1`）は意味が変わらないので入力時に受理し、曖昧なものは従来どおり拒否する。
 
+## Claude が自分で他の AI から画像を取ってくる
+
+協調レイヤーの最終目標はこれです。自分にできないこと（たとえば画像生成）が必要になったモデルが、専門エージェントと AICL で話し、成果物を受け取り、人を介さずにユーザーへ見せる。`aicl/mcp_server.py` はゲートウェイを [MCP](https://modelcontextprotocol.io) サーバーとして公開し、5 つのツールを持ちます。`aicl_rulebook`（言語を学ぶ）、`aicl_capabilities`、`aicl_send`（AICL を送り、AICL の返答と画像成果物を受け取る）、`aicl_transcript`、`aicl_check`。
+
+```bash
+pip install "aicl-lang[mcp]"        # mcp SDK と google-genai。GEMINI_API_KEY は .env に
+```
+
+Claude Code はリポジトリの `.mcp.json` からサーバーを読み込みます。Claude Desktop なら設定に `{"mcpServers": {"aicl": {"command": "python", "args": ["-m", "aicl.mcp_server"], "cwd": "<リポジトリ>"}}}` を足します。あとは Claude に絵を頼むだけです。Claude は `aicl_rulebook` を呼んで言語を学び、`(D claude.1>img (coop:task t1 image-gen :in {prompt "…"}))` を組み立て、画像エージェントから `(K …)` と `(Z … (coop:artifact …))` を受け取り、画像がツールの出力として戻ってきます。`AICL_IMAGE_MODEL=svg`（既定）は無料枠で文章モデルが描き、`AICL_IMAGE_MODEL=gemini-nano-banana-2.1` は API の課金を有効にした後に本物の画像モデルを使います。
+
 ## LLM に AICL を話させる
 
 [prompts/system_prompt.md](prompts/system_prompt.md) は約 700 トークンのシステムプロンプトで、指示追従できるモデルならどれでも可読形式の AICL を話せるようにします。[prompts/system_prompt_dense.md](prompts/system_prompt_dense.md) は密形式を教えるもので、LLM エージェント同士はこちらを使うべきです。`examples/llm_dialogue.py` は 2 つの Claude が会議の日程を AICL で交渉するデモで、すべてのメッセージは相手に渡す前にパース・検証されます。

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "aicl": {
+      "command": "python",
+      "args": ["-m", "aicl.mcp_server"],
+      "cwd": "."
+    }
+  }
+}

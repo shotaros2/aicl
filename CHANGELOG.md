@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `aicl/gateway.py`: one requester talking AICL to a bus of specialists (validate,
+  deliver, collect replies and artifacts); `aicl/gemini.py`: shared Gemini text,
+  image and SVG-image building blocks.
+- `aicl/mcp_server.py` (`aicl-mcp`, `.mcp.json`): the gateway as an MCP server with
+  `aicl_rulebook`, `aicl_capabilities`, `aicl_send`, `aicl_transcript`, `aicl_check`,
+  so Claude (or any MCP client) can obtain images from another AI by speaking AICL.
+
 ## 0.2.0 — 2026-11-04
 
 Every change comes from a live observation (a Gemini Gem given the rulebook, and a
