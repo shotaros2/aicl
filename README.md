@@ -221,6 +221,12 @@ code agent work on one goal, speaking only AICL:
 stub functions for real APIs, or use `LLMAgent` for a model-backed specialist and
 `LLMPlanner` for a model-backed hub, and nothing else changes.
 
+`python examples/cooperation_gemini.py` does exactly that with Gemini in three roles
+(`GEMINI_API_KEY` required): the hub's planner writes the plan in AICL, the image
+specialist calls a Gemini image model and returns the PNG as an artifact, and the code
+specialist *is* Gemini speaking dense AICL, answering the task with `K` and `Z` messages
+that the bus validates before accepting. Output lands in `out/` (transcript, image, page).
+
 ## Make an LLM speak AICL
 
 [prompts/system_prompt.md](prompts/system_prompt.md) is a ~700-token system prompt that

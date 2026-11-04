@@ -172,6 +172,8 @@ AI にはそれぞれ得意分野があります。協調レイヤー（`aicl/co
 
 `python examples/cooperation_demo.py` はこれをスタブの専門エージェントでオフライン実行します。16 メッセージ、プロトコル違反 0、自然言語は依頼者の目標の中だけ（nl ratio 2%）。スタブ関数を実際の API に差し替えるか、モデル駆動の専門エージェントには `LLMAgent`、モデル駆動のハブには `LLMPlanner` を使えば、それ以外は何も変わりません。
 
+`python examples/cooperation_gemini.py` はまさにそれを Gemini で行います（`GEMINI_API_KEY` が必要）。ハブの計画は Gemini が AICL で書き、画像の専門エージェントは Gemini の画像モデルを呼んで PNG を成果物として返し、コードの専門エージェントは **密形式の AICL を話す Gemini そのもの**で、タスクに `K` と `Z` のメッセージで答えます。バスはそれを検証してから受け入れます。出力は `out/`（記録、画像、ページ）に保存されます。
+
 ## LLM に AICL を話させる
 
 [prompts/system_prompt.md](prompts/system_prompt.md) は約 700 トークンのシステムプロンプトで、指示追従できるモデルならどれでも可読形式の AICL を話せるようにします。[prompts/system_prompt_dense.md](prompts/system_prompt_dense.md) は密形式を教えるもので、LLM エージェント同士はこちらを使うべきです。`examples/llm_dialogue.py` は 2 つの Claude が会議の日程を AICL で交渉するデモで、すべてのメッセージは相手に渡す前にパース・検証されます。

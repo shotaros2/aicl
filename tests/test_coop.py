@@ -118,6 +118,29 @@ class CoopTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             LLMPlanner(lambda p: "(tell #x @a>@b (y))")("goal", {})
 
+    def test_llm_agent_returns_validated_messages(self):
+        from aicl.coop import LLMAgent
+        replies = {
+            "ok+done": "(K code.1>hub ^hub.1)\n(Z code.2>hub ^hub.1 (coop:artifact page-t3 :type code :task t3 :content \"<html>\"))",
+            "prose": "Sure! Here is the page.",
+            "wrong-sender": "(K hub.9>code ^hub.1)",
+        }
+        state = {"mode": "ok+done"}
+        agent = LLMAgent("code", lambda system, history: replies[state["mode"]], "rulebook @me", "role", ["code-gen"])
+        bus = Bus()
+        hub = Agent("hub")
+        bus.add(agent, hub)
+        task = hub.msg("do", "code", form("coop:task", Symbol("t3"), Symbol("code-gen")))
+        bus.send(task)
+        self.assertEqual([m.act for m in bus.transcript], ["do", "ok", "done"])
+        self.assertEqual(agent.seq, 2)                       # numbering follows the model's own ids
+        for mode in ("prose", "wrong-sender"):
+            state["mode"] = mode
+            bus.send(hub.msg("do", "code", form("coop:task", Symbol("t4"), Symbol("code-gen"))))
+            self.assertEqual(bus.transcript[-1].act, "fail")
+            self.assertEqual(bus.transcript[-1].kw["code"], Symbol("parse"))
+        self.assertEqual([i for i in bus.check() if i.level == "error"], [])
+
     def test_task_form_resolves_artifacts(self):
         spec = TaskSpec("t2", "video-gen", {"keyframe": TaskRef("t1")})
         art = form("coop:artifact", Symbol("a1"), kw={"type": Symbol("image"), "task": Symbol("t1")})

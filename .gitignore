@@ -10,3 +10,4 @@ venv/
 *.cbor
 .DS_Store
 Thumbs.db
+out/

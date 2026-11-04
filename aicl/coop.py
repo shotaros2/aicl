@@ -11,10 +11,20 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Optional, Union
 
 from .build import form, msg, nl
-from .model import Agent as AgentId, Form, KList, KMap, Keyword, Message, Ref, ReplyRef, Str, Symbol, Term, Var
-from .parser import parse_one
+from .dense import expand as dense_expand
+from .model import Agent as AgentId, Form, KList, KMap, Keyword, Message, ParseError, Ref, ReplyRef, Str, Symbol, Term, Var
+from .parser import parse, parse_one
 from .printer import to_text
 from .validate import Issue, validate_conversation, validate_message
+
+
+def _seq_of(mid: str, agent_id: str) -> int:
+    """Numeric suffix of '<agent>.<n>' ids, so an LLM agent's own numbering stays monotonic."""
+    try:
+        prefix, n = mid.rsplit(".", 1)
+        return int(n) if prefix == agent_id else 0
+    except ValueError:
+        return 0
 
 NS = "coop"
 
@@ -161,12 +171,23 @@ class LLMAgent(Agent):
         self.history.append({"role": "user", "content": incoming})
         raw = self.ask(self.system, self.history).strip()
         self.history.append({"role": "assistant", "content": raw})
+        if raw.startswith("```"):
+            raw = raw.strip("`").removeprefix("aicl").strip()
         try:
-            f = parse_one(raw)
-            Message.from_form(f)
+            forms = parse(dense_expand(raw))              # the model may answer in dense or readable form
+            if not forms:
+                raise ParseError("empty reply")
+            for f in forms:
+                errors = [i for i in validate_message(f) if i.level == "error"]
+                if errors:
+                    raise ParseError("; ".join(str(e) for e in errors))
+                msg_ = Message.from_form(f)
+                if msg_.sender != self.id:
+                    raise ParseError(f"message claims to be from @{msg_.sender}")
+                self.seq = max(self.seq, _seq_of(msg_.id, self.id))
         except Exception as e:
             return [self.msg("fail", m.sender, reply=m.id, kw={"code": Symbol("parse"), "why": nl("en", str(e)[:200])})]
-        return [f]
+        return forms
 
 
 # ---------------------------------------------------------------------- bus
