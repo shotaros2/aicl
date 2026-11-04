@@ -22,6 +22,7 @@ FILES = {
     "aicl-rulebook-dense.md": "prompts/system_prompt_dense.md",
     "SPEC.md": "SPEC.md",
     "grammar/aicl.ebnf": "grammar/aicl.ebnf",
+    "schemas/cooperation.md": "schemas/cooperation.md",
     "codebooks/bench.json": "codebooks/bench.json",
     "codebooks/imagegen.json": "codebooks/imagegen.json",
 }
@@ -46,6 +47,7 @@ repository by `tools/build_rulebook.py`; do not edit files here by hand.
 | `aicl-rulebook.md` | The same language in readable form: for debugging, for humans, or for an agent that only talks to you. / 同じ言語の可読形式。デバッグ用、人間用、人と話すだけのエージェント用。 |
 | `codebooks/*.json` | Only when both agents agree to use one. Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。表にある表記以外の省略は禁止。 |
 | `examples/*.aicl` | Six complete conversations covering every speech act; useful as few-shot examples. / 全発話行為を含む会話例 6 本。few-shot の材料に。 |
+| `schemas/cooperation.md` | How specialists (image, video, code, …) register, receive tasks and return artifacts through a hub: the `coop:` vocabulary. / 専門エージェントがハブを介して登録・受注・成果物返却する手順と `coop:` 語彙。 |
 | `SPEC.md`, `grammar/aicl.ebnf` | The normative specification and grammar, for implementers and for an agent that needs the exact rules. / 規範となる仕様と文法。実装者向け、正確な規則が要るエージェント向け。 |
 
 ## Minimal hand-off / 最小の渡し方
@@ -73,7 +75,7 @@ Natural language only inside `(nl lang "…")`. Every request is closed.
 BUNDLE = "aicl-rulebook-bundle.md"
 BUNDLE_ORDER = ["aicl-rulebook-dense.md", "aicl-rulebook.md"] + \
     [f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.aicl"))] + \
-    ["codebooks/bench.json", "codebooks/imagegen.json", "SPEC.md", "grammar/aicl.ebnf"]
+    ["schemas/cooperation.md", "codebooks/bench.json", "codebooks/imagegen.json", "SPEC.md", "grammar/aicl.ebnf"]
 
 
 def bundle_text() -> str:

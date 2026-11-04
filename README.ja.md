@@ -152,6 +152,26 @@ from aicl.build import msg, form, q
 reply = msg("tell", "b.9", "b", "a", aicl.KMap([(aicl.Var("t"), q(18.5, "C"))]), reply="a.1", conf=0.9)
 ```
 
+## 協調: 得意分野の異なる AI が協力する
+
+AI にはそれぞれ得意分野があります。協調レイヤー（`aicl/coop.py`、[schemas/cooperation.md](schemas/cooperation.md)）は、画像生成・動画生成・コード生成のエージェントが AICL だけで 1 つの目標に取り組む仕組みです。
+
+- **専門エージェント**は `(coop:capability image-gen :agent @img)` で能力を広告し、`(coop:task …)` を `ok` で受け、`(coop:artifact …)` を `done` で返します。
+- **ハブ**は能力の登録簿を持ち、依頼者の目標を `(coop:plan …)` に分解し、依存順に委任し、各成果物を次のタスクへ「前の結果」ではなく完全な形で渡します。
+- **バス**はすべてのメッセージを検証します。専門エージェントの `fail` は依頼者に `:why (ref #…)` 付きの `fail` として届き、黙って再試行されることはありません。
+
+```
+(do   #user.1 @user>@hub (coop:goal (nl ja "東京の夜景の10秒動画を作って、それを埋め込んだWebページを作って")))
+(tell #hub.2 @hub>@user (coop:plan [(coop:task t1 image-gen …) (coop:task t2 video-gen :in {keyframe (coop:from t1) …}) (coop:task t3 code-gen …)]))
+(do   #hub.3 @hub>@img (coop:task t1 image-gen :in {prompt "Tokyo skyline at night" width 1920px height 1080px}))
+(done #img.3 @img>@hub ^hub.3 (coop:artifact img-974186 :type image :task t1 :uri "file://out/img-974186.png"))
+(do   #hub.4 @hub>@vid (coop:task t2 video-gen :in {keyframe (coop:artifact img-974186 …) duration 10s}))
+…
+(done #hub.6 @hub>@user ^user.1 [(coop:artifact img-974186 …) (coop:artifact vid-… :type video …) (coop:artifact page-1 :type code :content "<!doctype html>…")])
+```
+
+`python examples/cooperation_demo.py` はこれをスタブの専門エージェントでオフライン実行します。16 メッセージ、プロトコル違反 0、自然言語は依頼者の目標の中だけ（nl ratio 2%）。スタブ関数を実際の API に差し替えるか、モデル駆動の専門エージェントには `LLMAgent`、モデル駆動のハブには `LLMPlanner` を使えば、それ以外は何も変わりません。
+
 ## LLM に AICL を話させる
 
 [prompts/system_prompt.md](prompts/system_prompt.md) は約 700 トークンのシステムプロンプトで、指示追従できるモデルならどれでも可読形式の AICL を話せるようにします。[prompts/system_prompt_dense.md](prompts/system_prompt_dense.md) は密形式を教えるもので、LLM エージェント同士はこちらを使うべきです。`examples/llm_dialogue.py` は 2 つの Claude が会議の日程を AICL で交渉するデモで、すべてのメッセージは相手に渡す前にパース・検証されます。
@@ -184,6 +204,8 @@ aicl/                  リファレンス実装（Python 3.11 以上、依存な
   printer.py            正規形・整形出力、sha256
   dense.py              密テキストエンコーディング（トークナイザ向け、正規形と 1 対 1）
   codebook.py           トークナイザ対応コードブック: 曖昧さ規則付きの pack / unpack
+  coop.py               協調レイヤー: バス、専門エージェント、ハブ、プランナー
+schemas/                公開語彙（協調）
 codebooks/              コードブックの例（bench, imagegen）
   json_codec.py         JSON エンコーディング
   cbor_codec.py         決定的 CBOR（RFC 8949 §4.2）

@@ -19,3 +19,6 @@ First public draft.
   `evals/results/` and the README.
 - `rulebook/`: generated hand-off folder with both language references, the
   spec, grammar, example codebooks and conversations, plus a bilingual index.
+- Cooperation layer (`aicl/coop.py`, `schemas/cooperation.md`): bus with
+  validation, specialist agents, hub with registry and dependency-ordered
+  delegation, recipe and LLM planners, artifact passing; offline demo.

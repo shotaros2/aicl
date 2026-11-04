@@ -192,6 +192,35 @@ from aicl.build import msg, form, q
 reply = msg("tell", "b.9", "b", "a", aicl.KMap([(aicl.Var("t"), q(18.5, "C"))]), reply="a.1", conf=0.9)
 ```
 
+## Cooperation: specialists working together
+
+AIs have different strengths. The cooperation layer (`aicl/coop.py`,
+[schemas/cooperation.md](schemas/cooperation.md)) lets an image agent, a video agent and a
+code agent work on one goal, speaking only AICL:
+
+- **Specialists** announce `(coop:capability image-gen :agent @img)`, accept
+  `(coop:task …)` with `ok`, and return `(coop:artifact …)` with `done`.
+- A **hub** keeps the registry, turns the requester's goal into a `(coop:plan …)`, delegates
+  tasks in dependency order and passes each artifact to the next task in full, never as
+  "the previous result".
+- The **bus** validates every message; a specialist's `fail` reaches the requester as `fail`
+  with `:why (ref #…)`, never as a silent retry.
+
+```
+(do   #user.1 @user>@hub (coop:goal (nl ja "東京の夜景の10秒動画を作って、それを埋め込んだWebページを作って")))
+(tell #hub.2 @hub>@user (coop:plan [(coop:task t1 image-gen …) (coop:task t2 video-gen :in {keyframe (coop:from t1) …}) (coop:task t3 code-gen …)]))
+(do   #hub.3 @hub>@img (coop:task t1 image-gen :in {prompt "Tokyo skyline at night" width 1920px height 1080px}))
+(done #img.3 @img>@hub ^hub.3 (coop:artifact img-974186 :type image :task t1 :uri "file://out/img-974186.png"))
+(do   #hub.4 @hub>@vid (coop:task t2 video-gen :in {keyframe (coop:artifact img-974186 …) duration 10s}))
+…
+(done #hub.6 @hub>@user ^user.1 [(coop:artifact img-974186 …) (coop:artifact vid-… :type video …) (coop:artifact page-1 :type code :content "<!doctype html>…")])
+```
+
+`python examples/cooperation_demo.py` runs this offline with stub specialists: 16 messages,
+0 protocol errors, natural language only inside the user's goal (nl ratio 2 %). Swap the
+stub functions for real APIs, or use `LLMAgent` for a model-backed specialist and
+`LLMPlanner` for a model-backed hub, and nothing else changes.
+
 ## Make an LLM speak AICL
 
 [prompts/system_prompt.md](prompts/system_prompt.md) is a ~700-token system prompt that
@@ -237,6 +266,8 @@ aicl/                  reference implementation (Python ≥ 3.11, no dependencie
   printer.py            canonical + pretty text, sha256 digest
   dense.py              dense text encoding (tokenizer-tuned, bijective with canonical)
   codebook.py           tokenizer-aware codebooks: pack / unpack with the ambiguity rules
+  coop.py               cooperation layer: bus, specialists, hub, planners
+schemas/                published vocabularies (cooperation)
 codebooks/              example codebooks (bench, imagegen)
   json_codec.py         JSON encoding
   cbor_codec.py         deterministic CBOR (RFC 8949 §4.2)
