@@ -72,29 +72,52 @@ core keys and ISO-basic timestamps. It is bijective with the readable form, so
 (C a.2>b ^b.2)
 ```
 
+### Codebooks: cheaper words without ambiguity
+
+What a tokenizer finds cheap is accidental: `Tokyo` is one cl100k token, `tokyo` two,
+`東京` three. A **codebook** (SPEC §8.1) is a shared table from concept ids to allowed
+surface forms. The sender picks, per concept, the form that costs the fewest tokens on
+the *receiver's* tokenizer; the receiver maps every form back to the concept id before
+it reads anything. Four rules keep this exactly as unambiguous as the dense form's
+`A` = `ask`:
+
+1. Only concept ids are canonical: validation, hashing and `def` never see a surface form.
+2. Each form belongs to exactly one concept (the loader rejects any table that breaks this).
+3. A form not in the codebook is an unknown term → `clar`, never a guess. Agents must not
+   shorten or translate vocabulary on their own.
+4. The receiver's tokenizer and codebook id are agreed in-band (`(tokenizer $t)`, `(codebook $id)`), never assumed.
+
+```bash
+koine codebook codebooks/imagegen.json --tokenizer cl100k_base   # validate, show chosen forms
+koine pack   msg.kd --codebook codebooks/imagegen.json --tokenizer cl100k_base
+koine unpack msg.kd --codebook codebooks/imagegen.json           # back to concept ids
+koine check  msg.kd --codebook codebooks/imagegen.json           # concepts count as known terms
+```
+
 ## Honest numbers: precision is not free
 
 `bench/compare.py` compares realistic natural-language agent dialogues with the same
-information in Koine (cl100k_base tokenizer, which GPT-4-class and many open models use):
+information in Koine (cl100k_base tokenizer, which GPT-4-class and many open models use).
+All columns are tokens; "packed" uses `codebooks/bench.json`:
 
-| case | NL tokens | Koine readable | ratio | Koine dense | ratio |
-|---|---|---|---|---|---|
-| weather | 138 | 128 | 0.93 | 98 | 0.71 |
-| clarify | 188 | 239 | 1.27 | 190 | 1.01 |
-| deploy | 150 | 201 | 1.34 | 164 | 1.09 |
-| scheduling | 124 | 211 | 1.70 | 158 | 1.27 |
-| **total** | **600** | **779** | **1.30** | **610** | **1.02** |
+| case | NL | readable | ratio | dense | ratio | packed | ratio |
+|---|---|---|---|---|---|---|---|
+| weather | 138 | 128 | 0.93 | 98 | 0.71 | 94 | 0.68 |
+| clarify | 188 | 239 | 1.27 | 190 | 1.01 | 181 | 0.96 |
+| deploy | 150 | 201 | 1.34 | 164 | 1.09 | 158 | 1.05 |
+| scheduling | 124 | 211 | 1.70 | 158 | 1.27 | 158 | 1.27 |
+| **total** | **600** | **779** | **1.30** | **610** | **1.02** | **591** | **0.98** |
 
 The readable form costs about 30 % more tokens than polite English, because BPE
-vocabularies are tuned for prose. The dense form removes 22 % of that and lands at
-**parity with natural language while carrying strictly more information** (exact instants
-with time zones, ids, thresholds, provenance) and zero ambiguity. In characters, both
-Koine forms are far shorter.
+vocabularies are tuned for prose. The dense form removes 22 % of that; a codebook takes
+a few percent more and lands **below natural language while carrying strictly more
+information** (exact instants with time zones, ids, thresholds, provenance) and zero
+ambiguity. In characters, every Koine form is far shorter. The scheduling case does not
+move because its vocabulary was already one token per word; the remaining cost there is
+the four time-zoned instants, which natural language simply leaves out.
 
-What remains is domain vocabulary (`deploy-status`, `build-4821`, `eu-west-1`), which is
-the information itself. Going below that requires a **shared codebook** that maps domain
-terms to short codes; that is the next item on the roadmap. Re-run the benchmark with your
-own model's tokenizer before drawing conclusions for it.
+Re-run the benchmark with your own model's tokenizer (`--tokenizer o200k_base`, or any
+`tiktoken` encoding) before drawing conclusions for it.
 
 ## Install and use
 
@@ -169,6 +192,8 @@ koine/                  reference implementation (Python ≥ 3.11, no dependenci
   lexer.py parser.py    text → terms
   printer.py            canonical + pretty text, sha256 digest
   dense.py              dense text encoding (tokenizer-tuned, bijective with canonical)
+  codebook.py           tokenizer-aware codebooks: pack / unpack with the ambiguity rules
+codebooks/              example codebooks (bench, imagegen)
   json_codec.py         JSON encoding
   cbor_codec.py         deterministic CBOR (RFC 8949 §4.2)
   validate.py           message + conversation validator, nl ratio
@@ -191,10 +216,9 @@ tests/                  unittest suite (also the conformance tests)
 
 ## Roadmap
 
-- v0.2: shared codebooks (pre-agreed schemas that map domain terms to short codes, the
-  remaining lever for token cost); typed `def` signatures; standard schemas for
-  scheduling, data query and tool invocation.
-- Ports: the implementation is ~1500 lines including docstrings and meant to be re-implemented in an afternoon.
+- v0.2: standard published codebooks per domain, shared by id; typed `def` signatures;
+  standard schemas for scheduling, data query and tool invocation.
+- Ports: the implementation is ~1700 lines including docstrings and meant to be re-implemented in an afternoon.
   Conformance criteria are in SPEC §12; open an issue to be listed here.
 - Identity and signatures (`@agent` → public key).
 

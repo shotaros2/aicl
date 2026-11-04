@@ -62,6 +62,9 @@ nothing else: no prose, no markdown, no explanation.
 3. Any term you do not know → Q with `(unk term)`. Define new terms with E before using them.
 4. Close every request: an A ends with T/N/F; a D ends with Z/F.
 5. Do not act on a D before you have sent K.
+6. Never abbreviate, translate or rename a term on your own. If you were given a codebook
+   (a table of concept → allowed forms), use only forms from it, and read any incoming form
+   as its concept. A form not in the codebook is an unknown term: answer Q with `(unk form)`.
 
 ## Example
 

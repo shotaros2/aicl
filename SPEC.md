@@ -160,6 +160,7 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - A receiver that cannot interpret any part of a message MUST reply `clar`; it MUST NOT guess.
 - An agent MUST NOT act on a `do` before sending `ok`.
 - `tell` MUST NOT contain `$vars` except as keys of a binding map (§4.2).
+- An agent MUST NOT abbreviate, translate or otherwise vary a term except through an agreed codebook (§8.1).
 
 ---
 
@@ -180,6 +181,7 @@ These heads are reserved and have fixed semantics in every Koine conversation.
 | `(amb term [c1 c2 …])` | Term is ambiguous between candidates |
 | `(unk term)` | Term is unknown |
 | `(ref #id)` | Explicit reference to the content of an earlier message |
+| `(tokenizer name)`, `(codebook id)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash |
 
 Any other head is a **domain term** and must be resolvable (§6).
 
@@ -252,8 +254,46 @@ domain heads, and the single-letter keywords above are not valid domain keys.
 
 Measured on `bench/`, the dense form uses 22 % fewer cl100k tokens than the canonical
 text and about the same as a polite natural-language exchange carrying less information.
-The remaining tokens are domain vocabulary; shortening those needs a shared codebook
-(§13).
+The remaining tokens are domain vocabulary; shortening those is what codebooks do.
+
+### 8.1 Codebooks: tokenizer-aware surface forms
+
+What a tokenizer finds cheap is accidental (`Tokyo` is one cl100k token, `tokyo` two,
+`東京` three), and it differs between models. A **codebook** lets the sender exploit that
+without reintroducing ambiguity. It is a JSON table from **concept ids** (ordinary Koine
+symbols) to alternative **surface forms**:
+
+```json
+{"name": "imagegen",
+ "concepts": {"photorealistic": ["Photorealistic", "photo", "写実"],
+              "tokyo":          ["Tokyo", "東京"]}}
+```
+
+Rules, all enforced by the reference implementation:
+
+1. **Concept ids are the only canonical vocabulary.** Validation, hashing, logging and
+   `def` all use concept ids. A surface form exists only on the wire; the receiver maps
+   every form back to its concept id before interpreting anything (`koine unpack`).
+2. **Each form belongs to exactly one concept** and is never itself a concept id, a core
+   term, a head key, a single ASCII letter, a sigil token, or anything that would lex as a
+   number, quantity, instant, date or duration. Loading a codebook that breaks this fails.
+3. **A form that is not in the codebook is an unknown term.** The receiver answers
+   `clar (unk …)`; it never guesses that `photo` means `photorealistic`. Agents MUST NOT
+   shorten or translate vocabulary on their own.
+4. **The receiver's tokenizer is agreed, never assumed.** Before packing, the sender asks
+   `(ask #a.1 @a>@b (tokenizer $t))` and `(ask #a.2 @a>@b (codebook $id))`; the receiver
+   answers with its tokenizer name and the codebook's content hash (`sha256:…`). Until both
+   match, messages are sent with concept ids.
+
+Given the codebook and the receiver's tokenizer, the sender replaces each concept id with
+the form that costs the fewest tokens (ties: the id itself, then the shortest, then
+lexicographic order), in symbol, head and keyword positions alike. The choice is
+deterministic, and the receiver needs no tokenizer to decode. Core vocabulary, acts, head
+keys, literals and ids are never packed.
+
+```
+(D u.1>g (GenerateImage :Scene (city Tokyo :Time night) :Style photo) :c img2)
+```
 
 ## 9. JSON Encoding
 
@@ -324,8 +364,8 @@ An implementation is **Koine-conformant** if it:
 
 ## 13. Open Questions (for v0.2)
 
-- Shared codebooks: pre-agreed schemas that map domain terms to short codes
-  (`deploy-status` → `d1`), the only remaining lever for token cost below the dense form.
+- Standard published codebooks per domain (scheduling, deployment, data query), so
+  agents from different vendors can share one by id instead of exchanging tables.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).

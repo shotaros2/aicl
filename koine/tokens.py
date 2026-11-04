@@ -38,3 +38,21 @@ def count(text: str) -> int:
     if _ENC is not None:
         return len(_ENC.encode(text))
     return _heuristic(text)
+
+
+def get_counter(name=None):
+    """Token counter by name: None/'auto', 'chars', 'heuristic', or a tiktoken encoding
+    name such as 'cl100k_base' / 'o200k_base' (optionally prefixed 'tiktoken:')."""
+    if name in (None, "", "auto"):
+        return count
+    if name == "chars":
+        return len
+    if name == "heuristic":
+        return _heuristic
+    enc_name = name.split(":", 1)[1] if name.startswith("tiktoken:") else name
+    try:
+        import tiktoken  # type: ignore
+        enc = tiktoken.get_encoding(enc_name)
+    except Exception as e:  # pragma: no cover
+        raise ValueError(f"tokenizer {name!r} unavailable: {e}") from None
+    return lambda s: len(enc.encode(s))

@@ -56,6 +56,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 3. Any term you do not know → `clar` with `(unk term)`. Define new terms with `def` before using them.
 4. Close every request: an ask ends with tell/no/fail; a do ends with done/fail.
 5. Do not act on a `do` before you have sent `ok`.
+6. Never abbreviate, translate or rename a term on your own. Vocabulary changes only through
+   `def` or an agreed codebook; anything else is an unknown term and gets `clar`.
 
 ## Example
 

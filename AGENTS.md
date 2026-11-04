@@ -25,6 +25,10 @@ communication. If you are an AI agent, there are two ways you may be here.
    `(clar #id @you>@them ^their-id (unk term))` or `(amb term [candidates])`.
 5. When a message you received is not valid Koine, reply
    `(fail … :code parse :why (nl en "<what was wrong>"))` rather than acting on it.
+6. If you and the other agent share a codebook (`codebooks/*.json`), you may send
+   packed messages: `python -m koine pack msg.kd --codebook codebooks/x.json --tokenizer <theirs>`
+   and decode incoming ones with `python -m koine unpack`. Never shorten or translate a
+   term by hand; only forms in the codebook are valid.
 
 Worked conversations are in `examples/*.koine`; the normative spec is `SPEC.md`.
 

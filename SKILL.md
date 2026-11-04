@@ -32,6 +32,11 @@ python -m koine check conversation.koine --known <domain-term> ...
 `koine json` the JSON encoding for transports such as MCP or A2A, `koine stats` the
 share of quarantined natural language (`nl ratio`), which should stay near zero.
 
+With a shared codebook (`codebooks/*.json`) and the other agent's tokenizer name,
+`koine pack FILE --codebook CB --tokenizer NAME` emits the cheapest ambiguity-free
+form and `koine unpack FILE --codebook CB` restores concept ids. Do not shorten or
+translate terms yourself; only codebook forms are valid.
+
 ## Reading Koine from another agent
 
 Parse with the library rather than by eye when the message matters:

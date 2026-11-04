@@ -18,7 +18,14 @@ def _read(path: str) -> str:
         return f.read()
 
 
-def _load(path: str):
+def _codebook(a):
+    from .codebook import Codebook
+    return Codebook.load(a.codebook) if getattr(a, "codebook", None) else None
+
+
+def _load(path: str, codebook=None):
+    if codebook is not None and not path.endswith((".json", ".cbor")):
+        return codebook.unpack(_read(path))
     if path.endswith(".json"):
         import json
         data = json.loads(_read(path))
@@ -36,6 +43,36 @@ def _load(path: str):
 def cmd_dense(a):
     for t in _load(a.file):
         print(dense.to_dense(t))
+
+
+def cmd_pack(a):
+    cb = _codebook(a)
+    counter = tokens.get_counter(a.tokenizer)
+    for t in _load(a.file, cb):
+        print(cb.pack_text(t, counter, dense=not a.readable))
+
+
+def cmd_unpack(a):
+    cb = _codebook(a)
+    text = _read(a.file)
+    for t in cb.unpack(text):
+        print(to_text(t))
+    bad = cb.unresolved_forms(text)
+    if bad:
+        sys.exit("unpack: forms not in codebook (rule 3): " + ", ".join(sorted(set(bad))))
+
+
+def cmd_codebook(a):
+    cb = _codebook(a)
+    counter = tokens.get_counter(a.tokenizer)
+    best = cb.choose(counter)
+    print(f"codebook: {cb.name or a.codebook}")
+    print(f"id:       {cb.id}")
+    print(f"concepts: {len(cb.concepts)}, forms: {len(cb.form_to_concept)}")
+    print(f"cheapest form per concept for tokenizer {a.tokenizer or tokens.METHOD}:")
+    for cid, f in sorted(best.items()):
+        mark = "" if f == cid else f"  -> {f}  ({counter(' ' + cid)} -> {counter(' ' + f)} tokens)"
+        print(f"  {cid}{mark}")
 
 
 def cmd_fmt(a):
@@ -76,7 +113,10 @@ def cmd_hash(a):
 
 
 def cmd_check(a):
-    terms = _load(a.file)
+    cb = _codebook(a)
+    terms = _load(a.file, cb)
+    if cb is not None:
+        a.known = list(a.known) + list(cb.concepts)
     issues = []
     msgs = []
     for t in terms:
@@ -104,8 +144,9 @@ def cmd_check(a):
 
 
 def cmd_stats(a):
+    cb = _codebook(a)
     text = _read(a.file)
-    terms = _load(a.file)
+    terms = _load(a.file, cb)
     msgs = [Message.from_form(t) for t in terms if is_message(t)]
     canon = "\n".join(to_text(t) for t in terms)
     dn = "\n".join(dense.to_dense(t) for t in terms)
@@ -115,6 +156,9 @@ def cmd_stats(a):
     print(f"chars (dense):     {len(dn)}")
     print(f"tokens (canonical, {tokens.METHOD}): {tokens.count(canon)}")
     print(f"tokens (dense, {tokens.METHOD}):     {tokens.count(dn)}")
+    if cb is not None:
+        pk = "\n".join(cb.pack_text(t) for t in terms)
+        print(f"tokens (packed, {tokens.METHOD}):    {tokens.count(pk)}")
     print(f"nl ratio:          {nl_ratio(msgs):.1%}")
 
 
@@ -129,13 +173,19 @@ def main(argv=None):
     s = sub.add_parser("json", help="convert to JSON encoding");                  s.add_argument("file"); s.add_argument("--compact", action="store_true"); s.set_defaults(fn=cmd_json)
     s = sub.add_parser("cbor", help="convert a single term to CBOR");             s.add_argument("file"); s.add_argument("-o", "--output"); s.set_defaults(fn=cmd_cbor)
     s = sub.add_parser("hash", help="SHA-256 of canonical form, one per term");   s.add_argument("file"); s.set_defaults(fn=cmd_hash)
-    s = sub.add_parser("check", help="validate a conversation");                  s.add_argument("file"); s.add_argument("--known", action="append", default=[], metavar="TERM", help="pre-agreed domain term (repeatable)"); s.set_defaults(fn=cmd_check)
-    s = sub.add_parser("stats", help="size, token estimate and nl ratio");        s.add_argument("file"); s.set_defaults(fn=cmd_stats)
+    s = sub.add_parser("check", help="validate a conversation");                  s.add_argument("file"); s.add_argument("--known", action="append", default=[], metavar="TERM", help="pre-agreed domain term (repeatable)"); s.add_argument("--codebook", metavar="JSON"); s.set_defaults(fn=cmd_check)
+    s = sub.add_parser("stats", help="size, token estimate and nl ratio");        s.add_argument("file"); s.add_argument("--codebook", metavar="JSON"); s.set_defaults(fn=cmd_stats)
+    s = sub.add_parser("pack", help="replace concept ids by the cheapest codebook forms"); s.add_argument("file"); s.add_argument("--codebook", required=True, metavar="JSON"); s.add_argument("--tokenizer", help="auto | chars | heuristic | cl100k_base | o200k_base | tiktoken:<name>"); s.add_argument("--readable", action="store_true", help="emit readable instead of dense text"); s.set_defaults(fn=cmd_pack)
+    s = sub.add_parser("unpack", help="map codebook forms back to concept ids (canonical text)"); s.add_argument("file"); s.add_argument("--codebook", required=True, metavar="JSON"); s.set_defaults(fn=cmd_unpack)
+    s = sub.add_parser("codebook", help="validate a codebook and show the chosen forms"); s.add_argument("codebook", metavar="JSON"); s.add_argument("--tokenizer"); s.set_defaults(fn=cmd_codebook)
 
     a = p.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):   # codebook forms may be non-ASCII; never depend on the console code page
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     try:
         a.fn(a)
-    except KoineError as e:
+    except (KoineError, ValueError) as e:
         sys.exit(f"koine: {e}")
 
 
