@@ -1,6 +1,6 @@
 # 引き継ぎメモ（別の PC で作業を続けるために）
 
-最終更新: 2026-11-04。このファイルは人間と AI エージェント（Claude Code など）の両方が読む前提で書いています。
+最終更新: 2026-11-05。このファイルは人間と AI エージェント（Claude Code など）の両方が読む前提で書いています。
 
 ## 1. これは何か
 
@@ -64,8 +64,10 @@ python examples/cooperation_demo.py
 
 - チャットアプリに貼る 1 ファイル: `rulebook/aicl-rulebook-bundle.md`
 - スキルとして取り込めるアプリ（Dola、Claude）: `rulebook/aicl-skill.zip`
-- Gemini アプリの Gem「AICL」: 指示欄に `rulebook/aicl-rulebook-dense.md` の `---` 以降を貼り、`me` を `gemini` に置換（作成済みだが Google アカウントに紐づくので新 PC からは同じアカウントでログイン）
-- Dola のスキル「aicl」: ZIP をアップロード済み（Dola のアカウントに紐づく）
+- Gemini アプリの Gem「AICL」: 指示欄に `rulebook/aicl-rulebook-dense.md` の `---` 以降を貼り、`me` を `gemini` に置換
+  （2026-11-05 に v0.3 へ貼り替え済み。置換済みテキストの生成は `out/gem_instructions_v0.3.md` を作った手順参照。
+  Google アカウントに紐づくので新 PC からは同じアカウントでログイン）
+- Dola のスキル「aicl」: ZIP をアップロード済み（2026-11-05 に v0.3 の ZIP へ上げ直し済み。Dola のアカウントに紐づく）
 
 ## 6. ここまでで分かっていること（要点）
 
@@ -83,17 +85,38 @@ python examples/cooperation_demo.py
   `examples/13`（Dola への手動中継の調査タスク。型付き def が報告スキーマとして機能し、出典9件つきで納品。
   ok-for-ask エラーと「def を ok せず語彙を使う」の出どころ）。
 - Dola は外部から呼ぶ API がなく、カスタムコネクタも未解放。自動化は Gemini 経由のゲートウェイで、Dola は人の中継で使う。
+- **無人化とネットワーク化は完了**（2026-11-05）: `aicl.dialogue`（1プロセス内）と `aicl.relay`（HTTP越し）で、
+  Claude と Gemini は人間なしで交渉できる。実走は `python examples/relay_dialogue.py` 1 コマンドで再現可能。
+- **時刻と同一性はトランスポートが保証する**（モデルの善意に頼らない）: 時計なしだと Gemini は `:at` を捏造した
+  （2回再現）→ リレーが全ポーリングで `now` を配布し、`attend()` が `; now` を注入し、ずれた `:at` は
+  `at-skew` で門前拒否。導入後の再実走では両ベンダーとも正しく刻印。署名（`:sig`）も同じ思想。
+- **`done-for-ask`（status 照会に done 行為で答える）は Gemini の安定した癖**（例11、リレー実走×2、Gem v0.3 でも
+  `status-unclosed` として再現=計4回）。プロンプトでは直らないと確定。検証器で捕まえるのが正解。
+- **v0.3 ルールブックの受け入れテスト**（2026-11-05、手動中継）:
+  - Dola: do への ok は正しくなったが `:at` を落とす（eta-unanchored）。画像納品は実物（AICL の done は未確認）。
+  - Gem: 型付き def と ID 規約は正確。一方で do の受理を参照ミス（承認済み def へ二重 ok）、虚偽の
+    `{$s done}`（status-unclosed 検出）、ID 再使用（dup-id）、本文なし tell（body-required）。ただし根拠を
+    問うと捏造せず `:s (none)` と自白し、為替の答えは検索グラウンディング由来の本物らしい出典つき。
+    全文は `logs/2026-11-05-gem-v03-acceptance.aicl`。
+  - 検証器の未実装候補が1つ判明: 「承認済み def / 閉じた do への二重 ok」は現状スルー（ack-closed 的な検査）。
+- 検索グラウンディングつき Gemini API 呼び出しの書き方はスクラッチの実験で確認済み
+  （`tools=[types.Tool(google_search=types.GoogleSearch())]`。無料枠の検索クォータは少なく、尽きると 429。
+  素の生成とクォータは別枠）。クォータ切れの Gemini は天気を聞かれて `(no … :why (unk data))` と
+  正直に答え、`/check` は clean だった——規則7が丸腰でも守られた好例。
 
 ## 7. 次にやる候補
 
-1. API 課金を有効にして `AICL_IMAGE_MODEL=gemini-nano-banana-2.1` で本物の画像を MCP 経由で Claude に返す（`.env` に 1 行追加するだけ）。
-2. `examples/cooperation_gemini.py` を `aicl/gemini.py` を使う形に整理（今は同じコードが二重にある）。
-3. SPEC §13 の当初の課題は**全部解決済み**（2026-11-04〜05: 期限 `:by`、標準コードブック §8.2、
-   型付き署名 §6.1、署名と同一性 §3.1（crypto は任意依存 `.[crypto]`）、分割 `:part` §4.5、
-   ハッシュ添付 `blob` §5.2）。新しい残課題は SPEC §13 末尾（鍵ローテーション、:part のマージ規則、
-   コードブック/鍵のレジストリなど）。
-4. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
-5. 告知: X に投稿済み（文面は会話履歴参照）。Zenn / Show HN 向けの記事は未着手。
+1. **記事（最優先）**: Zenn / Show HN。材料は揃っている——実記録15例、実測値（ワイヤ370 vs 可読480）、
+   v0.3 公開、無人ネットワーク実走、そして「検証器が嘘と捏造を現行犯で捕まえ続けた2日間」という物語。
+2. 検証器: 「承認済み def / 閉じた do への二重 ok」の検査（Gem テストで判明した未実装、§6 参照）。
+   Gem テストの一部始終を example 16 として収録するのも候補。
+3. SPEC §13 の新しい残課題（鍵ローテーション、:part のマージ規則、コードブック/鍵のレジストリ）。
+   当初の課題は全部解決済み（2026-11-04〜05）。
+4. API 課金を有効にして、本物の画像（`AICL_IMAGE_MODEL=gemini-nano-banana-2.1`）と検索グラウンディングを
+   クォータを気にせず使う（`.env` に 1 行、課金は Google AI Studio 側）。
+5. `examples/cooperation_gemini.py` を `aicl/gemini.py` と `aicl.dialogue` を使う形に整理（コード二重の解消）。
+6. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
+7. 告知: X に投稿済み。
 
 ## 8. Claude Code と作業するときの約束
 
