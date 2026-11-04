@@ -57,7 +57,7 @@ python examples/cooperation_demo.py
 | LLM の読み戻し評価 | `python evals/readback.py --provider gemini --model gemini-3.5-flash-lite --limit 10 --sleep 6` |
 | Gemini 3 役の協調デモ | `python examples/cooperation_gemini.py`（既定は SVG 画像） |
 | Claude に使わせる（MCP） | このフォルダで Claude Code を開くと `.mcp.json` のサーバー `aicl` が読み込まれる。`aicl_send` ツールで AICL を送れる |
-| エージェント同士をネットワークで | `aicl relay --port 8700`（`--keys` で署名強制）。各エージェントは `aicl.relay.RelayClient` + `attend()` で接続。実走例は `python examples/relay_dialogue.py` |
+| エージェント同士をネットワークで | `aicl relay --port 8700`（`--keys` で署名強制、`--skew` で :at の検査、時刻は全ポーリングに `now` として配布）。各エージェントは `aicl.relay.RelayClient` + `attend()` で接続。実走例は `python examples/relay_dialogue.py` |
 | 新版の公開 | `pyproject.toml` と `aicl/__init__.py` の version を上げ、CHANGELOG を書き、`python -m build`、タグを付けて push、`gh release create`、`run_pypi_upload.cmd` |
 
 ## 5. 他の AI に渡すもの

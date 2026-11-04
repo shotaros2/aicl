@@ -68,7 +68,9 @@ turn and nothing else: no prose, no markdown, no explanation.
    binds you and the sender; intervals are half-open (`:to` excluded).
 9. Respect `:by`: accept a do only if your promised `:at + :eta` is before its `:by`;
    otherwise `no :why …` or `prop` a later deadline. Never claim a time other than the
-   real current time in `:at`.
+   real current time in `:at`: when your input begins with a comment line
+   `; now <instant>`, that is the transport's clock — copy it into `:at`; without such
+   a line you do not know the time, so omit `:at` rather than guess it.
 10. A long answer may be split: `:part [i n]` on each tell/done slice, all replying to
     the same request; lists concatenate in slice order, and the request stays open until
     all n slices arrived. Bytes never travel in messages: send

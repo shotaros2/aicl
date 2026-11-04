@@ -92,6 +92,53 @@ class RelayTests(unittest.TestCase):
         finally:
             srv.shutdown()
 
+    def test_relay_clock_is_served_and_prefixed(self):
+        from datetime import datetime, timedelta, timezone
+        fixed = datetime(2026, 11, 5, 21, 0, tzinfo=timezone(timedelta(hours=9)))
+        srv, base = start(Relay(known_terms=("x",), now_fn=lambda: fixed))
+        try:
+            a = RelayClient(base, "t6", "a")
+            a.poll(wait=0)
+            self.assertEqual(a.now, "2026-11-05T21:00+09:00")
+            agent_a = AiclAgent("a", scripted("(ask #a.1 @a>@b (x $v))", "(end #a.2 @a>@b)"), "sys")
+            agent_b = AiclAgent("b", scripted("(tell #b.1 @b>@a ^a.1 {$v 1})"), "sys")
+            tb = threading.Thread(target=attend, args=(RelayClient(base, "t7", "b"), agent_b),
+                                  kwargs={"echo": None}, daemon=True)
+            tb.start()
+            attend(RelayClient(base, "t7", "a"), agent_a, opening="; go", echo=None)
+            tb.join(timeout=5)
+            self.assertTrue(agent_a.history[0]["content"].startswith("; now 2026-11-05T21:00+09:00"))
+            self.assertTrue(agent_b.history[0]["content"].startswith("; now 2026-11-05T21:00+09:00"))
+        finally:
+            srv.shutdown()
+
+    def test_at_skew_is_rejected_with_the_true_time(self):
+        from datetime import datetime, timedelta, timezone
+        fixed = datetime(2026, 11, 5, 21, 0, tzinfo=timezone(timedelta(hours=9)))
+        srv, base = start(Relay(known_terms=("x",), now_fn=lambda: fixed))
+        try:
+            a = RelayClient(base, "t8", "a")
+            with self.assertRaises(RelayReject) as cm:
+                a.send("(do #a.1 @a>@b (x) :at 2026-11-04T09:00Z)")        # yesterday's fabrication
+            self.assertIn("at-skew", cm.exception.issues[0])
+            self.assertIn("2026-11-05T21:00+09:00", cm.exception.issues[0])  # the bounce teaches the time
+            a.send("(do #a.1 @a>@b (x) :at 2026-11-05T20:58+09:00)")       # within tolerance
+            a.send("(do #a.2 @a>@b (x))")                                  # no :at: allowed
+        finally:
+            srv.shutdown()
+
+    def test_check_uses_the_relay_clock_for_deadlines(self):
+        from datetime import datetime, timedelta, timezone
+        fixed = datetime(2026, 11, 5, 21, 0, tzinfo=timezone(timedelta(hours=9)))
+        relay = Relay(known_terms=("x",), now_fn=lambda: fixed)
+        srv, base = start(relay)
+        try:
+            a = RelayClient(base, "t9", "a")
+            a.send("(do #a.1 @a>@b (x) :by 2026-11-05T20:00+09:00)")       # deadline already past
+            self.assertIn("deadline-passed", relay.check("t9"))
+        finally:
+            srv.shutdown()
+
     @unittest.skipUnless(HAVE_CRYPTO, "pip install aicl-lang[crypto]")
     def test_keys_enforced_at_the_door(self):
         priv, pub = generate_key()

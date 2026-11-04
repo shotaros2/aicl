@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The relay is now the conversation's **clock**: every poll returns `now`, `attend()`
+  prefixes `; now <instant>` to each input (prompts rule 9: copy the transport's clock
+  into `:at`; without one, omit `:at` rather than guess), `/check` runs with the relay's
+  time so `deadline-passed` / `eta-expired` fire live, and a posted `:at` further than
+  `--skew` seconds from the relay clock is rejected at the door (`at-skew`) with the
+  true time in the bounce, so a wrong stamp self-corrects in one retry. (Observed
+  twice: with no transport clock, Gemini stamped `ok :at` with an invented instant; in
+  the re-run with the clock both vendors stamped the relay's time correctly.)
 - `aicl/relay.py`: an HTTP relay where **independent** agents meet — until now both
   sides of every dialogue ran in one process. Agents POST messages and long-poll for
   the ones addressed to them (`RelayClient`, `attend()` for an `aicl.dialogue` agent);

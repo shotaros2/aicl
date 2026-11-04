@@ -31,11 +31,13 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Dict, List, Optional
 
+from datetime import datetime
+
 from .dense import expand as dense_expand
 from .model import AICLError, Message
 from .parser import parse
 from .printer import to_text
-from .validate import validate_conversation, validate_message
+from .validate import _as_datetime, validate_conversation, validate_message
 
 MAX_MESSAGE_BYTES = 1 << 20
 
@@ -43,11 +45,21 @@ MAX_MESSAGE_BYTES = 1 << 20
 class Relay:
     """Conversation state shared by the HTTP handlers."""
 
-    def __init__(self, known_terms: tuple = (), keys: Optional[Dict[str, str]] = None):
+    def __init__(self, known_terms: tuple = (), keys: Optional[Dict[str, str]] = None,
+                 max_skew: Optional[float] = 300.0, now_fn=None):
+        """`max_skew`: reject a message whose :at differs from the relay clock by more
+        than this many seconds (None disables). The relay is the conversation's clock:
+        an LLM cannot know the time, so the transport supplies it (`now` in every poll,
+        `; now` prefixed by attend()) and polices claims about it (`at-skew`)."""
         self.known = tuple(known_terms)
         self.keys = keys
+        self.max_skew = max_skew
+        self.now_fn = now_fn or (lambda: datetime.now().astimezone())
         self.convs: Dict[str, List[Message]] = {}
         self.lock = threading.Condition()
+
+    def now_text(self) -> str:
+        return self.now_fn().isoformat(timespec="minutes")
 
     # ------------------------------------------------------------------ write
 
@@ -71,6 +83,13 @@ class Relay:
         errors = [str(i) for i in issues if i.level == "error"]
         if errors:
             raise RelayReject(errors)
+        if self.max_skew is not None:
+            at = _as_datetime(m.kw.get("at"))
+            if at is not None:
+                skew = abs((at - self.now_fn()).total_seconds())
+                if skew > self.max_skew:
+                    raise RelayReject([f"error at-skew: your :at is off the relay clock by {skew:.0f}s; "
+                                       f"now is {self.now_text()}"])
         with self.lock:
             log = self.convs.setdefault(conv, [])
             if any(prev.id == m.id for prev in log):
@@ -103,7 +122,7 @@ class Relay:
     def check(self, conv: str) -> str:
         with self.lock:
             log = list(self.convs.get(conv, []))
-        issues = validate_conversation(log, self.known, keys=self.keys)
+        issues = validate_conversation(log, self.known, now=self.now_fn(), keys=self.keys)
         return "\n".join(str(i) for i in issues) or "clean"
 
 
@@ -160,7 +179,7 @@ def make_server(relay: Relay, host: str = "127.0.0.1", port: int = 8700) -> Thre
                     msgs, total = relay.read(conv, for_agent and for_agent.lstrip("@"), after, wait)
                     return self._send(200, json.dumps(
                         {"messages": [{"n": n, "text": to_text(m.to_form())} for n, m in msgs],
-                         "next": total}, ensure_ascii=False))
+                         "next": total, "now": relay.now_text()}, ensure_ascii=False))
             self._send(404, '{"errors": ["no such endpoint"]}')
 
     return ThreadingHTTPServer((host, port), Handler)
@@ -176,6 +195,7 @@ class RelayClient:
         self.conv = conv
         self.agent = agent.lstrip("@")
         self.cursor = 0
+        self.now: Optional[str] = None       # the relay's clock, updated by every poll
 
     def _url(self, suffix: str = "", **params) -> str:
         q = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
@@ -202,6 +222,7 @@ class RelayClient:
                                               after=self.cursor, wait=wait)) as r:
             data = json.loads(r.read().decode("utf-8"))
         self.cursor = data["next"]
+        self.now = data.get("now")
         return [m["text"] for m in data["messages"]]
 
     def transcript(self) -> str:
@@ -215,8 +236,14 @@ def attend(client: RelayClient, agent, opening: Optional[str] = None,
 
     Runs in this process; the counterpart runs wherever it likes. `opening` makes this
     agent speak first (it is a harness note handed to the LLM, not sent to the relay).
+    The relay's clock is prefixed to every input as a `; now <instant>` line, so the
+    agent has a true time to stamp `:at` with; a rejected message (at-skew included)
+    is bounced back once with the relay's reason.
     """
     say = echo or (lambda s: None)
+
+    def clocked(text: str) -> str:
+        return (f"; now {client.now}\n" + text) if client.now else text
 
     def speak(incoming: str) -> Optional[Message]:
         for attempt in range(retries + 1):
@@ -226,12 +253,13 @@ def attend(client: RelayClient, agent, opening: Optional[str] = None,
                 return Message.from_form(parse(dense_expand(raw))[0])
             except RelayReject as e:
                 say(f"!! relay rejected @{client.agent} (attempt {attempt + 1}): {'; '.join(e.issues)}")
-                incoming = ("; harness: the relay rejected your message (" + "; ".join(e.issues)
-                            + "); resend one valid AICL message")
+                incoming = clocked("; harness: the relay rejected your message (" + "; ".join(e.issues)
+                                   + "); resend one valid AICL message")
         return None
 
     if opening is not None:
-        m = speak(opening)
+        client.poll(wait=0)                   # learn the relay's clock before speaking
+        m = speak(clocked(opening))
         if m is None or m.act == "end":
             return
     for _ in range(max_turns):
@@ -240,6 +268,6 @@ def attend(client: RelayClient, agent, opening: Optional[str] = None,
             incoming_act = Message.from_form(parse(dense_expand(text))[0]).act
             if incoming_act == "end":
                 return
-            m = speak(text)
+            m = speak(clocked(text))
             if m is None or m.act == "end":
                 return
