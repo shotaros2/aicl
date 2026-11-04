@@ -119,6 +119,22 @@ the four time-zoned instants, which natural language simply leaves out.
 Re-run the benchmark with your own model's tokenizer (`--tokenizer o200k_base`, or any
 `tiktoken` encoding) before drawing conclusions for it.
 
+### Does the model still read it correctly?
+
+The library decodes every encoding perfectly; the open question is whether a *language
+model* does, especially for packed messages that mix scripts. `evals/readback.py` asks a
+model to write the canonical form of every example message in each encoding, parses and
+canonicalises the answer, and reports accuracy and tokens per encoding:
+
+```bash
+python evals/readback.py --dry-run                      # 69 messages x 4 encodings, no API calls
+python evals/readback.py --model claude-opus-5-5 --out evals/results/opus-5-5.json
+```
+
+A token saving that lowers read-back accuracy is a loss; adopt a codebook for a model only
+after this eval passes for it. No results are published yet (the authors have not run it
+against a live model); contributions of result files are welcome.
+
 ## Install and use
 
 ```bash
@@ -201,6 +217,7 @@ codebooks/              example codebooks (bench, imagegen)
 examples/               worked conversations + demos
 prompts/                system prompt for LLM agents
 bench/                  NL vs Koine comparison
+evals/                  LLM read-back accuracy evaluation
 tests/                  unittest suite (also the conformance tests)
 ```
 

@@ -94,6 +94,17 @@ koine check  msg.kd --codebook codebooks/imagegen.json           # 概念を既�
 
 自分のモデルのトークナイザ（`--tokenizer o200k_base` など tiktoken のエンコーディング）でベンチを再実行してから結論を出してください。
 
+### モデルは本当に正しく読めるか
+
+ライブラリはどのエンコーディングも完全に復号できます。未解決なのは**言語モデル**が、特に文字種が混在する packed メッセージを正しく読めるかです。`evals/readback.py` は、各例文メッセージを各エンコーディングでモデルに渡して正規形を書かせ、答えをパース・正規化して期待値と比較し、エンコーディングごとの正答率とトークン数を報告します。
+
+```bash
+python evals/readback.py --dry-run                      # 69 メッセージ × 4 エンコーディング、API 呼び出しなし
+python evals/readback.py --model claude-opus-5-5 --out evals/results/opus-5-5.json
+```
+
+正答率を下げるトークン削減は損です。コードブックは、使うモデルでこの評価が通ってから採用してください。公開済みの結果はまだありません（作者は実モデルに対して未実行）。結果ファイルの寄稿を歓迎します。
+
 ## インストールと使い方
 
 ```bash
@@ -167,6 +178,7 @@ codebooks/              コードブックの例（bench, imagegen）
 examples/               会話例とデモ
 prompts/                LLM 用システムプロンプト
 bench/                  自然言語との比較
+evals/                  LLM の読み戻し正答率の評価
 tests/                  unittest（適合性テストを兼ねる）
 ```
 

@@ -14,3 +14,5 @@ First public draft.
   and deterministic CBOR codecs, message and conversation validator, `koine` CLI.
 - Six worked examples, a two-agent in-process demo, an LLM-to-LLM demo, a
   system prompt that teaches any LLM to speak Koine, and a token benchmark.
+- `evals/readback.py`: read-back accuracy evaluation per encoding (readable,
+  dense, packed, packed-chars) for any model; results not yet published.
