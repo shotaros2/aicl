@@ -13,8 +13,8 @@
 | 何 | どこ | 備考 |
 |---|---|---|
 | ソース | https://github.com/shotaros2/aicl | GitHub アカウント `shotaros2`（本人）。コミットの作者は匿名アドレス `329199865+shotaros2@users.noreply.github.com` に統一済み |
-| パッケージ | https://pypi.org/project/aicl-lang/ | 0.1.0 と 0.2.0 を公開済み。`pip install aicl-lang` |
-| リリース | GitHub Releases v0.1.0, v0.2.0 | wheel と sdist を添付 |
+| パッケージ | https://pypi.org/project/aicl-lang/ | 0.1.0〜0.3.0 を公開済み。`pip install aicl-lang` |
+| リリース | GitHub Releases v0.1.0〜v0.3.0 | wheel と sdist を添付 |
 | Gemini API | Google AI Studio のキー | 無料枠。画像モデルは課金なしでは使えない |
 | PyPI トークン | PyPI アカウント `Shotaros2` | 公開時のみ使用 |
 
