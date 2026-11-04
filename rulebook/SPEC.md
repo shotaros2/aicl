@@ -169,6 +169,8 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - Message ids MUST NOT be reused by a sender within a conversation.
 - A receiver that cannot interpret any part of a message MUST reply `clar`; it MUST NOT guess.
 - An agent MUST NOT act on a `do` before sending `ok`.
+- `ok` acknowledges a `do`/`def`/`sub`; it does not answer an `ask` (`ok-for-ask`).
+  An `ask` is answered with `tell`/`no`/`fail`/`clar`, never acknowledged.
 - `tell` MUST NOT contain `$vars` except as keys of a binding map (§4.2).
 - An agent MUST NOT abbreviate, translate or otherwise vary a term except through an agreed codebook (§8.1).
 - A decision is final until retracted: a second `acc`/`rej` on a proposal already closed is an error.

@@ -20,6 +20,7 @@ KNOWN = {
     "10_deadline_negotiation.aicl": ["log-summary"],
     "11_standard_codebook.aicl": ["meeting", "busy", "calendar-add", "calendar-event"],
     "12_typed_def.aicl": [],
+    "13_dola_research_task.aicl": [],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
@@ -30,12 +31,14 @@ EXPECTED_WARNINGS = {
     "09_dola_image_specialist.aicl": ["eta-unanchored"],
     "10_deadline_negotiation.aicl": ["eta-overrun", "stale-reply", "unresolved-term", "unresolved-term"],
     "11_standard_codebook.aicl": ["open-ask", "open-do", "status-unclosed"],
+    "13_dola_research_task.aicl": ["open-ask", "unresolved-term", "unresolved-term", "unresolved-term"],
 }
 
 # Errors an example keeps on purpose, as a specimen its header explains (11: a live run where
-# the performer answered an ask with `done`).
+# the performer answered an ask with `done`; 13: one where it acknowledged an ask with `ok`).
 EXPECTED_ERRORS = {
     "11_standard_codebook.aicl": ["done-for-ask"],
+    "13_dola_research_task.aicl": ["ok-for-ask"],
 }
 
 
@@ -108,6 +111,11 @@ class ConversationTests(unittest.TestCase):
 
     def test_done_for_ask(self):
         self.assertIn("done-for-ask", codes(self.conv("(ask #a.1 @a>@b (x $y)) (done #b.1 @b>@a ^a.1 (x 1))", ["x"])))
+
+    def test_ok_for_ask(self):
+        # Observed live: Dola acknowledged an ask with ok, then lost track of it.
+        self.assertIn("ok-for-ask", codes(self.conv("(ask #a.1 @a>@b (x $y)) (ok #b.1 @b>@a ^a.1)", ["x"])))
+        self.assertNotIn("ok-for-ask", codes(self.conv("(do #a.1 @a>@b (x)) (ok #b.1 @b>@a ^a.1)", ["x"])))
 
     def test_closed_proposal_cannot_be_reversed(self):
         # Observed live: an agent accepted a proposal, learned a constraint, then sent rej to the same proposal.

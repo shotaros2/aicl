@@ -352,6 +352,9 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
             if r in why_targets and "src" not in m.kw:
                 issues.append(_err("why-needs-src", "an answer to 'why' must carry :src (structured evidence or (none))", m.id))
         elif act == "ok":
+            if r in open_asks:
+                issues.append(_err("ok-for-ask", "'ok' acknowledges a do/def/sub; an 'ask' is answered "
+                                   "with tell/no/fail/clar", m.id))
             if r in pending_do:
                 pending_do[r] = "accepted"
                 if "eta" in m.kw:

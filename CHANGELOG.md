@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+A hand-relayed research task given to Dola (`examples/13`, 2026-11-05): a typed def
+worked as a report schema for a third-party chat agent — five compounds delivered in
+the declared `(list term)` shape with nine structured `:src` entries. It also showed
+two new slips, kept in the example as specimens:
+
+- New error `ok-for-ask`: Dola acknowledged an `ask` with `ok` ('ok' answers
+  do/def/sub; an ask wants tell/no/fail/clar), then answered `status` about that very
+  request with `{$s unknown}`. SPEC §4.4 states the rule explicitly.
+- Dola used the defined vocabulary without ever sending `ok` for the defs; the
+  existing unresolved-term warnings document that a def binds only once acknowledged.
+
 Typed signatures for `def` (SPEC §6.1), exercised live on 2026-11-05 (`examples/12`,
 runner `examples/typedef_dialogue.py`):
 

@@ -78,7 +78,9 @@ python examples/cooperation_demo.py
   `examples/11`（標準コードブック `aicl.sched.1` を id+ダイジェストで合意してパック通信。
   ワイヤ実測 370 vs 可読 480 トークン。status-unclosed の出どころ。ランナーは `examples/codebook_dialogue.py`）、
   `examples/12`（型付き def 署名。宣言した型が緩い散文データの単位正規化を駆動。警告ゼロの初の実記録。
-  ランナーは `examples/typedef_dialogue.py`）。
+  ランナーは `examples/typedef_dialogue.py`）、
+  `examples/13`（Dola への手動中継の調査タスク。型付き def が報告スキーマとして機能し、出典9件つきで納品。
+  ok-for-ask エラーと「def を ok せず語彙を使う」の出どころ）。
 - Dola は外部から呼ぶ API がなく、カスタムコネクタも未解放。自動化は Gemini 経由のゲートウェイで、Dola は人の中継で使う。
 
 ## 7. 次にやる候補
