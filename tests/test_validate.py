@@ -92,6 +92,15 @@ class ConversationTests(unittest.TestCase):
     def test_done_for_ask(self):
         self.assertIn("done-for-ask", codes(self.conv("(ask #a.1 @a>@b (x $y)) (done #b.1 @b>@a ^a.1 (x 1))", ["x"])))
 
+    def test_closed_proposal_cannot_be_reversed(self):
+        # Observed live: an agent accepted a proposal, learned a constraint, then sent rej to the same proposal.
+        src = ("(prop #a.1 @a>@b (meeting :at 2026-11-06T03:00+09:00)) (acc #b.1 @b>@a ^a.1) "
+               "(tell #a.2 @a>@b (busy @b :from 2026-11-06T00:00+09:00 :to 2026-11-06T06:00+09:00)) "
+               "(rej #b.2 @b>@a ^a.1 :why (busy @b))")
+        self.assertIn("prop-closed", codes(self.conv(src, ["meeting", "busy"])))
+        ok = "(prop #a.1 @a>@b (meeting)) (rej #b.1 @b>@a ^a.1 :why (busy @b)) (prop #b.2 @b>@a (meeting)) (acc #a.2 @a>@b ^b.2)"
+        self.assertEqual(codes(self.conv(ok, ["meeting", "busy"])), [])
+
     def test_def_makes_term_known(self):
         src = '(def #a.1 @a>@b foo :gloss (nl en "x")) (ok #b.1 @b>@a ^a.1) (ask #a.2 @a>@b (foo $v)) (tell #b.2 @b>@a ^a.2 (foo 1))'
         self.assertEqual(codes(self.conv(src)), [])

@@ -382,6 +382,11 @@ An implementation is **AICL-conformant** if it:
   evidence must be retrievable (`:uri`, `:fetched-at`, `:hash`) or absent (`(none)`), and
   a `tell` produced without evidence SHOULD say so (`:src (none)`), so that silence and
   fabrication are distinguishable.
+- Retraction. Observed live: an agent sent `acc` to a proposal, was then told a constraint,
+  and sent `rej` to the same proposal. There is no act for withdrawing an earlier `acc`,
+  `tell` or `done`; the validator now flags a second decision on a closed proposal
+  (`prop-closed`). Candidate: a `retract` act (`(retract #id @a>@b ^own-id :why …)`) that
+  reopens the referenced exchange, so corrections are explicit instead of contradictory.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).

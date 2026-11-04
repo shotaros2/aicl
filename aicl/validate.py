@@ -99,6 +99,7 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     open_asks = {}          # id -> Message
     pending_do = {}         # id -> state: "sent" | "accepted"
     pending_prop = {}
+    closed_prop = {}        # id -> act that closed it ("acc" | "rej")
     pending_def = {}        # id -> term
     for m in msgs:
         issues.extend(validate_message(m.to_form()))
@@ -153,7 +154,12 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 else:
                     issues.append(_err("done-for-ask", "'done' answers an 'ask'; use 'tell'", m.id))
         elif act in ("acc", "rej"):
-            pending_prop.pop(r, None)
+            if r in closed_prop:
+                issues.append(_err("prop-closed", f"proposal ^{r} was already closed by '{closed_prop[r]}'; "
+                                   "a decision cannot be reversed by a second acc/rej (send a new prop)", m.id))
+            elif r in pending_prop:
+                del pending_prop[r]
+                closed_prop[r] = act
     for mid in open_asks:
         issues.append(_warn("open-ask", "ask was never answered (tell/no/fail)", mid))
     for mid, state in pending_do.items():
