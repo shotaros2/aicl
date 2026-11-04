@@ -14,11 +14,13 @@ KNOWN = {
     "04_def_and_clar.aicl": ["balance.available"],
     "05_subscription.aicl": ["alert"],
     "06_broadcast_and_fail.aicl": ["capability", "ocr"],
+    "07_cross_vendor_negotiation.aicl": ["busy", "meeting", "calendar-add", "status"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar).
 EXPECTED_WARNINGS = {
     "04_def_and_clar.aicl": ["unresolved-term", "unresolved-term"],
+    "07_cross_vendor_negotiation.aicl": ["open-do"],
 }
 
 

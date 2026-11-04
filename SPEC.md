@@ -398,6 +398,11 @@ An implementation is **AICL-conformant** if it:
   language has no way to ask about an open request. Candidates: a core `(status (ref #id) $s)`
   query with the answers `pending | done | failed | unknown`, an `:eta` on `ok` that the
   requester may enforce, and a rule that an `ok` older than its `:eta` may be treated as `fail`.
+- Scope of `def`. Observed live: a term defined by `@user` to `@gemini` was later used by
+  `@claude` in the same session and `@gemini` answered without `clar`. §6 says a `def` is
+  valid "in this conversation" but not whether it binds only the two parties or everyone in
+  the conversation. Candidate: a `def` sent to `*` is shared; one sent to a single agent
+  binds that pair only, and a third party using it gets `clar`.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).

@@ -1,7 +1,7 @@
 # AICL rulebook (single-file bundle)
 
 Generated from the AICL repository. Sections: the dense language reference (use this as the
-system prompt of an LLM agent, replacing `me` with its id), the readable reference, six example
+system prompt of an LLM agent, replacing `me` with its id), the readable reference, seven example
 conversations, two example codebooks, the specification and the grammar.
 
 
@@ -284,6 +284,33 @@ turn and nothing else: no prose, no markdown, no explanation.
 (fail #c.3 @c>@a ^a.2 :code not-found :why (unk doc-1))
 
 (end  #a.3 @a>*)
+```
+
+---
+
+# FILE: examples/07_cross_vendor_negotiation.aicl
+
+```
+; A real exchange, 2026-11-04: Claude (Fable 5.1, writing by hand and validating with
+; `aicl check`) negotiating with a Gemini "Gem" (Gemini Pro in the Gemini app, given only
+; the dense rulebook as its instructions). A human relayed the messages between the two.
+; Domain terms: busy meeting calendar-add status
+;
+; What it shows: two vendors' models exchanging constraints and reaching agreement in AICL
+; with zero protocol errors; the counterpart answered `prop` with a structured reason and
+; accepted a slot that satisfied both constraints. What it also shows: the `do` at the end
+; was accepted and never closed (see SPEC §13, progress and deadlines).
+
+(tell #claude.1 @claude>@gemini (busy @claude :from 2026-11-06T09:00+09:00 :to 2026-11-06T12:00+09:00))
+(prop #claude.2 @claude>@gemini (meeting :with [@claude @gemini] :at 2026-11-06T05:00+09:00 :dur PT30M :topic (nl en "AICL v0.2 scope")))
+(rej  #gemini.22 @gemini>@claude ^claude.2 :why (busy @gemini :from 2026-11-06T00:00+09:00 :to 2026-11-06T06:00+09:00))
+(prop #claude.3 @claude>@gemini (meeting :with [@claude @gemini] :at 2026-11-06T07:00+09:00 :dur PT30M :topic (nl en "AICL v0.2 scope"))
+      :why (and (not (busy @gemini :at 2026-11-06T07:00+09:00)) (not (busy @claude :at 2026-11-06T07:00+09:00))))
+(acc  #gemini.23 @gemini>@claude ^claude.3)
+(do   #claude.4 @claude>@gemini (calendar-add (ref #claude.3)))
+(ok   #gemini.24 @gemini>@claude ^claude.4)
+(ask  #claude.5 @claude>@gemini (status (ref #claude.4) $s))
+(tell #gemini.25 @gemini>@claude ^claude.5 {$s pending})
 ```
 
 ---
@@ -853,6 +880,11 @@ An implementation is **AICL-conformant** if it:
   language has no way to ask about an open request. Candidates: a core `(status (ref #id) $s)`
   query with the answers `pending | done | failed | unknown`, an `:eta` on `ok` that the
   requester may enforce, and a rule that an `ok` older than its `:eta` may be treated as `fail`.
+- Scope of `def`. Observed live: a term defined by `@user` to `@gemini` was later used by
+  `@claude` in the same session and `@gemini` answered without `clar`. §6 says a `def` is
+  valid "in this conversation" but not whether it binds only the two parties or everyone in
+  the conversation. Candidate: a `def` sent to `*` is shared; one sent to a single agent
+  binds that pair only, and a third party using it gets `clar`.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).

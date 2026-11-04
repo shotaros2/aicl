@@ -1,0 +1,20 @@
+; A real exchange, 2026-11-04: Claude (Fable 5.1, writing by hand and validating with
+; `aicl check`) negotiating with a Gemini "Gem" (Gemini Pro in the Gemini app, given only
+; the dense rulebook as its instructions). A human relayed the messages between the two.
+; Domain terms: busy meeting calendar-add status
+;
+; What it shows: two vendors' models exchanging constraints and reaching agreement in AICL
+; with zero protocol errors; the counterpart answered `prop` with a structured reason and
+; accepted a slot that satisfied both constraints. What it also shows: the `do` at the end
+; was accepted and never closed (see SPEC §13, progress and deadlines).
+
+(tell #claude.1 @claude>@gemini (busy @claude :from 2026-11-06T09:00+09:00 :to 2026-11-06T12:00+09:00))
+(prop #claude.2 @claude>@gemini (meeting :with [@claude @gemini] :at 2026-11-06T05:00+09:00 :dur PT30M :topic (nl en "AICL v0.2 scope")))
+(rej  #gemini.22 @gemini>@claude ^claude.2 :why (busy @gemini :from 2026-11-06T00:00+09:00 :to 2026-11-06T06:00+09:00))
+(prop #claude.3 @claude>@gemini (meeting :with [@claude @gemini] :at 2026-11-06T07:00+09:00 :dur PT30M :topic (nl en "AICL v0.2 scope"))
+      :why (and (not (busy @gemini :at 2026-11-06T07:00+09:00)) (not (busy @claude :at 2026-11-06T07:00+09:00))))
+(acc  #gemini.23 @gemini>@claude ^claude.3)
+(do   #claude.4 @claude>@gemini (calendar-add (ref #claude.3)))
+(ok   #gemini.24 @gemini>@claude ^claude.4)
+(ask  #claude.5 @claude>@gemini (status (ref #claude.4) $s))
+(tell #gemini.25 @gemini>@claude ^claude.5 {$s pending})

@@ -12,7 +12,7 @@ First public draft.
   readable form), tokenizer-aware codebooks (`aicl pack` / `unpack`, with the
   injectivity and unknown-form rules that keep packing ambiguity-free), JSON
   and deterministic CBOR codecs, message and conversation validator, `aicl` CLI.
-- Six worked examples, a two-agent in-process demo, an LLM-to-LLM demo, a
+- Seven worked examples, a two-agent in-process demo, an LLM-to-LLM demo, a
   system prompt that teaches any LLM to speak AICL, and a token benchmark.
 - `evals/readback.py`: read-back accuracy evaluation per encoding (readable,
   dense, packed, packed-chars); first results on gemini-3.5-flash-lite in
