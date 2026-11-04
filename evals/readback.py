@@ -207,6 +207,9 @@ def ask_with_retry(ask, system: str, user: str, attempts: int = 6, first_wait: f
             return ask(system, user)
         except Exception as e:  # provider-specific error classes; message text is enough here
             msg = str(e)
+            if "PerDay" in msg or "per day" in msg:
+                sys.exit("daily free-tier quota exhausted for this model; it resets at midnight Pacific time. "
+                         "Try another model (--list-models) or re-run tomorrow.")
             transient = any(k in msg for k in ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "overloaded", "timeout", "Timeout"))
             if not transient or i == attempts - 1:
                 return f"<error: {msg[:200]}>"

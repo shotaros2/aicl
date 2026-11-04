@@ -172,6 +172,8 @@ python examples/llm_dialogue.py
 
 このフォルダを読んだエージェント同士は、追加設定なしで Koine で会話できます。審判役はバリデータです。
 
+コードなしで言語だけを渡したい場合は、[rulebook/](rulebook/) フォルダを渡してください。2 つの言語リファレンス、仕様、コードブックの例、会話例が入っていて、日英の索引にどのファイルを何に使うかが書いてあります。`python tools/build_rulebook.py` で生成し、テストで元ファイルとの一致を検査しているので、内容がずれることはありません。
+
 ## リポジトリ構成
 
 ```
@@ -188,7 +190,9 @@ codebooks/              コードブックの例（bench, imagegen）
   validate.py           メッセージ・会話のバリデータ、nl ratio
   cli.py                `koine` コマンド
 examples/               会話例とデモ
-prompts/                LLM 用システムプロンプト
+prompts/                LLM 用システムプロンプト（可読形式と密形式）
+rulebook/               生成される受け渡し用フォルダ: 言語リファレンス、仕様、コードブック、会話例
+tools/                  build_rulebook.py
 bench/                  自然言語との比較
 evals/                  LLM の読み戻し正答率の評価
 tests/                  unittest（適合性テストを兼ねる）

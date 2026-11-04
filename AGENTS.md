@@ -42,4 +42,6 @@ Worked conversations are in `examples/*.koine`; the normative spec is `SPEC.md`.
   digest in `tests/test_roundtrip.py` needs a version bump and a CHANGELOG entry.
 - No runtime dependencies in `koine/`. Keep it small enough to port in an afternoon.
 - Keep `README.md` and `README.ja.md` saying the same thing.
+- `rulebook/` is generated. After editing `prompts/`, `SPEC.md`, `grammar/`, `codebooks/`
+  or `examples/`, run `python tools/build_rulebook.py`; the test suite fails if it is stale.
 - Do not overstate token savings; the benchmark table in the README is measured.
