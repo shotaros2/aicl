@@ -36,14 +36,15 @@ COOP = (ROOT / "schemas" / "cooperation.md").read_text(encoding="utf-8")
 
 # ------------------------------------------------------------------ gemini calls
 
-def with_retry(fn, attempts=5, wait=5.0):
+def with_retry(fn, attempts=5, wait=5.0, what=""):
     for i in range(attempts):
         try:
             return fn()
         except Exception as e:
             msg = str(e)
             if "PerDay" in msg or "per day" in msg:
-                sys.exit("daily free-tier quota exhausted for this model; pick another with evals/readback.py --list-models")
+                sys.exit(f"daily free-tier quota exhausted for {what or 'this model'}; "
+                         "pick another with evals/readback.py --list-models (--text-model / --image-model)")
             if i == attempts - 1 or not any(k in msg for k in ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED")):
                 raise
             print(f"  transient error, retrying in {wait:.0f}s: {msg[:80]}", file=sys.stderr)
@@ -63,7 +64,7 @@ def text_call(client, model, sleep):
         contents = [types.Content(role="user" if h["role"] == "user" else "model",
                                   parts=[types.Part.from_text(text=h["content"])]) for h in history]
         cfg = types.GenerateContentConfig(system_instruction=system, temperature=0)
-        resp = with_retry(lambda: client.models.generate_content(model=model, contents=contents, config=cfg))
+        resp = with_retry(lambda: client.models.generate_content(model=model, contents=contents, config=cfg), what=f"text model {model}")
         time.sleep(sleep)
         return resp.text or ""
     return ask
@@ -75,7 +76,7 @@ def image_call(client, model, sleep):
     def generate(inputs: dict, task_id: str) -> dict:
         prompt = inputs["prompt"].text if isinstance(inputs.get("prompt"), aicl.Str) else aicl.to_text(inputs.get("prompt"))
         cfg = types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"])
-        resp = with_retry(lambda: client.models.generate_content(model=model, contents=prompt, config=cfg))
+        resp = with_retry(lambda: client.models.generate_content(model=model, contents=prompt, config=cfg), what=f"image model {model}")
         time.sleep(sleep)
         for part in resp.candidates[0].content.parts:
             if getattr(part, "inline_data", None) and part.inline_data.data:
@@ -86,6 +87,25 @@ def image_call(client, model, sleep):
                 return {"id": f"img-{task_id}", "type": "image", "uri": path.resolve().as_uri(),
                         "mime": part.inline_data.mime_type}
         raise RuntimeError("image model returned no image")
+    return generate
+
+
+def svg_image_call(ask, sleep):
+    """Free-tier fallback: the text model draws the image as SVG (--image-model svg)."""
+    import re
+
+    def generate(inputs: dict, task_id: str) -> dict:
+        prompt = inputs["prompt"].text if isinstance(inputs.get("prompt"), aicl.Str) else aicl.to_text(inputs.get("prompt"))
+        raw = ask("You are an illustrator. Answer with one complete <svg …>…</svg> element (viewBox 0 0 1920 1080, "
+                  "no external references, no scripts) and nothing else.",
+                  [{"role": "user", "content": f"Draw: {prompt}"}])
+        m = re.search(r"<svg.*?</svg>", raw, re.S)
+        if not m:
+            raise RuntimeError("text model returned no <svg> element")
+        OUT.mkdir(exist_ok=True)
+        path = OUT / f"{task_id}.svg"
+        path.write_text(m.group(0), encoding="utf-8")
+        return {"id": f"img-{task_id}", "type": "image", "uri": path.resolve().as_uri(), "mime": "image/svg+xml"}
     return generate
 
 
@@ -104,7 +124,8 @@ with the title as the page <title> and <h1>. If the task is not code-gen, answer
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--text-model", default="gemini-3.5-flash-lite")
-    ap.add_argument("--image-model", default="gemini-nano-banana-2.1")
+    ap.add_argument("--image-model", default="gemini-nano-banana-2.1",
+                    help="a Gemini image model, or 'svg' to have the text model draw an SVG (works on the free tier)")
     ap.add_argument("--goal", default="東京の夜景の画像を作って、それを埋め込んだWebページを作って")
     ap.add_argument("--sleep", type=float, default=4.0, help="seconds between calls (free-tier rate limits)")
     a = ap.parse_args(argv)
@@ -117,7 +138,8 @@ def main(argv=None):
     bus = Bus()
     hub = Hub(LLMPlanner(lambda prompt: ask("You answer with exactly one AICL form and nothing else.",
                                             [{"role": "user", "content": prompt}])))
-    img = SkillAgent("img", "image-gen", image_call(client, a.image_model, a.sleep))
+    image_fn = svg_image_call(ask, a.sleep) if a.image_model == "svg" else image_call(client, a.image_model, a.sleep)
+    img = SkillAgent("img", "image-gen", image_fn)
     code = LLMAgent("code", ask, RULEBOOK, CODE_ROLE, capabilities=["code-gen"])
     user = Agent("user")
     bus.add(hub, img, code, user)

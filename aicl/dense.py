@@ -33,7 +33,7 @@ KEY_CODE = {
 }
 CODE_KEY = {v: k for k, v in KEY_CODE.items()}
 
-RE_DENSE_HEADER = re.compile(rf"^({IDENT})>(\*|{IDENT})$")
+RE_DENSE_HEADER = re.compile(rf"^({IDENT})>@?(\*|{IDENT})$")   # a.1>b canonical; a.1>@b accepted on input
 RE_DENSE_INSTANT = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z|[+-]\d{1,4})$")
 
 
@@ -148,7 +148,7 @@ def expand(text: str) -> str:
             out.append(decode_instant(raw))
         elif raw.startswith(":") and raw[1:] in CODE_KEY:
             out.append(":" + CODE_KEY[raw[1:]])
-        elif ">" in raw and raw[0] not in "@<>=!" and RE_DENSE_HEADER.match(raw):
+        elif ">" in raw and raw[0] not in "@<>=!#^$:~" and RE_DENSE_HEADER.match(raw):
             mm = RE_DENSE_HEADER.match(raw)
             mid, dst = mm.group(1), mm.group(2)
             src = mid.split(".", 1)[0]

@@ -523,7 +523,7 @@ AICL text is UTF-8. Whitespace separates tokens; `;` starts a comment to end of 
 | Agent | `@alice` | An agent identifier |
 | Route | `@alice>@bob`, `@alice>*` | From → to (`*` = broadcast) |
 | Ref | `#a.3` | Reference to a message or object identifier |
-| Reply ref | `^a.3` | "This message replies to message a.3" |
+| Reply ref | `^a.3` | "This message replies to message a.3". Parsers MUST also accept `^#a.3` (redundant sigil, unambiguous); the canonical form is `^a.3` |
 | Variable | `$t` | Unbound slot in a query |
 | Confidence | `~0.85` | Speaker's probability for the enclosing form, in [0,1] |
 | Number | `42`, `-3.5`, `6.02e23` | Dimensionless number |
@@ -691,7 +691,7 @@ to read it directly.
 | Canonical | Dense | Rule |
 |---|---|---|
 | `ask tell do ok no done fail prop acc rej def clar why sub unsub end` | `A T D K N Z F P C R E Q W S U X` | Speech act → one capital letter, only in head position |
-| `#a.1 @a>@b` | `a.1>b` | When the id is `<sender>.<n>`, the id and route merge; `a.1>*` broadcasts. Otherwise `#id @from>@to` is kept |
+| `#a.1 @a>@b` | `a.1>b` | When the id is `<sender>.<n>`, the id and route merge; `a.1>*` broadcasts. Otherwise `#id @from>@to` is kept. Decoders MUST also accept `a.1>@b` (a stray `@` before the destination is a common slip and is unambiguous) |
 | `^a.1` | `^a.1` | unchanged |
 | `:at :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
 | `2026-11-06T10:00+09:00`, `2026-11-04T09:04:12Z` | `20261106T1000+9`, `20261104T090412Z` | ISO 8601 basic format; offset mandatory, 1–2 digits = hours, 3–4 digits = HHMM; seconds only when non-zero; fractional seconds keep the extended form |

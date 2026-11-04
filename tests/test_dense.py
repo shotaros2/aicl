@@ -31,6 +31,13 @@ class DenseTests(unittest.TestCase):
         t = aicl.parse_one("(ask #a.1 @a>* (x $y))")
         self.assertEqual(dense.to_dense(t), "(A a.1>* (x $y))")
 
+    def test_header_with_stray_at_is_accepted(self):
+        for src in ["(K code.1>@hub ^hub.4)", "(K code.1>hub ^hub.4)"]:
+            self.assertEqual(aicl.to_text(dense.from_dense(src)[0]), "(ok #code.1 @code>@hub ^hub.4)")
+        self.assertEqual(aicl.to_text(dense.from_dense("(A a.1>@* (x $y))")[0]), "(ask #a.1 @a>* (x $y))")
+        with self.assertRaises(aicl.LexError):
+            dense.from_dense("(K code.1>#hub ^hub.4)")      # '#' is the ref sigil: still an error
+
     def test_instants(self):
         cases = {
             "2026-11-05T09:00+09:00": "20261105T0900+9",

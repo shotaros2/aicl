@@ -134,12 +134,35 @@ class CoopTests(unittest.TestCase):
         bus.send(task)
         self.assertEqual([m.act for m in bus.transcript], ["do", "ok", "done"])
         self.assertEqual(agent.seq, 2)                       # numbering follows the model's own ids
+        self.assertIn("; next-id code.1", agent.history[0]["content"])
+        # the model reuses code.1/code.2 for the next task: the agent renumbers and keeps its replies coherent
+        bus.send(hub.msg("do", "code", form("coop:task", Symbol("t5"), Symbol("code-gen"))))
+        ids = [m.id for m in bus.transcript if m.sender == "code"]
+        self.assertEqual(ids, ["code.1", "code.2", "code.3", "code.4"])
+        self.assertEqual([i for i in bus.check() if i.code == "dup-id"], [])
         for mode in ("prose", "wrong-sender"):
             state["mode"] = mode
             bus.send(hub.msg("do", "code", form("coop:task", Symbol("t4"), Symbol("code-gen"))))
             self.assertEqual(bus.transcript[-1].act, "fail")
             self.assertEqual(bus.transcript[-1].kw["code"], Symbol("parse"))
+        self.assertEqual(agent.corrections, 4)                # two attempts per failed task, both rejected
         self.assertEqual([i for i in bus.check() if i.level == "error"], [])
+
+    def test_llm_agent_self_correction_turn(self):
+        from aicl.coop import LLMAgent
+        answers = iter(["(K code.1>#hub ^hub.1)",                                   # malformed header, like a real run
+                        "(K code.1>hub ^hub.1)\n(Z code.2>hub ^hub.1 (coop:artifact p :type code :task t1))"])
+        seen = []
+        def ask(system, history):
+            seen.append(history[-1]["content"])
+            return next(answers)
+        agent = LLMAgent("code", ask, "rulebook", "role", ["code-gen"])
+        bus = Bus(); hub = Agent("hub"); bus.add(agent, hub)
+        bus.send(hub.msg("do", "code", form("coop:task", Symbol("t1"), Symbol("code-gen"))))
+        self.assertEqual([m.act for m in bus.transcript], ["do", "ok", "done"])
+        self.assertEqual(agent.corrections, 1)
+        self.assertTrue(seen[1].startswith("; your reply was invalid AICL:"))
+        self.assertIn("; resend.\n; next-id code.1\n; reply header: code.1>hub ^hub.1", seen[1])
 
     def test_task_form_resolves_artifacts(self):
         spec = TaskSpec("t2", "video-gen", {"keyframe": TaskRef("t1")})

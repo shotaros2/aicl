@@ -21,4 +21,7 @@ First public draft.
   spec, grammar, example codebooks and conversations, plus a bilingual index.
 - Cooperation layer (`aicl/coop.py`, `schemas/cooperation.md`): bus with
   validation, specialist agents, hub with registry and dependency-ordered
-  delegation, recipe and LLM planners, artifact passing; offline demo.
+  delegation, recipe and LLM planners, artifact passing; offline demo and a
+  live Gemini demo (planner, SVG image specialist, AICL-speaking code agent).
+- Parsers accept two redundant-sigil slips on input (`a.1>@b`, `^#a.1`);
+  canonical output is unchanged.

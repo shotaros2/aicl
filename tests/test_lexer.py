@@ -14,6 +14,7 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(classify_atom("@a>*"), Route("a", "*"))
         self.assertEqual(classify_atom("#a.1"), Ref("a.1"))
         self.assertEqual(classify_atom("^a.1"), ReplyRef("a.1"))
+        self.assertEqual(classify_atom("^#a.1"), ReplyRef("a.1"))   # accepted slip; prints back as ^a.1
         self.assertEqual(classify_atom("$t"), Var("t"))
         self.assertEqual(classify_atom(":unit"), Keyword("unit"))
         self.assertEqual(classify_atom("~0.85"), ConfTok(0.85))

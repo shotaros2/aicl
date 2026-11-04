@@ -160,34 +160,65 @@ class LLMAgent(Agent):
     """
 
     def __init__(self, agent_id: str, ask: Callable[[str, List[dict]], str], rulebook: str,
-                 role: str, capabilities: Iterable[str] = ()):
+                 role: str, capabilities: Iterable[str] = (), attempts: int = 2):
         super().__init__(agent_id, capabilities)
         self.ask = ask
         self.system = rulebook.replace("`me`", f"`{agent_id}`").replace("@me", f"@{agent_id}") + "\n\n" + role
         self.history: List[dict] = []
+        self.attempts = attempts
+        self.corrections = 0
 
-    def handle(self, m: Message) -> List[Form]:
-        incoming = to_text(m.to_form())
-        self.history.append({"role": "user", "content": incoming})
-        raw = self.ask(self.system, self.history).strip()
-        self.history.append({"role": "assistant", "content": raw})
+    def _parse_reply(self, raw: str) -> List[Message]:
         if raw.startswith("```"):
             raw = raw.strip("`").removeprefix("aicl").strip()
-        try:
-            forms = parse(dense_expand(raw))              # the model may answer in dense or readable form
-            if not forms:
-                raise ParseError("empty reply")
-            for f in forms:
-                errors = [i for i in validate_message(f) if i.level == "error"]
-                if errors:
-                    raise ParseError("; ".join(str(e) for e in errors))
-                msg_ = Message.from_form(f)
-                if msg_.sender != self.id:
-                    raise ParseError(f"message claims to be from @{msg_.sender}")
-                self.seq = max(self.seq, _seq_of(msg_.id, self.id))
-        except Exception as e:
-            return [self.msg("fail", m.sender, reply=m.id, kw={"code": Symbol("parse"), "why": nl("en", str(e)[:200])})]
-        return forms
+        forms = parse(dense_expand(raw))              # the model may answer in dense or readable form
+        if not forms:
+            raise ParseError("empty reply")
+        msgs = []
+        for f in forms:
+            errors = [i for i in validate_message(f) if i.level == "error"]
+            if errors:
+                raise ParseError("; ".join(str(e) for e in errors))
+            msg_ = Message.from_form(f)
+            if msg_.sender != self.id:
+                raise ParseError(f"message claims to be from @{msg_.sender}")
+            msgs.append(msg_)
+        return msgs
+
+    def handle(self, m: Message) -> List[Form]:
+        # The harness owns message numbering: tell the model its next id (an AICL comment is valid input),
+        # and renumber anyway if the model reuses an id, keeping its own ^reply references consistent.
+        nxt = f"{self.id}.{self.seq + 1}"
+        incoming = (to_text(m.to_form())
+                    + f"\n; next-id {nxt}\n; reply header: {nxt}>{m.sender} ^{m.id}   (dense)  =  #{nxt} @{self.id}>@{m.sender} ^{m.id}   (readable)")
+        msgs: List[Message] = []
+        error = ""
+        for attempt in range(self.attempts):
+            # A malformed reply is not guessed at: the validator's verdict goes back to the model as an
+            # AICL comment and it gets one more try (SPEC §4.4 'clar' applied to the model itself).
+            content = incoming if attempt == 0 else f"; your reply was invalid AICL: {error}\n; resend.\n" + "\n".join(incoming.splitlines()[-2:])
+            self.history.append({"role": "user", "content": content})
+            raw = self.ask(self.system, self.history).strip()
+            self.history.append({"role": "assistant", "content": raw})
+            try:
+                msgs = self._parse_reply(raw)
+                break
+            except Exception as e:
+                error = str(e)[:200]
+                self.corrections += 1
+        else:
+            return [self.msg("fail", m.sender, reply=m.id, kw={"code": Symbol("parse"), "why": nl("en", error)})]
+        renamed: Dict[str, str] = {}
+        for msg_ in msgs:
+            if _seq_of(msg_.id, self.id) <= self.seq:
+                new_id = self._next()
+                renamed[msg_.id] = new_id
+                msg_.id = new_id
+            else:
+                self.seq = _seq_of(msg_.id, self.id)
+            if msg_.reply in renamed:
+                msg_.reply = renamed[msg_.reply]
+        return [msg_.to_form() for msg_ in msgs]
 
 
 # ---------------------------------------------------------------------- bus
