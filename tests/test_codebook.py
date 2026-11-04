@@ -35,6 +35,14 @@ class ValidationTests(unittest.TestCase):
                 with self.assertRaises(ModelError):
                     Codebook(concepts)
 
+    def test_truncation_forms_warn(self):
+        cb = Codebook({"deploy-status": ["deploy", "DeployStatus"], "rollout": ["roll", "展開"], "error-rate": ["err"]})
+        self.assertEqual(len(cb.warnings), 3)
+        self.assertTrue(all("truncation" in w for w in cb.warnings))
+        self.assertEqual(Codebook({"deploy-status": ["DeployStatus", "デプロイ状態"]}).warnings, [])
+        self.assertEqual(BENCH.warnings, [])
+        self.assertEqual(IMG.warnings, [])
+
     def test_non_ascii_forms_allowed(self):
         cb = Codebook({"night": ["夜", "Night"]})
         self.assertEqual(cb.form_to_concept["夜"], "night")
@@ -69,7 +77,7 @@ class PackTests(unittest.TestCase):
         t = koine.parse_one("(do #u.1 @u>@g (generate-image :scene (cityscape tokyo :time night) :position background))")
         packed = IMG.pack_text(t, len)
         self.assertIn(":位置 背景", packed)
-        self.assertIn("(city 東京 :時刻 夜)", packed)   # 'city' and '都市景観' tie on chars; lexicographic tie-break
+        self.assertIn("(都市景観 東京 :時刻 夜)", packed)
         self.assertEqual(koine.to_text(IMG.unpack(packed)[0]), koine.to_text(t))
 
     def test_core_vocabulary_never_packed(self):

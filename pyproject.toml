@@ -23,7 +23,7 @@ dependencies = []
 
 [project.optional-dependencies]
 tokens = ["tiktoken>=0.7"]
-llm = ["anthropic>=1.0"]
+llm = ["anthropic>=1.0", "google-genai>=1.0"]
 dev = ["pytest"]
 
 [project.scripts]

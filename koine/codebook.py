@@ -37,6 +37,7 @@ class Codebook:
         self.name = name
         self.concepts: Dict[str, List[str]] = {}
         self.form_to_concept: Dict[str, str] = {}
+        self.warnings: List[str] = []
         for cid, forms in concepts.items():
             self._check_concept(cid)
             kept = []
@@ -44,6 +45,10 @@ class Codebook:
                 if f == cid:
                     continue
                 self._check_form(f, cid)
+                if _is_truncation(f, cid):
+                    self.warnings.append(
+                        f"form {f!r} of {cid!r} is a truncation that reads as an ordinary word; "
+                        f"small models tend to leave such forms unexpanded (see evals/)")
                 if f in concepts:
                     raise ModelError(f"form {f!r} is also a concept id")
                 owner = self.form_to_concept.get(f)
@@ -152,6 +157,14 @@ class Codebook:
                 except LexError:
                     bad.append(m.group())
         return bad
+
+
+def _is_truncation(form: str, cid: str) -> bool:
+    """Lower-case ASCII prefix of the concept id (deploy < deploy-status, roll < rollout, err < error-rate)."""
+    if not form.isascii() or not form.islower() or len(form) >= len(cid):
+        return False
+    head = cid.split("-")[0].split(".")[0]
+    return cid.startswith(form) or head.startswith(form)
 
 
 def _rename(term: Term, best: Dict[str, str]) -> Term:

@@ -69,6 +69,8 @@ def cmd_codebook(a):
     print(f"codebook: {cb.name or a.codebook}")
     print(f"id:       {cb.id}")
     print(f"concepts: {len(cb.concepts)}, forms: {len(cb.form_to_concept)}")
+    for w in cb.warnings:
+        print(f"warning:  {w}")
     print(f"cheapest form per concept for tokenizer {a.tokenizer or tokens.METHOD}:")
     for cid, f in sorted(best.items()):
         mark = "" if f == cid else f"  -> {f}  ({counter(' ' + cid)} -> {counter(' ' + f)} tokens)"

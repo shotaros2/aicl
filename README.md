@@ -103,16 +103,17 @@ All columns are tokens; "packed" uses `codebooks/bench.json`:
 | case | NL | readable | ratio | dense | ratio | packed | ratio |
 |---|---|---|---|---|---|---|---|
 | weather | 138 | 128 | 0.93 | 98 | 0.71 | 94 | 0.68 |
-| clarify | 188 | 239 | 1.27 | 190 | 1.01 | 181 | 0.96 |
-| deploy | 150 | 201 | 1.34 | 164 | 1.09 | 158 | 1.05 |
+| clarify | 188 | 239 | 1.27 | 190 | 1.01 | 186 | 0.99 |
+| deploy | 150 | 201 | 1.34 | 164 | 1.09 | 162 | 1.08 |
 | scheduling | 124 | 211 | 1.70 | 158 | 1.27 | 158 | 1.27 |
-| **total** | **600** | **779** | **1.30** | **610** | **1.02** | **591** | **0.98** |
+| **total** | **600** | **779** | **1.30** | **610** | **1.02** | **600** | **1.00** |
 
 The readable form costs about 30 % more tokens than polite English, because BPE
-vocabularies are tuned for prose. The dense form removes 22 % of that; a codebook takes
-a few percent more and lands **below natural language while carrying strictly more
-information** (exact instants with time zones, ids, thresholds, provenance) and zero
-ambiguity. In characters, every Koine form is far shorter. The scheduling case does not
+vocabularies are tuned for prose. The dense form removes 22 % of that; a codebook of
+*safe* forms (see the eval below) takes a little more and lands **at parity with natural
+language while carrying strictly more information** (exact instants with time zones,
+ids, thresholds, provenance) and zero ambiguity. Truncation forms would save another
+1–2 %, but small models misread them, so the example codebook no longer uses any. In characters, every Koine form is far shorter. The scheduling case does not
 move because its vocabulary was already one token per word; the remaining cost there is
 the four time-zoned instants, which natural language simply leaves out.
 
@@ -128,12 +129,30 @@ canonicalises the answer, and reports accuracy and tokens per encoding:
 
 ```bash
 python evals/readback.py --dry-run                      # 69 messages x 4 encodings, no API calls
-python evals/readback.py --model claude-opus-5-5 --out evals/results/opus-5-5.json
+python evals/readback.py --provider anthropic --model claude-opus-5-5 --out evals/results/opus-5-5.json
+python evals/readback.py --provider gemini --model gemini-3.8-flash --out evals/results/gemini-3.8-flash.json
 ```
 
+Providers: `anthropic` (`pip install anthropic`, `ANTHROPIC_API_KEY`) and `gemini`
+(`pip install google-genai`, `GEMINI_API_KEY`). Any other model needs one function of
+the form `ask(system, user) -> str` added to `PROVIDERS`.
+
 A token saving that lowers read-back accuracy is a loss; adopt a codebook for a model only
-after this eval passes for it. No results are published yet (the authors have not run it
-against a live model); contributions of result files are welcome.
+after this eval passes for it. Results so far (`evals/results/`, first 10 messages,
+`gemini-3.5-flash-lite`, the smallest model available to us):
+
+| encoding | accuracy | what failed |
+|---|---|---|
+| readable | 90 % | one term "corrected" to a codebook form |
+| dense | **100 %** | — |
+| packed | 60 % → 80 % | English truncations (`deploy`, `roll`, `err`) left unexpanded |
+| packed-chars | 80 % → 90 % | same, plus one key code |
+
+The arrows are the effect of presenting the codebook form→concept and adding worked
+examples to the eval prompt. Two conclusions: **the dense form is safe even for a small
+model**, and **codebook forms must look like forms** (CamelCase, all-caps, non-Latin):
+truncations that read as real words are the failure mode, so the example codebooks no
+longer contain any and the loader warns about them. Results for larger models are welcome.
 
 ## Install and use
 

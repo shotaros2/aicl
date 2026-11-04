@@ -285,6 +285,11 @@ Rules, all enforced by the reference implementation:
    answers with its tokenizer name and the codebook's content hash (`sha256:…`). Until both
    match, messages are sent with concept ids.
 
+**Design guideline (from the read-back evaluation).** A form should be recognisable *as a
+form*: CamelCase (`DeployStatus`), all-caps (`JMA`) or non-Latin (`東京`). Truncations that
+read as ordinary English words (`deploy`, `roll`, `err`) are legal but small models tend to
+pass them through unexpanded; the reference loader warns about them.
+
 Given the codebook and the receiver's tokenizer, the sender replaces each concept id with
 the form that costs the fewest tokens (ties: the id itself, then the shortest, then
 lexicographic order), in symbol, head and keyword positions alike. The choice is

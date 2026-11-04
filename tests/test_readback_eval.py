@@ -44,11 +44,26 @@ class ReadbackEvalTests(unittest.TestCase):
         self.assertEqual(len(r["packed-chars"]["failures"]), 5)
         self.assertIn("accuracy", readback.report(r))
 
+    def test_classify_failure(self):
+        exp = "(ask #a.1 @a>@b (temp tokyo $t :unit C))"
+        self.assertEqual(readback.classify_failure("unparseable: x", exp), "unparseable")
+        self.assertEqual(readback.classify_failure("(ASK #a.1 @a>@b (temp tokyo $t :unit C))", exp), "act")
+        self.assertEqual(readback.classify_failure("(ask #a.1 @a>@b (temperature tokyo $t :unit C))", exp), "vocab")
+        self.assertEqual(readback.classify_failure("(ask #a.1 @a>@b temp tokyo $t :unit C)", exp), "structure")
+
+    def test_worked_examples_in_prompt_are_valid_and_consistent(self):
+        s = readback.system_prompt(CB)
+        lines = [l for l in s.splitlines() if l.startswith(("Input:", "Output:"))]
+        for i in range(0, len(lines), 2):
+            dense_in = lines[i].split(":", 1)[1].split("<-")[0].strip()
+            readable_out = lines[i + 1].split(":", 1)[1].strip()
+            self.assertEqual(koine.to_text(CB.unpack(dense_in)[0]), koine.to_text(koine.parse_one(readable_out)))
+
     def test_system_prompt_lists_codes_and_forms(self):
         s = readback.system_prompt(CB)
         self.assertIn("T=tell", s)
         self.assertIn(":s=:src", s)
-        self.assertIn("deploy-status:", s)
+        self.assertIn("DeployStatus -> deploy-status", s)
 
 
 if __name__ == "__main__":
