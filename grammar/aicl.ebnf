@@ -1,4 +1,4 @@
-(* Koine text encoding, v0.1.0 — ISO/IEC 14977 EBNF *)
+(* AICL text encoding, v0.1.0 — ISO/IEC 14977 EBNF *)
 
 document     = { ws | comment | term } ;
 comment      = ";" , { ? any character except newline ? } ;

@@ -10,7 +10,7 @@
       "tokens": 323,
       "failures": [
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 4,
           "input": "(tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)",
           "expected": "(tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)",
@@ -31,7 +31,7 @@
       "tokens": 258,
       "failures": [
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 0,
           "input": "(A a.1>b (deploy build-4821 $s :FinishedAt $at))",
           "expected": "(ask #a.1 @a>@b (deploy-status build-4821 $s :finished-at $at))",
@@ -39,7 +39,7 @@
           "kind": "vocab"
         },
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 1,
           "input": "(T b.1>a ^a.1 {$at 20261104T0850Z $s fin} :s CI)",
           "expected": "(tell #b.1 @b>@a ^a.1 {$at 2026-11-04T08:50Z $s finished} :src ci-api)",
@@ -47,7 +47,7 @@
           "kind": "vocab"
         },
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 2,
           "input": "(D a.2>b (roll build-4821 :region euw1) :i (< (err build-4821 :window PT10M) 0.5%))",
           "expected": "(do #a.2 @a>@b (rollout build-4821 :region eu-west-1) :if (< (error-rate build-4821 :window PT10M) 0.5%))",
@@ -55,7 +55,7 @@
           "kind": "vocab"
         },
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 4,
           "input": "(T b.3>a (err build-4821 0.3% :window PT10M) :s metrics)",
           "expected": "(tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)",
@@ -70,7 +70,7 @@
       "tokens": 269,
       "failures": [
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 0,
           "input": "(A a.1>b (deploy build-4821 $s :完了時刻 $at))",
           "expected": "(ask #a.1 @a>@b (deploy-status build-4821 $s :finished-at $at))",
@@ -78,7 +78,7 @@
           "kind": "vocab"
         },
         {
-          "file": "examples\\02_deploy.koine",
+          "file": "examples\\02_deploy.aicl",
           "index": 4,
           "input": "(T b.3>a (err build-4821 0.3% :窓 PT10M) :s メトリクス)",
           "expected": "(tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)",

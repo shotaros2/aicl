@@ -1,7 +1,7 @@
 import unittest
 
-from koine.lexer import ConfTok, classify_atom, normalize_instant, tokenize
-from koine.model import (
+from aicl.lexer import ConfTok, classify_atom, normalize_instant, tokenize
+from aicl.model import (
     Agent, Date, Duration, Instant, Keyword, LexError, Quantity, Ref, ReplyRef,
     Route, Symbol, Var,
 )

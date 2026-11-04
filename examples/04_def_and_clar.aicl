@@ -1,7 +1,7 @@
 ; Vocabulary: an unknown term is never guessed. The receiver asks for clarification,
 ; the sender defines the term in-band, and only then is it used.
 ; Domain terms: balance.available (pre-agreed)
-; `koine check` reports two warnings here on purpose: risk-score (#a.1) and balance (#a.4)
+; `aicl check` reports two warnings here on purpose: risk-score (#a.1) and balance (#a.4)
 ; are used before they are resolvable, which is exactly what the clar replies catch.
 
 (ask  #a.1 @a>@b (risk-score txn-77 $r))

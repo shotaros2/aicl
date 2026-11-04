@@ -1,24 +1,24 @@
 import unittest
 from pathlib import Path
 
-import koine
-from koine.validate import validate_conversation, validate_message
+import aicl
+from aicl.validate import validate_conversation, validate_message
 
 ROOT = Path(__file__).resolve().parents[1]
 
 # Domain terms each example declares in its header comment.
 KNOWN = {
-    "01_weather.koine": ["temp", "rain"],
-    "02_deploy.koine": ["deploy-status", "rollout", "error-rate"],
-    "03_scheduling.koine": ["meeting", "busy", "calendar-add", "calendar-event"],
-    "04_def_and_clar.koine": ["balance.available"],
-    "05_subscription.koine": ["alert"],
-    "06_broadcast_and_fail.koine": ["capability", "ocr"],
+    "01_weather.aicl": ["temp", "rain"],
+    "02_deploy.aicl": ["deploy-status", "rollout", "error-rate"],
+    "03_scheduling.aicl": ["meeting", "busy", "calendar-add", "calendar-event"],
+    "04_def_and_clar.aicl": ["balance.available"],
+    "05_subscription.aicl": ["alert"],
+    "06_broadcast_and_fail.aicl": ["capability", "ocr"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar).
 EXPECTED_WARNINGS = {
-    "04_def_and_clar.koine": ["unresolved-term", "unresolved-term"],
+    "04_def_and_clar.aicl": ["unresolved-term", "unresolved-term"],
 }
 
 
@@ -28,7 +28,7 @@ def codes(issues, level=None):
 
 class MessageTests(unittest.TestCase):
     def check(self, src):
-        return validate_message(koine.parse_one(src))
+        return validate_message(aicl.parse_one(src))
 
     def test_ok(self):
         self.assertEqual(self.check("(ask #a.1 @a>@b (x $y))"), [])
@@ -64,10 +64,10 @@ class MessageTests(unittest.TestCase):
 
 class ConversationTests(unittest.TestCase):
     def conv(self, src, known=()):
-        return validate_conversation(koine.parse_messages(src), known)
+        return validate_conversation(aicl.parse_messages(src), known)
 
     def test_examples_have_no_errors(self):
-        for p in sorted((ROOT / "examples").glob("*.koine")):
+        for p in sorted((ROOT / "examples").glob("*.aicl")):
             with self.subTest(file=p.name):
                 issues = self.conv(p.read_text(encoding="utf-8"), KNOWN[p.name])
                 self.assertEqual(codes(issues, "error"), [], [str(i) for i in issues])
@@ -102,10 +102,10 @@ class ConversationTests(unittest.TestCase):
         self.assertEqual(codes(self.conv("(tell #a.1 @a>@b (schema:Person :name \"x\"))")), [])
 
     def test_nl_ratio(self):
-        msgs = koine.parse_messages('(tell #a.1 @a>@b (nl en "hello"))')
-        self.assertEqual(koine.nl_ratio(msgs), 1.0)
-        msgs = koine.parse_messages('(tell #a.1 @a>@b (x 1))')
-        self.assertEqual(koine.nl_ratio(msgs), 0.0)
+        msgs = aicl.parse_messages('(tell #a.1 @a>@b (nl en "hello"))')
+        self.assertEqual(aicl.nl_ratio(msgs), 1.0)
+        msgs = aicl.parse_messages('(tell #a.1 @a>@b (x 1))')
+        self.assertEqual(aicl.nl_ratio(msgs), 0.0)
 
 
 if __name__ == "__main__":

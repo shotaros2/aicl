@@ -1,11 +1,11 @@
-"""Command-line interface: koine fmt|pretty|json|cbor|check|hash|stats FILE"""
+"""Command-line interface: aicl fmt|pretty|json|cbor|check|hash|stats FILE"""
 from __future__ import annotations
 
 import argparse
 import sys
 
 from . import __version__, cbor_codec, dense, json_codec, tokens
-from .model import KoineError, Message, is_message
+from .model import AICLError, Message, is_message
 from .parser import parse
 from .printer import digest, pretty, to_text
 from .validate import nl_ratio, validate_conversation, validate_message
@@ -126,7 +126,7 @@ def cmd_check(a):
             issues.extend(validate_message(t))
             try:
                 msgs.append(Message.from_form(t))
-            except KoineError:
+            except AICLError:
                 pass
         else:
             issues.append(("error", f"top-level term is not a message: {to_text(t)[:60]}"))
@@ -165,8 +165,8 @@ def cmd_stats(a):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="koine", description="Koine agent language tools")
-    p.add_argument("--version", action="version", version=f"koine {__version__}")
+    p = argparse.ArgumentParser(prog="aicl", description="AICL agent language tools")
+    p.add_argument("--version", action="version", version=f"aicl {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("fmt", help="print canonical single-line form");          s.add_argument("file"); s.set_defaults(fn=cmd_fmt)
@@ -187,8 +187,8 @@ def main(argv=None):
             stream.reconfigure(encoding="utf-8")
     try:
         a.fn(a)
-    except (KoineError, ValueError) as e:
-        sys.exit(f"koine: {e}")
+    except (AICLError, ValueError) as e:
+        sys.exit(f"aicl: {e}")
 
 
 if __name__ == "__main__":

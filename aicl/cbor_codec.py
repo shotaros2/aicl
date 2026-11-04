@@ -1,4 +1,4 @@
-"""Minimal deterministic CBOR (RFC 8949 §4.2) for the Koine JSON model.
+"""Minimal deterministic CBOR (RFC 8949 §4.2) for the AICL JSON model.
 
 Supports exactly what the JSON model needs: null, booleans, integers, floats,
 UTF-8 strings, arrays and string-keyed maps. No dependencies.

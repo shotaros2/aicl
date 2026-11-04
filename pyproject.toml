@@ -3,13 +3,13 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "koine-lang"
+name = "aicl-lang"
 version = "0.1.0"
-description = "Koine: a compact, unambiguous language for agent-to-agent communication (spec + reference implementation)"
+description = "AICL: a compact, unambiguous language for agent-to-agent communication (spec + reference implementation)"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-authors = [{ name = "Koine contributors" }]
+authors = [{ name = "AICL contributors" }]
 keywords = ["agents", "llm", "protocol", "interlingua", "multi-agent", "speech-acts"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -27,10 +27,10 @@ llm = ["anthropic>=1.0", "google-genai>=1.0"]
 dev = ["pytest"]
 
 [project.scripts]
-koine = "koine.cli:main"
+aicl = "aicl.cli:main"
 
 [project.urls]
-Specification = "https://github.com/YOUR-ORG/koine/blob/main/SPEC.md"
+Specification = "https://github.com/YOUR-ORG/aicl/blob/main/SPEC.md"
 
 [tool.setuptools]
-packages = ["koine"]
+packages = ["aicl"]

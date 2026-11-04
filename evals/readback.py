@@ -1,4 +1,4 @@
-"""Read-back evaluation: can an LLM map each Koine encoding back to canonical form?
+"""Read-back evaluation: can an LLM map each AICL encoding back to canonical form?
 
 The protocol guarantees that packed messages are unambiguous *to the library*.
 This script measures the other half: whether a language model, given the
@@ -31,10 +31,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import koine                                   # noqa: E402
-from koine import tokens                       # noqa: E402
-from koine.codebook import Codebook            # noqa: E402
-from koine.dense import ACT_CODE, KEY_CODE     # noqa: E402
+import aicl                                   # noqa: E402
+from aicl import tokens                       # noqa: E402
+from aicl.codebook import Codebook            # noqa: E402
+from aicl.dense import ACT_CODE, KEY_CODE     # noqa: E402
 
 ENCODINGS = ("readable", "dense", "packed", "packed-chars")
 
@@ -42,22 +42,22 @@ ENCODINGS = ("readable", "dense", "packed", "packed-chars")
 # ------------------------------------------------------------------ cases
 
 def build_cases(cb: Codebook, counter) -> list[dict]:
-    files = sorted((ROOT / "examples").glob("*.koine")) + sorted((ROOT / "bench" / "cases").glob("*/koine.koine"))
+    files = sorted((ROOT / "examples").glob("*.aicl")) + sorted((ROOT / "bench" / "cases").glob("*/aicl.aicl"))
     best_tok = cb.choose(counter)
     best_chr = cb.choose(len)
     cases = []
     for p in files:
-        for i, form in enumerate(koine.parse(p.read_text(encoding="utf-8"))):
-            if not koine.is_message(form):
+        for i, form in enumerate(aicl.parse(p.read_text(encoding="utf-8"))):
+            if not aicl.is_message(form):
                 continue
-            expected = koine.to_text(form)
+            expected = aicl.to_text(form)
             cases.append({
                 "file": str(p.relative_to(ROOT)), "index": i, "expected": expected,
                 "inputs": {
                     "readable": expected,
-                    "dense": koine.to_dense(form),
-                    "packed": koine.to_dense(cb.pack(form, best=best_tok)),
-                    "packed-chars": koine.to_dense(cb.pack(form, best=best_chr)),
+                    "dense": aicl.to_dense(form),
+                    "packed": aicl.to_dense(cb.pack(form, best=best_tok)),
+                    "packed-chars": aicl.to_dense(cb.pack(form, best=best_chr)),
                 },
             })
     return cases
@@ -68,9 +68,9 @@ def system_prompt(cb: Codebook) -> str:
     keys = " ".join(f":{v}=:{k}" for k, v in KEY_CODE.items())
     # Present the codebook in the direction the reader needs: surface form -> concept id.
     table = "\n".join(f"  {form} -> {cid}" for form, cid in sorted(cb.form_to_concept.items()))
-    return f"""You convert one Koine message into its canonical readable form. Output only the message, nothing else.
+    return f"""You convert one AICL message into its canonical readable form. Output only the message, nothing else.
 
-Koine is an S-expression message language: (ACT #id @from>@to [^reply] body... [:key value]... [~conf]).
+AICL is an S-expression message language: (ACT #id @from>@to [^reply] body... [:key value]... [~conf]).
 The input may use these abbreviations; expand every one of them:
 - Speech-act codes in head position: {acts}
 - Merged header "a.1>b" means "#a.1 @a>@b"; "a.1>*" means "#a.1 @a>*".
@@ -108,11 +108,11 @@ Output: (no #b.2 @b>@a ^a.2 :why (busy @b :from 2026-11-06T09:00+09:00 :to 2026-
 
 def _shape(t) -> str:
     """Structure of a term with atom values erased, for telling vocabulary errors from structural ones."""
-    if isinstance(t, koine.Form):
+    if isinstance(t, aicl.Form):
         return "(" + " ".join(_shape(a) for a in t.args) + "|" + " ".join(_shape(t.kw[k]) for k in sorted(t.kw)) + ")"
-    if isinstance(t, koine.KList):
+    if isinstance(t, aicl.KList):
         return "[" + " ".join(_shape(a) for a in t.items) + "]"
-    if isinstance(t, koine.KMap):
+    if isinstance(t, aicl.KMap):
         return "{" + " ".join(_shape(k) + ":" + _shape(v) for k, v in t.items) + "}"
     return type(t).__name__
 
@@ -122,10 +122,10 @@ def classify_failure(got: str, expected: str) -> str:
     if got.startswith("unparseable") or got.startswith("<"):
         return "unparseable"
     try:
-        g, e = koine.parse_one(got), koine.parse_one(expected)
-    except koine.KoineError:
+        g, e = aicl.parse_one(got), aicl.parse_one(expected)
+    except aicl.AICLError:
         return "unparseable"
-    if isinstance(g, koine.Form) and isinstance(e, koine.Form) and g.head != e.head:
+    if isinstance(g, aicl.Form) and isinstance(e, aicl.Form) and g.head != e.head:
         return "act"
     return "vocab" if _shape(g) == _shape(e) else "structure"
 
@@ -137,11 +137,11 @@ def score(output: str, expected: str) -> tuple[bool, str]:
     text = output.strip()
     if text.startswith("```"):
         text = text.strip("`")
-        if text.startswith("koine"):
+        if text.startswith("aicl"):
             text = text[5:]
     try:
-        got = koine.to_text(koine.parse_one(text.strip()))
-    except koine.KoineError as e:
+        got = aicl.to_text(aicl.parse_one(text.strip()))
+    except aicl.AICLError as e:
         return False, f"unparseable: {e}"
     return got == expected, got
 

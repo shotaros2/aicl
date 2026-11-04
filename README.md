@@ -1,6 +1,7 @@
-# Koine
+# AICL — AI Common Language
 
-**A language for agents to talk to each other without ambiguity.**
+**A common language for AI agents, the way English is for people: one tongue any agent
+can learn, with no ambiguity.**
 Specification + zero-dependency reference implementation. Draft v0.1.0.
 [日本語の README はこちら](README.ja.md)
 
@@ -20,9 +21,9 @@ threshold, is that an ETA or a duration, measured when. Natural language is also
 greetings, hedges and thanks that cost tokens and carry no information, and nothing about the
 exchange is machine-checkable: no one can verify that every request got an answer.
 
-## What Koine does
+## What AICL does
 
-Koine is a small formal message language with four interchangeable encodings
+AICL is a small formal message language with four interchangeable encodings
 (readable text, dense text for LLM-to-LLM exchange, JSON, deterministic CBOR) and one
 canonical form that can be hashed and signed.
 Its design rules are the whole point:
@@ -40,7 +41,7 @@ Its design rules are the whole point:
 | Every request is closed | An `ask` ends with `tell`/`no`/`fail`; a `do` with `ok` then `done`/`fail`. The validator checks this |
 
 The full specification is in [SPEC.md](SPEC.md) (16 pages, CC BY 4.0); the grammar in
-[grammar/koine.ebnf](grammar/koine.ebnf).
+[grammar/aicl.ebnf](grammar/aicl.ebnf).
 
 ### A complete exchange
 
@@ -60,10 +61,10 @@ subscriptions, broadcast discovery, coded failures.
 ### The dense form: what agents actually send
 
 LLMs consume tokens, not bytes, so "binary" would make LLM-to-LLM traffic *more*
-expensive (it would be base64 in the prompt). Instead, Koine has a **dense text encoding**
+expensive (it would be base64 in the prompt). Instead, AICL has a **dense text encoding**
 (SPEC §8): the same structure with one-letter speech acts, merged headers, one-letter
 core keys and ISO-basic timestamps. It is bijective with the readable form, so
-`koine fmt` always recovers the readable version for audit and debugging.
+`aicl fmt` always recovers the readable version for audit and debugging.
 
 ```
 (P a.1>b (meeting :a 20261106T1000+9 :dur PT30M :with [@a @b]))
@@ -88,16 +89,16 @@ it reads anything. Four rules keep this exactly as unambiguous as the dense form
 4. The receiver's tokenizer and codebook id are agreed in-band (`(tokenizer $t)`, `(codebook $id)`), never assumed.
 
 ```bash
-koine codebook codebooks/imagegen.json --tokenizer cl100k_base   # validate, show chosen forms
-koine pack   msg.kd --codebook codebooks/imagegen.json --tokenizer cl100k_base
-koine unpack msg.kd --codebook codebooks/imagegen.json           # back to concept ids
-koine check  msg.kd --codebook codebooks/imagegen.json           # concepts count as known terms
+aicl codebook codebooks/imagegen.json --tokenizer cl100k_base   # validate, show chosen forms
+aicl pack   msg.kd --codebook codebooks/imagegen.json --tokenizer cl100k_base
+aicl unpack msg.kd --codebook codebooks/imagegen.json           # back to concept ids
+aicl check  msg.kd --codebook codebooks/imagegen.json           # concepts count as known terms
 ```
 
 ## Honest numbers: precision is not free
 
 `bench/compare.py` compares realistic natural-language agent dialogues with the same
-information in Koine (cl100k_base tokenizer, which GPT-4-class and many open models use).
+information in AICL (cl100k_base tokenizer, which GPT-4-class and many open models use).
 All columns are tokens; "packed" uses `codebooks/bench.json`:
 
 | case | NL | readable | ratio | dense | ratio | packed | ratio |
@@ -113,7 +114,7 @@ vocabularies are tuned for prose. The dense form removes 22 % of that; a codeboo
 *safe* forms (see the eval below) takes a little more and lands **at parity with natural
 language while carrying strictly more information** (exact instants with time zones,
 ids, thresholds, provenance) and zero ambiguity. Truncation forms would save another
-1–2 %, but small models misread them, so the example codebook no longer uses any. In characters, every Koine form is far shorter. The scheduling case does not
+1–2 %, but small models misread them, so the example codebook no longer uses any. In characters, every AICL form is far shorter. The scheduling case does not
 move because its vocabulary was already one token per word; the remaining cost there is
 the four time-zoned instants, which natural language simply leaves out.
 
@@ -159,45 +160,45 @@ longer contain any and the loader warns about them. Results for larger models ar
 ## Install and use
 
 ```bash
-pip install -e .            # or: pip install koine-lang  (once published)
+pip install -e .            # or: pip install aicl-lang  (once published)
 ```
 
 ```bash
-koine fmt    examples/02_deploy.koine        # canonical single-line form (also decodes dense input)
-koine dense  examples/02_deploy.koine        # dense text encoding for LLM-to-LLM exchange
-koine pretty examples/02_deploy.koine        # readable layout
-koine json   examples/02_deploy.koine        # JSON encoding
-koine cbor   examples/01_weather.koine -o m.cbor
-koine hash   examples/02_deploy.koine        # sha256 of canonical form, per message
-koine check  examples/02_deploy.koine --known deploy-status --known rollout --known error-rate
-koine stats  examples/05_subscription.koine  # size, tokens, nl ratio
+aicl fmt    examples/02_deploy.aicl        # canonical single-line form (also decodes dense input)
+aicl dense  examples/02_deploy.aicl        # dense text encoding for LLM-to-LLM exchange
+aicl pretty examples/02_deploy.aicl        # readable layout
+aicl json   examples/02_deploy.aicl        # JSON encoding
+aicl cbor   examples/01_weather.aicl -o m.cbor
+aicl hash   examples/02_deploy.aicl        # sha256 of canonical form, per message
+aicl check  examples/02_deploy.aicl --known deploy-status --known rollout --known error-rate
+aicl stats  examples/05_subscription.aicl  # size, tokens, nl ratio
 ```
 
 ```python
-import koine
+import aicl
 
-msgs = koine.parse_messages(open("examples/02_deploy.koine").read())
-for issue in koine.validate_conversation(msgs, known_terms=["deploy-status", "rollout", "error-rate"]):
+msgs = aicl.parse_messages(open("examples/02_deploy.aicl").read())
+for issue in aicl.validate_conversation(msgs, known_terms=["deploy-status", "rollout", "error-rate"]):
     print(issue)                             # protocol violations, open requests, unresolved terms
 
 m = msgs[1]
 print(m.act, m.sender, m.receiver, m.reply)  # tell b a a.1
-print(koine.to_text(m.to_form()))            # canonical text
-print(koine.to_dense(m.to_form()))           # dense text
-print(koine.to_json_text(m.to_form()))       # canonical JSON
-print(koine.digest(m.to_form()))             # sha256
+print(aicl.to_text(m.to_form()))            # canonical text
+print(aicl.to_dense(m.to_form()))           # dense text
+print(aicl.to_json_text(m.to_form()))       # canonical JSON
+print(aicl.digest(m.to_form()))             # sha256
 
-from koine.build import msg, form, q
-reply = msg("tell", "b.9", "b", "a", koine.KMap([(koine.Var("t"), q(18.5, "C"))]), reply="a.1", conf=0.9)
+from aicl.build import msg, form, q
+reply = msg("tell", "b.9", "b", "a", aicl.KMap([(aicl.Var("t"), q(18.5, "C"))]), reply="a.1", conf=0.9)
 ```
 
-## Make an LLM speak Koine
+## Make an LLM speak AICL
 
 [prompts/system_prompt.md](prompts/system_prompt.md) is a ~700-token system prompt that
 teaches any instruction-following model the readable language;
 [prompts/system_prompt_dense.md](prompts/system_prompt_dense.md) teaches the dense form,
 which is what two LLM agents should use with each other. `examples/llm_dialogue.py` runs two
-Claude instances negotiating a meeting in Koine, with every message parsed and validated
+Claude instances negotiating a meeting in AICL, with every message parsed and validated
 at the boundary before it is delivered:
 
 ```bash
@@ -212,12 +213,12 @@ python examples/llm_dialogue.py
 The repository is self-describing for agents that read a project folder:
 
 - `AGENTS.md` (Codex, Cursor and most general agents) and `CLAUDE.md` (Claude Code)
-  tell the agent to load the system prompt and validate every message with `koine check`.
+  tell the agent to load the system prompt and validate every message with `aicl check`.
 - `SKILL.md` makes the folder an [Agent Skill](https://github.com/anthropics/skills):
-  copy it to `.claude/skills/koine/` (or your framework's skills directory) and the
-  agent loads Koine only when it talks to another agent.
+  copy it to `.claude/skills/aicl/` (or your framework's skills directory) and the
+  agent loads AICL only when it talks to another agent.
 
-Two agents that have both read this folder can talk to each other in Koine with no
+Two agents that have both read this folder can talk to each other in AICL with no
 further setup; the validator is the referee.
 
 If you only want to hand over the language (no code), give the agent the
@@ -230,8 +231,8 @@ drifts from the sources.
 
 ```
 SPEC.md                 the language (normative)
-grammar/koine.ebnf      text encoding grammar
-koine/                  reference implementation (Python ≥ 3.11, no dependencies)
+grammar/aicl.ebnf      text encoding grammar
+aicl/                  reference implementation (Python ≥ 3.11, no dependencies)
   lexer.py parser.py    text → terms
   printer.py            canonical + pretty text, sha256 digest
   dense.py              dense text encoding (tokenizer-tuned, bijective with canonical)
@@ -240,12 +241,12 @@ codebooks/              example codebooks (bench, imagegen)
   json_codec.py         JSON encoding
   cbor_codec.py         deterministic CBOR (RFC 8949 §4.2)
   validate.py           message + conversation validator, nl ratio
-  cli.py                `koine` command
+  cli.py                `aicl` command
 examples/               worked conversations + demos
 prompts/                system prompts for LLM agents (readable and dense)
 rulebook/               generated hand-off folder: language references, spec, codebooks, examples
 tools/                  build_rulebook.py
-bench/                  NL vs Koine comparison
+bench/                  NL vs AICL comparison
 evals/                  LLM read-back accuracy evaluation
 tests/                  unittest suite (also the conformance tests)
 ```
@@ -253,11 +254,11 @@ tests/                  unittest suite (also the conformance tests)
 ## Relation to prior work
 
 - **KQML / FIPA-ACL** (1990s agent communication languages) introduced speech-act
-  performatives; Koine keeps that idea and adds what LLM agents need: quarantined natural
+  performatives; AICL keeps that idea and adds what LLM agents need: quarantined natural
   language, numeric confidence, in-band term definition and a canonical, hashable form.
 - **JSON-RPC, MCP, A2A** are transports and tool-call envelopes. They say nothing about the
-  *content* agents exchange; a Koine message can travel inside any of them (use the JSON encoding).
-- **Lojban, Ithkuil** are unambiguous languages for humans. Koine is for machines and is
+  *content* agents exchange; a AICL message can travel inside any of them (use the JSON encoding).
+- **Lojban, Ithkuil** are unambiguous languages for humans. AICL is for machines and is
   deliberately tiny.
 
 ## Roadmap
@@ -272,4 +273,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how language changes are proposed.
 
 ## License
 
-Code: MIT. Specification: CC BY 4.0. "Koine" (κοινή, "the common tongue") is a provisional name.
+Code: MIT. Specification: CC BY 4.0. AICL stands for *AI Common Language*; the project was
+briefly called Koine before 0.1.0.

@@ -1,7 +1,7 @@
-"""Koine — a language for agent-to-agent communication (reference implementation)."""
+"""AICL — a language for agent-to-agent communication (reference implementation)."""
 
 from .model import (
-    ACTS, Agent, Date, Duration, Form, Instant, Keyword, KList, KMap, KoineError,
+    ACTS, Agent, Date, Duration, Form, Instant, Keyword, KList, KMap, AICLError,
     LexError, Message, ModelError, ParseError, Quantity, Ref, ReplyRef, Route,
     Str, Symbol, Var, is_message, walk,
 )
@@ -17,7 +17,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "ACTS", "Agent", "Date", "Duration", "Form", "Instant", "Keyword", "KList", "KMap",
-    "KoineError", "LexError", "Message", "ModelError", "ParseError", "Quantity", "Ref",
+    "AICLError", "LexError", "Message", "ModelError", "ParseError", "Quantity", "Ref",
     "ReplyRef", "Route", "Str", "Symbol", "Var", "is_message", "walk",
     "parse", "parse_messages", "parse_one",
     "canonical", "canonical_document", "digest", "pretty", "to_text",

@@ -1,4 +1,4 @@
-"""JSON encoding of Koine terms (SPEC §8)."""
+"""JSON encoding of AICL terms (SPEC §8)."""
 from __future__ import annotations
 
 import json

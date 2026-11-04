@@ -1,24 +1,24 @@
-# Koine rulebook (single-file bundle)
+# AICL rulebook (single-file bundle)
 
-Generated from the Koine repository. Sections: the dense language reference (use this as the
+Generated from the AICL repository. Sections: the dense language reference (use this as the
 system prompt of an LLM agent, replacing `me` with its id), the readable reference, six example
 conversations, two example codebooks, the specification and the grammar.
 
 
 ---
 
-# FILE: koine-rulebook-dense.md
+# FILE: aicl-rulebook-dense.md
 
-# Koine dense system prompt (v0.1)
+# AICL dense system prompt (v0.1)
 
 Same language as `system_prompt.md`, in the **dense text encoding** (SPEC §8): about 22 %
 fewer tokens than the readable form. Use this when two LLM agents talk to each other over
-a tokenized channel. Humans read transcripts with `koine fmt`, which restores the readable
+a tokenized channel. Humans read transcripts with `aicl fmt`, which restores the readable
 form. Replace `me` with the agent's own id. ~750 tokens.
 
 ---
 
-You are an agent that communicates with other agents **only** in Koine dense form, a
+You are an agent that communicates with other agents **only** in AICL dense form, a
 formal message language. Your agent id is `me`. Output exactly one message per turn and
 nothing else: no prose, no markdown, no explanation.
 
@@ -90,18 +90,18 @@ nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: koine-rulebook.md
+# FILE: aicl-rulebook.md
 
-# Koine system prompt (v0.1)
+# AICL system prompt (v0.1)
 
 Paste the block below into the system prompt of any LLM-based agent to make it
-speak Koine instead of natural language when talking to other agents.
+speak AICL instead of natural language when talking to other agents.
 Replace `@me` with the agent's own id. ~700 tokens.
 
 ---
 
-You are an agent that communicates with other agents **only** in Koine, a formal
-message language. Your agent id is `@me`. Output exactly one Koine message per
+You are an agent that communicates with other agents **only** in AICL, a formal
+message language. Your agent id is `@me`. Output exactly one AICL message per
 turn and nothing else: no prose, no markdown, no explanation.
 
 ## Message shape
@@ -166,12 +166,12 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: examples/01_weather.koine
+# FILE: examples/01_weather.aicl
 
 ```
 ; Weather query: units, absolute time, confidence and provenance are all explicit.
 ; Domain terms (pre-agreed between @a and @b): temp rain
-; Check with:  koine check examples/01_weather.koine --known temp --known rain
+; Check with:  aicl check examples/01_weather.aicl --known temp --known rain
 
 (ask  #a.1 @a>@b (temp tokyo $t :unit C :at 2026-11-05T09:00+09:00) :conv w1)
 (tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma :conv w1)
@@ -185,7 +185,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: examples/02_deploy.koine
+# FILE: examples/02_deploy.aicl
 
 ```
 ; Conditional action with an explicit threshold, window, ETA and completion time.
@@ -203,7 +203,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: examples/03_scheduling.koine
+# FILE: examples/03_scheduling.aicl
 
 ```
 ; Negotiation: propose / reject with a structured reason / counter-propose / accept.
@@ -222,13 +222,13 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: examples/04_def_and_clar.koine
+# FILE: examples/04_def_and_clar.aicl
 
 ```
 ; Vocabulary: an unknown term is never guessed. The receiver asks for clarification,
 ; the sender defines the term in-band, and only then is it used.
 ; Domain terms: balance.available (pre-agreed)
-; `koine check` reports two warnings here on purpose: risk-score (#a.1) and balance (#a.4)
+; `aicl check` reports two warnings here on purpose: risk-score (#a.1) and balance (#a.4)
 ; are used before they are resolvable, which is exactly what the clar replies catch.
 
 (ask  #a.1 @a>@b (risk-score txn-77 $r))
@@ -251,7 +251,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: examples/05_subscription.koine
+# FILE: examples/05_subscription.aicl
 
 ```
 ; Subscriptions: a pattern with $variables; each matching event is a tell that
@@ -269,7 +269,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
-# FILE: examples/06_broadcast_and_fail.koine
+# FILE: examples/06_broadcast_and_fail.aicl
 
 ```
 ; Broadcast discovery, delegation to a third agent, and a coded failure.
@@ -389,7 +389,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 # FILE: SPEC.md
 
-# Koine — A Language for Agent-to-Agent Communication
+# AICL — A Language for Agent-to-Agent Communication
 
 **Version:** 0.1.0 (draft)  
 **Status:** Request for Comments  
@@ -399,13 +399,13 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ## 0. Abstract
 
-Koine is a small, formally specified language for communication between AI agents.
+AICL is a small, formally specified language for communication between AI agents.
 It replaces natural language in agent-to-agent exchanges with messages whose
 **intent, referents, quantities, time, and certainty are explicit**, so that two
 agents built by different vendors can exchange information with no ambiguity and
 with a fraction of the tokens a polite natural-language exchange costs.
 
-Koine is defined at the level of an **abstract data model** with three
+AICL is defined at the level of an **abstract data model** with three
 interchangeable concrete encodings:
 
 | Encoding | Purpose | Example |
@@ -447,7 +447,7 @@ sign, and compare messages without disagreement.
 
 ## 2. Lexical Structure (Text Encoding)
 
-Koine text is UTF-8. Whitespace separates tokens; `;` starts a comment to end of line.
+AICL text is UTF-8. Whitespace separates tokens; `;` starts a comment to end of line.
 
 | Token | Syntax | Meaning |
 |---|---|---|
@@ -557,7 +557,7 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 
 ## 5. Core Logical Vocabulary
 
-These heads are reserved and have fixed semantics in every Koine conversation.
+These heads are reserved and have fixed semantics in every AICL conversation.
 
 | Form | Meaning |
 |---|---|
@@ -595,7 +595,7 @@ A head or symbol is resolvable if one of the following holds, checked in order:
 ```
 
 `def` is the only place where `nl` is *expected*. A linter SHOULD report the fraction of
-message bodies that is `nl` text; a well-formed Koine conversation drives this toward zero.
+message bodies that is `nl` text; a well-formed AICL conversation drives this toward zero.
 
 ---
 
@@ -621,7 +621,7 @@ A canonical text form exists so that `sha256(canonical(msg))` is identical acros
 LLMs read and write tokens, not bytes, so the most efficient form for agent-to-agent
 exchange is text tuned to BPE tokenizers, not binary. The dense encoding is a purely
 lexical, bijective rewriting of the canonical text (§7): same parentheses, same order,
-shorter atoms. `koine fmt` turns it back into the readable form; humans are not expected
+shorter atoms. `aicl fmt` turns it back into the readable form; humans are not expected
 to read it directly.
 
 | Canonical | Dense | Rule |
@@ -651,7 +651,7 @@ The remaining tokens are domain vocabulary; shortening those is what codebooks d
 
 What a tokenizer finds cheap is accidental (`Tokyo` is one cl100k token, `tokyo` two,
 `東京` three), and it differs between models. A **codebook** lets the sender exploit that
-without reintroducing ambiguity. It is a JSON table from **concept ids** (ordinary Koine
+without reintroducing ambiguity. It is a JSON table from **concept ids** (ordinary AICL
 symbols) to alternative **surface forms**:
 
 ```json
@@ -664,7 +664,7 @@ Rules, all enforced by the reference implementation:
 
 1. **Concept ids are the only canonical vocabulary.** Validation, hashing, logging and
    `def` all use concept ids. A surface form exists only on the wire; the receiver maps
-   every form back to its concept id before interpreting anything (`koine unpack`).
+   every form back to its concept id before interpreting anything (`aicl unpack`).
 2. **Each form belongs to exactly one concept** and is never itself a concept id, a core
    term, a head key, a single ASCII letter, a sigil token, or anything that would lex as a
    number, quantity, instant, date or duration. Loading a codebook that breaks this fails.
@@ -693,7 +693,7 @@ keys, literals and ids are never packed.
 
 ## 9. JSON Encoding
 
-| Koine | JSON |
+| AICL | JSON |
 |---|---|
 | form | `{"f": head, "a": [args…], "k": {key: value…}, "c": conf}` (`k`, `c` omitted when empty/absent) |
 | list | JSON array |
@@ -729,7 +729,7 @@ Natural-language exchange (what agents do today):
 
 Ambiguities: "it" (the build? the deploy?), "about ten minutes ago" (relative to when?), "looks fine" (what threshold, measured how?), "around 5 minutes" (ETA or duration?), "EU" (which region id?).
 
-Koine:
+AICL:
 
 ```
 (ask  #a.1 @a>@b (deploy-status build-4821 $s :finished-at $at))
@@ -749,7 +749,7 @@ tokenizers trained for English prose).
 
 ## 12. Conformance
 
-An implementation is **Koine-conformant** if it:
+An implementation is **AICL-conformant** if it:
 
 1. Parses every text in `examples/` and reproduces its canonical form byte-for-byte.
 2. Round-trips text → dense → text, text → JSON → text and text → CBOR → text without change in canonical form.
@@ -773,10 +773,10 @@ Feedback: open an issue in the repository.
 
 ---
 
-# FILE: grammar/koine.ebnf
+# FILE: grammar/aicl.ebnf
 
 ```
-(* Koine text encoding, v0.1.0 — ISO/IEC 14977 EBNF *)
+(* AICL text encoding, v0.1.0 — ISO/IEC 14977 EBNF *)
 
 document     = { ws | comment | term } ;
 comment      = ";" , { ? any character except newline ? } ;

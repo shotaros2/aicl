@@ -1,4 +1,4 @@
-# Koine — A Language for Agent-to-Agent Communication
+# AICL — A Language for Agent-to-Agent Communication
 
 **Version:** 0.1.0 (draft)  
 **Status:** Request for Comments  
@@ -8,13 +8,13 @@
 
 ## 0. Abstract
 
-Koine is a small, formally specified language for communication between AI agents.
+AICL is a small, formally specified language for communication between AI agents.
 It replaces natural language in agent-to-agent exchanges with messages whose
 **intent, referents, quantities, time, and certainty are explicit**, so that two
 agents built by different vendors can exchange information with no ambiguity and
 with a fraction of the tokens a polite natural-language exchange costs.
 
-Koine is defined at the level of an **abstract data model** with three
+AICL is defined at the level of an **abstract data model** with three
 interchangeable concrete encodings:
 
 | Encoding | Purpose | Example |
@@ -56,7 +56,7 @@ sign, and compare messages without disagreement.
 
 ## 2. Lexical Structure (Text Encoding)
 
-Koine text is UTF-8. Whitespace separates tokens; `;` starts a comment to end of line.
+AICL text is UTF-8. Whitespace separates tokens; `;` starts a comment to end of line.
 
 | Token | Syntax | Meaning |
 |---|---|---|
@@ -166,7 +166,7 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 
 ## 5. Core Logical Vocabulary
 
-These heads are reserved and have fixed semantics in every Koine conversation.
+These heads are reserved and have fixed semantics in every AICL conversation.
 
 | Form | Meaning |
 |---|---|
@@ -204,7 +204,7 @@ A head or symbol is resolvable if one of the following holds, checked in order:
 ```
 
 `def` is the only place where `nl` is *expected*. A linter SHOULD report the fraction of
-message bodies that is `nl` text; a well-formed Koine conversation drives this toward zero.
+message bodies that is `nl` text; a well-formed AICL conversation drives this toward zero.
 
 ---
 
@@ -230,7 +230,7 @@ A canonical text form exists so that `sha256(canonical(msg))` is identical acros
 LLMs read and write tokens, not bytes, so the most efficient form for agent-to-agent
 exchange is text tuned to BPE tokenizers, not binary. The dense encoding is a purely
 lexical, bijective rewriting of the canonical text (§7): same parentheses, same order,
-shorter atoms. `koine fmt` turns it back into the readable form; humans are not expected
+shorter atoms. `aicl fmt` turns it back into the readable form; humans are not expected
 to read it directly.
 
 | Canonical | Dense | Rule |
@@ -260,7 +260,7 @@ The remaining tokens are domain vocabulary; shortening those is what codebooks d
 
 What a tokenizer finds cheap is accidental (`Tokyo` is one cl100k token, `tokyo` two,
 `東京` three), and it differs between models. A **codebook** lets the sender exploit that
-without reintroducing ambiguity. It is a JSON table from **concept ids** (ordinary Koine
+without reintroducing ambiguity. It is a JSON table from **concept ids** (ordinary AICL
 symbols) to alternative **surface forms**:
 
 ```json
@@ -273,7 +273,7 @@ Rules, all enforced by the reference implementation:
 
 1. **Concept ids are the only canonical vocabulary.** Validation, hashing, logging and
    `def` all use concept ids. A surface form exists only on the wire; the receiver maps
-   every form back to its concept id before interpreting anything (`koine unpack`).
+   every form back to its concept id before interpreting anything (`aicl unpack`).
 2. **Each form belongs to exactly one concept** and is never itself a concept id, a core
    term, a head key, a single ASCII letter, a sigil token, or anything that would lex as a
    number, quantity, instant, date or duration. Loading a codebook that breaks this fails.
@@ -302,7 +302,7 @@ keys, literals and ids are never packed.
 
 ## 9. JSON Encoding
 
-| Koine | JSON |
+| AICL | JSON |
 |---|---|
 | form | `{"f": head, "a": [args…], "k": {key: value…}, "c": conf}` (`k`, `c` omitted when empty/absent) |
 | list | JSON array |
@@ -338,7 +338,7 @@ Natural-language exchange (what agents do today):
 
 Ambiguities: "it" (the build? the deploy?), "about ten minutes ago" (relative to when?), "looks fine" (what threshold, measured how?), "around 5 minutes" (ETA or duration?), "EU" (which region id?).
 
-Koine:
+AICL:
 
 ```
 (ask  #a.1 @a>@b (deploy-status build-4821 $s :finished-at $at))
@@ -358,7 +358,7 @@ tokenizers trained for English prose).
 
 ## 12. Conformance
 
-An implementation is **Koine-conformant** if it:
+An implementation is **AICL-conformant** if it:
 
 1. Parses every text in `examples/` and reproduces its canonical form byte-for-byte.
 2. Round-trips text → dense → text, text → JSON → text and text → CBOR → text without change in canonical form.

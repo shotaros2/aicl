@@ -10,7 +10,7 @@
       "tokens": 264,
       "failures": [
         {
-          "file": "examples\\01_weather.koine",
+          "file": "examples\\01_weather.aicl",
           "index": 0,
           "input": "(A a.1>b (temp tokyo $t :a 20261105T0900+9 :u C) :c w1)",
           "expected": "(ask #a.1 @a>@b (temp tokyo $t :at 2026-11-05T09:00+09:00 :unit C) :conv w1)",
@@ -25,7 +25,7 @@
       "tokens": 280,
       "failures": [
         {
-          "file": "examples\\01_weather.koine",
+          "file": "examples\\01_weather.aicl",
           "index": 0,
           "input": "(A a.1>b (気温 東京 $t :a 20261105T0900+9 :u C) :c w1)",
           "expected": "(ask #a.1 @a>@b (temp tokyo $t :at 2026-11-05T09:00+09:00 :unit C) :conv w1)",

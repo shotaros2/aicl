@@ -1,4 +1,4 @@
-"""Two rule-based agents talking Koine in-process, with full protocol validation.
+"""Two rule-based agents talking AICL in-process, with full protocol validation.
 
 Run:  python examples/two_agents_demo.py
 No network, no LLM — this shows the library API and the message lifecycle.
@@ -10,9 +10,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import koine
-from koine import Form, KMap, Message, Quantity, Symbol, Var
-from koine.build import form, msg, nl, q
+import aicl
+from aicl import Form, KMap, Message, Quantity, Symbol, Var
+from aicl.build import form, msg, nl, q
 
 
 class Agent:
@@ -29,7 +29,7 @@ class Agent:
     def send(self, act, to, *body, reply=None, conf=None, kw=None) -> Message:
         m = Message.from_form(msg(act, self._id(), self.name, to, *body, reply=reply, conf=conf, kw=kw))
         self.log.append(m)
-        print(f"  {koine.to_text(m.to_form())}")
+        print(f"  {aicl.to_text(m.to_form())}")
         return m
 
 
@@ -60,7 +60,7 @@ class WeatherService(Agent):
             self.known.add(m.body[0].name)
             return self.send("ok", m.sender, reply=m.id)
         if m.act == "do":
-            self.send("ok", m.sender, reply=m.id, kw={"eta": koine.Duration("PT1S")})
+            self.send("ok", m.sender, reply=m.id, kw={"eta": aicl.Duration("PT1S")})
             return self.send("done", m.sender, form("cache-cleared", kw={"entries": 3}), reply=m.id)
         if m.act == "end":
             return None
@@ -75,7 +75,7 @@ def main():
 
     print("--- conversation ---")
     r = b.handle(a.send("ask", "b", form("temp", Symbol("tokyo"), Var("t"),
-                                        kw={"unit": Symbol("C"), "at": koine.Instant("2026-11-05T09:00+09:00")})))
+                                        kw={"unit": Symbol("C"), "at": aicl.Instant("2026-11-05T09:00+09:00")})))
     bindings = dict(r.body[0].items)
     temp = bindings[Var("t")]
     assert isinstance(temp, Quantity) and temp.unit == "C"
@@ -85,7 +85,7 @@ def main():
     assert r.act == "clar"
     r = b.handle(a.send("def", "b", Symbol("feels-like"),
                         kw={"gloss": nl("en", "apparent temperature combining air temperature, humidity and wind"),
-                            "args": koine.KList([Symbol("place")]), "ret": Symbol("C")}))
+                            "args": aicl.KList([Symbol("place")]), "ret": Symbol("C")}))
     assert r.act == "ok"
     r = b.handle(a.send("ask", "b", form("feels-like", Symbol("tokyo"), Var("t"))))
     assert r.act == "tell" and r.body[0].head == "none"  # defined, but no data
@@ -94,13 +94,13 @@ def main():
     b.handle(a.send("end", "b"))
 
     print("--- validation ---")
-    issues = koine.validate_conversation(log, known_terms=["temp", "clear-cache", "cache-cleared"])
+    issues = aicl.validate_conversation(log, known_terms=["temp", "clear-cache", "cache-cleared"])
     for i in issues:
         print(" ", i)
     errors = [i for i in issues if i.level == "error"]
-    print(f"{len(log)} messages, {len(errors)} errors, nl ratio {koine.nl_ratio(log):.1%}")
+    print(f"{len(log)} messages, {len(errors)} errors, nl ratio {aicl.nl_ratio(log):.1%}")
     assert not errors
-    print("hash of first message:", koine.digest(log[0].to_form()))
+    print("hash of first message:", aicl.digest(log[0].to_form()))
 
 
 if __name__ == "__main__":

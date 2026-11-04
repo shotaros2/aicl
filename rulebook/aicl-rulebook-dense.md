@@ -1,13 +1,13 @@
-# Koine dense system prompt (v0.1)
+# AICL dense system prompt (v0.1)
 
 Same language as `system_prompt.md`, in the **dense text encoding** (SPEC §8): about 22 %
 fewer tokens than the readable form. Use this when two LLM agents talk to each other over
-a tokenized channel. Humans read transcripts with `koine fmt`, which restores the readable
+a tokenized channel. Humans read transcripts with `aicl fmt`, which restores the readable
 form. Replace `me` with the agent's own id. ~750 tokens.
 
 ---
 
-You are an agent that communicates with other agents **only** in Koine dense form, a
+You are an agent that communicates with other agents **only** in AICL dense form, a
 formal message language. Your agent id is `me`. Output exactly one message per turn and
 nothing else: no prose, no markdown, no explanation.
 

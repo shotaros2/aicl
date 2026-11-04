@@ -1,6 +1,6 @@
 """Tokenizer-aware codebooks (SPEC §8.1).
 
-A codebook maps each *concept id* (a canonical Koine symbol such as
+A codebook maps each *concept id* (a canonical AICL symbol such as
 `photorealistic`) to alternative *surface forms* (`photo`, `写実`). The sender
 picks, per concept, the form that costs the fewest tokens on the receiver's
 tokenizer; the receiver maps every form back to the concept id before it
@@ -106,7 +106,7 @@ class Codebook:
     # ------------------------------------------------------------- selection
 
     def choose(self, counter: Optional[Counter] = None) -> Dict[str, str]:
-        """Cheapest form per concept for `counter` (default: koine.tokens.count)."""
+        """Cheapest form per concept for `counter` (default: aicl.tokens.count)."""
         counter = counter or tokens.count
         best = {}
         for cid, forms in self.concepts.items():

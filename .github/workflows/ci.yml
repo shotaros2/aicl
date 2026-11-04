@@ -23,5 +23,5 @@ jobs:
       - run: python bench/compare.py
       - name: Canonical form of every example is stable
         run: |
-          for f in examples/*.koine; do koine fmt "$f" > /dev/null; done
+          for f in examples/*.aicl; do aicl fmt "$f" > /dev/null; done
         shell: bash

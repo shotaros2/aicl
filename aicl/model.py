@@ -1,23 +1,23 @@
-"""Abstract data model for Koine terms and messages."""
+"""Abstract data model for AICL terms and messages."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 
 
-class KoineError(Exception):
-    """Base class for all Koine errors."""
+class AICLError(Exception):
+    """Base class for all AICL errors."""
 
 
-class LexError(KoineError):
+class LexError(AICLError):
     """Invalid token."""
 
 
-class ParseError(KoineError):
+class ParseError(AICLError):
     """Invalid structure."""
 
 
-class ModelError(KoineError):
+class ModelError(AICLError):
     """A term is not a valid message or violates the data model."""
 
 

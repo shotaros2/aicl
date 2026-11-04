@@ -1,14 +1,14 @@
 import unittest
 from pathlib import Path
 
-import koine
-from koine.codebook import Codebook
-from koine.model import ModelError
+import aicl
+from aicl.codebook import Codebook
+from aicl.model import ModelError
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCH = Codebook.load(str(ROOT / "codebooks" / "bench.json"))
 IMG = Codebook.load(str(ROOT / "codebooks" / "imagegen.json"))
-FILES = sorted((ROOT / "examples").glob("*.koine")) + sorted((ROOT / "bench" / "cases").glob("*/koine.koine"))
+FILES = sorted((ROOT / "examples").glob("*.aicl")) + sorted((ROOT / "bench" / "cases").glob("*/aicl.aicl"))
 
 
 class ValidationTests(unittest.TestCase):
@@ -64,42 +64,42 @@ class PackTests(unittest.TestCase):
 
     def test_pack_unpack_round_trip_all_files(self):
         for cb in (BENCH, IMG):
-            for counter in (len, koine.tokens.count):
+            for counter in (len, aicl.tokens.count):
                 for p in FILES:
-                    terms = koine.parse(p.read_text(encoding="utf-8"))
+                    terms = aicl.parse(p.read_text(encoding="utf-8"))
                     for dense in (True, False):
                         packed = "\n".join(cb.pack_text(t, counter, dense=dense) for t in terms)
                         back = cb.unpack(packed)
                         with self.subTest(file=p.name, cb=cb.name, dense=dense):
-                            self.assertEqual([koine.to_text(t) for t in back], [koine.to_text(t) for t in terms])
+                            self.assertEqual([aicl.to_text(t) for t in back], [aicl.to_text(t) for t in terms])
 
     def test_keywords_are_packed_too(self):
-        t = koine.parse_one("(do #u.1 @u>@g (generate-image :scene (cityscape tokyo :time night) :position background))")
+        t = aicl.parse_one("(do #u.1 @u>@g (generate-image :scene (cityscape tokyo :time night) :position background))")
         packed = IMG.pack_text(t, len)
         self.assertIn(":位置 背景", packed)
         self.assertIn("(都市景観 東京 :時刻 夜)", packed)
-        self.assertEqual(koine.to_text(IMG.unpack(packed)[0]), koine.to_text(t))
+        self.assertEqual(aicl.to_text(IMG.unpack(packed)[0]), aicl.to_text(t))
 
     def test_core_vocabulary_never_packed(self):
-        t = koine.parse_one("(tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma :at 2026-11-05T09:00+09:00)")
+        t = aicl.parse_one("(tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma :at 2026-11-05T09:00+09:00)")
         packed = BENCH.pack_text(t, len)
         self.assertTrue(packed.startswith("(T b.1>a ^a.1 {$t 18.5C} :a 20261105T0900+9 :s "))
 
     def test_rule_3_unknown_forms_are_reported_not_guessed(self):
         text = "(T b.1>a ^a.1 (気温 東京 夜))"          # 夜 is not in the bench codebook
         self.assertEqual(BENCH.unresolved_forms(text), ["夜"])
-        with self.assertRaises(koine.LexError):
+        with self.assertRaises(aicl.LexError):
             BENCH.unpack(text)
         self.assertEqual(BENCH.unresolved_forms("(T b.1>a ^a.1 (気温 東京))"), [])
 
     def test_packing_is_a_pure_encoding(self):
         # Canonical form, digest and validation are unaffected by packing.
-        src = (ROOT / "examples" / "02_deploy.koine").read_text(encoding="utf-8")
-        msgs = koine.parse_messages(src)
+        src = (ROOT / "examples" / "02_deploy.aicl").read_text(encoding="utf-8")
+        msgs = aicl.parse_messages(src)
         packed = "\n".join(BENCH.pack_text(m.to_form()) for m in msgs)
-        back = [koine.Message.from_form(t) for t in BENCH.unpack(packed)]
-        self.assertEqual([koine.digest(m.to_form()) for m in back], [koine.digest(m.to_form()) for m in msgs])
-        issues = koine.validate_conversation(back, list(BENCH.concepts))
+        back = [aicl.Message.from_form(t) for t in BENCH.unpack(packed)]
+        self.assertEqual([aicl.digest(m.to_form()) for m in back], [aicl.digest(m.to_form()) for m in msgs])
+        issues = aicl.validate_conversation(back, list(BENCH.concepts))
         self.assertEqual([i for i in issues if i.level == "error"], [])
 
 

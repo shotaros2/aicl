@@ -1,4 +1,4 @@
-"""Token-count estimation used by `koine stats` and the benchmark.
+"""Token-count estimation used by `aicl stats` and the benchmark.
 
 Uses tiktoken (cl100k_base) when it is installed; otherwise a coarse
 BPE-like heuristic. The result is labelled so nobody mistakes an estimate

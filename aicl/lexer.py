@@ -1,4 +1,4 @@
-"""Tokenizer for the Koine text encoding."""
+"""Tokenizer for the AICL text encoding."""
 from __future__ import annotations
 
 import json

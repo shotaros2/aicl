@@ -4,7 +4,7 @@ Readable:  (tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma :at 2026-11-05T09:00+0
 Dense:     (T b.1>a ^a.1 {$t 18.5C} :a 20261105T0900+9 :s jma ~0.9)
 
 The mapping is bijective and purely lexical, so `from_dense(to_dense(t))` has the
-same canonical form as `t`. Humans should run `koine fmt` on it rather than read it.
+same canonical form as `t`. Humans should run `aicl fmt` on it rather than read it.
 """
 from __future__ import annotations
 

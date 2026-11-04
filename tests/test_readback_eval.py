@@ -5,8 +5,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "evals"))
 
-import koine
-from koine.codebook import Codebook
+import aicl
+from aicl.codebook import Codebook
 
 import readback  # evals/readback.py
 
@@ -20,7 +20,7 @@ class ReadbackEvalTests(unittest.TestCase):
         for c in cases:
             for enc, inp in c["inputs"].items():
                 # the library itself must read every encoding back perfectly
-                got = koine.to_text(CB.unpack(inp)[0])
+                got = aicl.to_text(CB.unpack(inp)[0])
                 self.assertEqual(got, c["expected"], (enc, inp))
 
     def test_score_canonicalises_and_tolerates_fences(self):
@@ -28,13 +28,13 @@ class ReadbackEvalTests(unittest.TestCase):
         self.assertEqual(readback.score("(ask #a.1 @a>@b (temp tokyo $t :unit C))", exp), (True, exp))
         self.assertEqual(readback.score("(ask @a>@b #a.1 (temp tokyo :unit C $t))", exp)[0], True)   # header/keyword order is free
         self.assertEqual(readback.score("(ask #a.1 @a>@b (temp $t tokyo :unit C))", exp)[0], False)  # positional order is not
-        self.assertEqual(readback.score("```koine\n(ask #a.1 @a>@b (temp tokyo $t :unit C))\n```", exp)[0], True)
+        self.assertEqual(readback.score("```aicl\n(ask #a.1 @a>@b (temp tokyo $t :unit C))\n```", exp)[0], True)
         self.assertEqual(readback.score("(ask #a.1 @a>@b (temp tokyo $t", exp)[0], False)
         self.assertEqual(readback.score("Sure! (ask ...)", exp)[0], False)
 
     def test_run_with_stub_models(self):
         cases = readback.build_cases(CB, len)[:5]
-        perfect = lambda system, user: koine.to_text(CB.unpack(user)[0])   # a model that decodes correctly
+        perfect = lambda system, user: aicl.to_text(CB.unpack(user)[0])   # a model that decodes correctly
         lazy = lambda system, user: user                                     # a model that echoes the input
         r = readback.run(cases, perfect, counter=len)
         self.assertTrue(all(v["ok"] == v["n"] == 5 for v in r.values()))
@@ -57,7 +57,7 @@ class ReadbackEvalTests(unittest.TestCase):
         for i in range(0, len(lines), 2):
             dense_in = lines[i].split(":", 1)[1].split("<-")[0].strip()
             readable_out = lines[i + 1].split(":", 1)[1].strip()
-            self.assertEqual(koine.to_text(CB.unpack(dense_in)[0]), koine.to_text(koine.parse_one(readable_out)))
+            self.assertEqual(aicl.to_text(CB.unpack(dense_in)[0]), aicl.to_text(aicl.parse_one(readable_out)))
 
     def test_system_prompt_lists_codes_and_forms(self):
         s = readback.system_prompt(CB)

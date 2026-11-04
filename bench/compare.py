@@ -1,8 +1,8 @@
-"""Compare natural-language agent dialogues with their Koine equivalents.
+"""Compare natural-language agent dialogues with their AICL equivalents.
 
 Each case in bench/cases/<name>/ has nl.txt (what two LLM agents typically
-write to each other today) and koine.koine (the same information in Koine).
-Three Koine encodings are measured: readable canonical text, the dense text
+write to each other today) and aicl.aicl (the same information in AICL).
+Three AICL encodings are measured: readable canonical text, the dense text
 encoding (SPEC §8) and the dense text packed with codebooks/bench.json
 (SPEC §8.1), which is what two agents sharing that codebook would exchange.
 
@@ -18,9 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import koine                      # noqa: E402
-from koine import tokens          # noqa: E402
-from koine.codebook import Codebook  # noqa: E402
+import aicl                      # noqa: E402
+from aicl import tokens          # noqa: E402
+from aicl.codebook import Codebook  # noqa: E402
 
 
 def main():
@@ -30,19 +30,19 @@ def main():
     rows = []
     for c in cases:
         nl = (c / "nl.txt").read_text(encoding="utf-8").strip()
-        src = (c / "koine.koine").read_text(encoding="utf-8")
-        msgs = koine.parse_messages(src)
+        src = (c / "aicl.aicl").read_text(encoding="utf-8")
+        msgs = aicl.parse_messages(src)
         forms = [m.to_form() for m in msgs]
-        canon = [koine.to_text(f) for f in forms]
-        dn = "\n".join(koine.to_dense(f) for f in forms)
-        pk = "\n".join(koine.to_dense(cb.pack(f, best=best)) for f in forms)
-        assert [koine.to_text(t) for t in koine.from_dense(dn)] == canon
-        assert [koine.to_text(t) for t in cb.unpack(pk)] == canon
-        errors = [i for i in koine.validate_conversation(msgs) if i.level == "error"]
+        canon = [aicl.to_text(f) for f in forms]
+        dn = "\n".join(aicl.to_dense(f) for f in forms)
+        pk = "\n".join(aicl.to_dense(cb.pack(f, best=best)) for f in forms)
+        assert [aicl.to_text(t) for t in aicl.from_dense(dn)] == canon
+        assert [aicl.to_text(t) for t in cb.unpack(pk)] == canon
+        errors = [i for i in aicl.validate_conversation(msgs) if i.level == "error"]
         if errors:
-            sys.exit(f"{c.name}: Koine side has errors: {errors}")
+            sys.exit(f"{c.name}: AICL side has errors: {errors}")
         rows.append((c.name, tokens.count(nl), tokens.count("\n".join(canon)), tokens.count(dn),
-                     tokens.count(pk), len(msgs), koine.nl_ratio(msgs)))
+                     tokens.count(pk), len(msgs), aicl.nl_ratio(msgs)))
 
     print(f"token counter: {tokens.METHOD}   codebook: {cb.name} ({cb.id})\n")
     hdr = (f"{'case':<12}{'NL':>6}{'readable':>10}{'ratio':>7}{'dense':>8}{'ratio':>7}"

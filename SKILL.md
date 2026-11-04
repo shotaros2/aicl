@@ -1,19 +1,19 @@
 ---
-name: koine
-description: Speak, read and validate Koine, a formal message language for agent-to-agent communication. Use when talking to another AI agent, when a message you receive starts with (ask, (tell, (do, (prop or another Koine speech act, or when asked to write, translate or check Koine. Replaces natural-language prose between agents with unambiguous messages.
+name: aicl
+description: Speak, read and validate AICL, a formal message language for agent-to-agent communication. Use when talking to another AI agent, when a message you receive starts with (ask, (tell, (do, (prop or another AICL speech act, or when asked to write, translate or check AICL. Replaces natural-language prose between agents with unambiguous messages.
 ---
 
-# Koine
+# AICL
 
-Koine messages look like `(ask #a.1 @a>@b (temp tokyo $t :unit C :at 2026-11-05T09:00+09:00))`.
+AICL messages look like `(ask #a.1 @a>@b (temp tokyo $t :unit C :at 2026-11-05T09:00+09:00))`.
 Every message states its speech act, ids, units, absolute time and confidence explicitly.
 
-## Speaking Koine
+## Speaking AICL
 
 1. Read `prompts/system_prompt_dense.md` (the text after `---`) once per conversation.
    It is the complete language reference in the dense form agents exchange, about
    750 tokens. `prompts/system_prompt.md` is the same language in readable form;
-   `python -m koine fmt` converts dense to readable and `python -m koine dense` back.
+   `python -m aicl fmt` converts dense to readable and `python -m aicl dense` back.
 2. Use your own agent id in place of `@me`, number your messages `#me.1`, `#me.2`, …
 3. Send one message per turn and nothing else.
 4. Never guess: unknown term → `(clar … (unk term))`; missing unit, time zone or
@@ -25,25 +25,25 @@ Every message states its speech act, ids, units, absolute time and confidence ex
 Write the conversation so far to a file and run, from this skill's folder:
 
 ```bash
-python -m koine check conversation.koine --known <domain-term> ...
+python -m aicl check conversation.aicl --known <domain-term> ...
 ```
 
-`error` lines must be fixed before sending. `koine fmt` prints the canonical form,
-`koine json` the JSON encoding for transports such as MCP or A2A, `koine stats` the
+`error` lines must be fixed before sending. `aicl fmt` prints the canonical form,
+`aicl json` the JSON encoding for transports such as MCP or A2A, `aicl stats` the
 share of quarantined natural language (`nl ratio`), which should stay near zero.
 
 With a shared codebook (`codebooks/*.json`) and the other agent's tokenizer name,
-`koine pack FILE --codebook CB --tokenizer NAME` emits the cheapest ambiguity-free
-form and `koine unpack FILE --codebook CB` restores concept ids. Do not shorten or
+`aicl pack FILE --codebook CB --tokenizer NAME` emits the cheapest ambiguity-free
+form and `aicl unpack FILE --codebook CB` restores concept ids. Do not shorten or
 translate terms yourself; only codebook forms are valid.
 
-## Reading Koine from another agent
+## Reading AICL from another agent
 
 Parse with the library rather than by eye when the message matters:
 
 ```python
-import koine
-m = koine.Message.from_form(koine.parse_one(text))
+import aicl
+m = aicl.Message.from_form(aicl.parse_one(text))
 m.act, m.sender, m.receiver, m.reply, m.body, m.kw, m.conf
 ```
 
@@ -52,5 +52,5 @@ A binding map `{$t 18.5C}` in a `tell` answers the `$t` of the `ask` it replies 
 ## Reference
 
 - `SPEC.md` — normative specification (speech acts §4, core vocabulary §5, canonical form §7)
-- `examples/*.koine` — six complete conversations covering every speech act
-- `grammar/koine.ebnf` — text grammar
+- `examples/*.aicl` — six complete conversations covering every speech act
+- `grammar/aicl.ebnf` — text grammar
