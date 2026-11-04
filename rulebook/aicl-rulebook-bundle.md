@@ -842,6 +842,11 @@ An implementation is **AICL-conformant** if it:
   `tell` or `done`; the validator now flags a second decision on a closed proposal
   (`prop-closed`). Candidate: a `retract` act (`(retract #id @a>@b ^own-id :why …)`) that
   reopens the referenced exchange, so corrections are explicit instead of contradictory.
+- Interval endpoints. Observed live: told `(busy @g :from 00:00 :to 06:00)` and asked for a
+  slot `:after 06:00`, an agent answered exactly 06:00. Nothing in the language says whether
+  `:to` and `:after` include the endpoint. Candidate rule for the core: time intervals are
+  half-open (`:from` inclusive, `:to` exclusive) and `:after`/`:before` are strict unless a
+  schema says otherwise; `(>= a b)` exists for the inclusive case.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).
