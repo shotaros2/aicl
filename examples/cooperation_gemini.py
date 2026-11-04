@@ -124,8 +124,9 @@ with the title as the page <title> and <h1>. If the task is not code-gen, answer
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--text-model", default="gemini-3.5-flash-lite")
-    ap.add_argument("--image-model", default="gemini-nano-banana-2.1",
-                    help="a Gemini image model, or 'svg' to have the text model draw an SVG (works on the free tier)")
+    ap.add_argument("--image-model", default="svg",
+                    help="'svg' (default: the text model draws an SVG, works on the free tier) or a Gemini image "
+                         "model such as gemini-nano-banana-2.1 (needs API billing)")
     ap.add_argument("--goal", default="東京の夜景の画像を作って、それを埋め込んだWebページを作って")
     ap.add_argument("--sleep", type=float, default=4.0, help="seconds between calls (free-tier rate limits)")
     a = ap.parse_args(argv)

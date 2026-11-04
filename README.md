@@ -226,8 +226,9 @@ stub functions for real APIs, or use `LLMAgent` for a model-backed specialist an
 specialist calls a Gemini image model and returns the PNG as an artifact, and the code
 specialist *is* Gemini speaking dense AICL, answering the task with `K` and `Z` messages
 that the bus validates before accepting. Output lands in `out/` (transcript, image, page).
-On the free tier Gemini's image models are not available; `--image-model svg` makes the
-text model draw the image as SVG instead. Live runs with `gemini-3.5-flash-lite` as planner
+On the free tier Gemini's image models are not available (a consumer Gemini subscription
+does not change API quotas), so by default the text model draws the image as SVG;
+`--image-model gemini-nano-banana-2.1` uses a real image model once API billing is on. Live runs with `gemini-3.5-flash-lite` as planner
 and code agent: the plan, two dependent tasks and both artifacts reach the requester in
 12 messages with 0 protocol errors. Getting there taught three things, all now in the code:
 the harness, not the model, owns message ids (it tells the model its next id and reply
