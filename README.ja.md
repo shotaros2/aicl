@@ -230,8 +230,8 @@ tests/                  unittest（適合性テストを兼ねる）
 
 ## 公開場所
 
-- ソースコードと仕様: https://github.com/vzdvnj8j6k-bot/aicl
-- 問題報告と仕様への提案（`RFC:` プレフィックス）: https://github.com/vzdvnj8j6k-bot/aicl/issues
+- ソースコードと仕様: https://github.com/shotaros2/aicl
+- 問題報告と仕様への提案（`RFC:` プレフィックス）: https://github.com/shotaros2/aicl/issues
 - push のたびに GitHub Actions が Windows / Ubuntu × Python 3.11–3.13 でテストを走らせます。
 - PyPI への公開は `pip install build twine && python -m build && twine upload dist/*`（パッケージ名 `aicl-lang`）。
 
