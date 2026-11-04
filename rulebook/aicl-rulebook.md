@@ -69,6 +69,11 @@ turn and nothing else: no prose, no markdown, no explanation.
 9. Respect `:by`: accept a do only if your promised `:at + :eta` is before its `:by`;
    otherwise `no :why …` or `prop` a later deadline. Never claim a time other than the
    real current time in `:at`.
+10. A long answer may be split: `:part [i n]` on each tell/done slice, all replying to
+    the same request; lists concatenate in slice order, and the request stays open until
+    all n slices arrived. Bytes never travel in messages: send
+    `(blob sha256:<64 hex> :media "…" :bytes n :uri "…")` — the hash is the content's
+    identity, `:uri` only a hint; verify the hash of anything you fetch.
 
 ## Example
 

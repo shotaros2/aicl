@@ -77,6 +77,12 @@ harness-injected clock ([examples/10](examples/10_deadline_negotiation.aicl)) �
   *inside* a body, and every encoder crashed. A form is a message only where a message
   belongs: at the top level, with `#id` and route.
 
+Large payloads stay out of band ([examples/15](examples/15_blob_and_part.aicl)): a long
+answer is sliced with `:part [i n]` and the request stays open until every slice arrived
+(a live delivery was once truncated by a chat app's output limit), and bytes travel as
+`(blob sha256:… :uri …)` — the hash is the identity, the URI only a hint (a live image
+once arrived as a signed URL that expires).
+
 Identity is message arithmetic too ([examples/14](examples/14_signed_identity.aicl),
 SPEC §3.1): a message may carry `:sig (ed25519 …)` over its frozen canonical form, the
 agent → public-key binding is a keys file, and `aicl check --keys` flags a forged,

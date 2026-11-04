@@ -218,6 +218,26 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - A `def` sent to one agent binds only that pair; a `def` sent to `*` binds every agent in
   the conversation. A third party using a pair-scoped term gets `clar`.
 
+### 4.5 Long answers: `:part`
+
+A transport has a message-size limit the language does not see (observed: a five-compound
+`tell` was truncated mid-`:src` by a chat app's output limit, `examples/13`'s run). A
+`tell` or `done` MAY therefore be split:
+
+```
+(tell #b.1 @b>@a ^a.1 {$c [(compound g1 …) (compound g2 …)]} :part [1 2])
+(tell #b.2 @b>@a ^a.1 {$c [(compound g3 …)]}                 :part [2 2])
+```
+
+- `:part [i n]` marks the i-th of n slices of one answer, all replying to the same
+  request. Lists — a body list, or a list bound to a `$var` — concatenate in slice
+  order; everything else must be identical across slices.
+- The request stays open until all n slices have arrived: the answer MUST NOT be acted
+  on incomplete. A validator flags a malformed `:part` (`part-shape`), conflicting
+  slices — a different n, a repeated i (`part-mismatch`) — and, at the end of a
+  conversation, slices that never arrived (`part-missing`).
+- For a result too large even in slices, hand over a `blob` (§5.2) instead.
+
 ---
 
 ## 5. Core Logical Vocabulary
@@ -239,12 +259,34 @@ These heads are reserved and have fixed semantics in every AICL conversation.
 | `(ref #id)` | Explicit reference to the content of an earlier message |
 | `(tokenizer name)`, `(codebook id)`, `(codebook id digest)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash. `(codebook aicl.sched.1 $digest)` asks whether the counterpart holds the **standard codebook** of that name (§8.2); the answer binds `$digest` to its content hash, or is `(none)` |
 | `(status (ref #id) $s)` | Query the state of an open request; `$s` ∈ `pending done failed unknown` |
+| `(blob sha256:<64 hex> [:media "…"] [:bytes n] [:uri "…"])` | A binary attachment named by its content hash (§5.2) |
 
 ### 5.1 Time intervals
 
 Intervals written with `:from`/`:to` are half-open: `:from` is included, `:to` is not, so
 `(busy @b :from 00:00 :to 06:00)` leaves 06:00 free. `:after`/`:before` are strict. A schema
 that needs inclusive bounds says so explicitly (`:until`, or `(>= …)` in a condition).
+
+### 5.2 Binary attachments: `blob`
+
+Bytes do not travel in messages; their **name** does. A blob is identified by the SHA-256
+of its content:
+
+```
+(done #b.3 @b>@a ^a.2 (coop:artifact a1 :type image :data
+      (blob sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+            :media "image/png" :bytes 48213 :uri "https://cdn.example/x.png?sig=…")))
+```
+
+- **The hash is the identity.** `:uri` is only a hint about where a copy can currently
+  be fetched; it may expire or lie (observed: a delivery arrived as a signed URL that
+  expires, `examples/09`). A receiver MUST verify the hash of whatever it fetched
+  before treating it as the attachment; two blobs with the same hash are the same
+  bytes, wherever they came from.
+- `:media` is the MIME type, `:bytes` the size — hints for deciding whether to fetch.
+- A validator checks the shape (`blob-shape`: exactly one `sha256:<64 hex>` argument,
+  a non-negative `:bytes`); fetching and hashing are the transport's job
+  (`aicl blob FILE` makes the form for a local file and `--expect` verifies one).
 
 Any other head is a **domain term** and must be resolvable (§6).
 
@@ -515,11 +557,16 @@ Typed signatures for `def` are §6.1: `(name type)` parameters, `(qty UNIT)` and
 names and sort names staying legal and unchecked.
 
 Signatures and identity are §3.1: `:sig (ed25519 …)` over the frozen canonical form,
-keys bound out of band, checked by `aicl check --keys`.
+keys bound out of band, checked by `aicl check --keys`. Long answers are §4.5
+(`:part [i n]`, from the live truncation behind `examples/13`) and binary attachments
+are §5.2 (`blob`, from the expiring signed URL in `examples/09`).
 
-Still open:
+With that, every question this section opened with has been closed, each by a live
+observation. The ones the answers opened:
 
-- Streaming / partial `tell` for long results.
-- Binary attachments by content hash.
+- Key rotation and revocation for §3.1 (the keys file is a static trust anchor).
+- Standard codebooks for more domains (§8.2), as real exchanges ground their vocabulary.
+- Merging rules for `:part` slices beyond list concatenation (maps, single values).
+- A registry so that standard codebooks and keys can be fetched by id, not shipped.
 
 Feedback: open an issue in the repository.

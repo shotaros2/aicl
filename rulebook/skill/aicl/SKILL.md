@@ -91,6 +91,11 @@ nothing else: no prose, no markdown, no explanation.
 9. Respect `:b`: accept a D only if your promised `:a + :t` is before its `:b`;
    otherwise N with `:w`, or P a later deadline. Never claim a time other than the
    real current time in `:a`.
+10. A long answer may be split: `:part [i n]` on each T/Z slice, all replying to the
+    same request; lists concatenate in slice order, and the request stays open until
+    all n slices arrived. Bytes never travel in messages: send
+    `(blob sha256:<64 hex> :media "…" :bytes n :uri "…")` — the hash is the content's
+    identity, `:uri` only a hint; verify the hash of anything you fetch.
 
 ## Example
 

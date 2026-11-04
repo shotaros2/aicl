@@ -22,6 +22,7 @@ KNOWN = {
     "12_typed_def.aicl": [],
     "13_dola_research_task.aicl": [],
     "14_signed_identity.aicl": ["temp"],
+    "15_blob_and_part.aicl": ["top-terms", "term"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
@@ -214,6 +215,40 @@ class ConversationTests(unittest.TestCase):
             '(def #a.1 @a>@b foo :gloss (nl en "x") :args [(x number extra)])'))))
         self.assertIn("def-sig", codes(validate_message(aicl.parse_one(
             '(def #a.1 @a>@b foo :gloss (nl en "x") :ret [number])'))))
+
+    def test_part_slices(self):
+        base = ("(ask #a.1 @a>@b (x $v)) "
+                "(tell #b.1 @b>@a ^a.1 {$v [1 2]} :part [1 2]) ")
+        # incomplete: the ask stays open and the missing slice is named
+        half = codes(self.conv(base, ["x"]))
+        self.assertIn("open-ask", half)
+        self.assertIn("part-missing", half)
+        # complete: clean
+        full = base + "(tell #b.2 @b>@a ^a.1 {$v [3]} :part [2 2])"
+        self.assertEqual(codes(self.conv(full, ["x"])), [])
+        # conflicting n, repeated i
+        clash = base + "(tell #b.2 @b>@a ^a.1 {$v [3]} :part [1 3])"
+        self.assertIn("part-mismatch", codes(self.conv(clash, ["x"])))
+
+    def test_part_shape_and_done_slices(self):
+        self.assertIn("part-shape", codes(validate_message(aicl.parse_one(
+            "(tell #b.1 @b>@a ^a.1 (x) :part [3 2])"))))
+        self.assertIn("part-shape", codes(validate_message(aicl.parse_one(
+            "(ask #a.1 @a>@b (x $v) :part [1 2])"))))
+        src = ("(do #a.1 @a>@b (x)) (ok #b.1 @b>@a ^a.1) "
+               "(done #b.2 @b>@a ^a.1 (x 1) :part [1 2])")
+        self.assertIn("part-missing", codes(self.conv(src, ["x"])))
+        done = src + " (done #b.3 @b>@a ^a.1 (x 2) :part [2 2])"
+        self.assertEqual(codes(self.conv(done, ["x"])), [])
+
+    def test_blob_shape(self):
+        ok = "(tell #b.1 @b>@a ^a.1 (blob sha256:" + "0" * 64 + " :media \"image/png\" :bytes 10))"
+        self.assertEqual(codes(validate_message(aicl.parse_one(ok))), [])
+        for bad in ["(blob sha999:" + "0" * 64 + ")", "(blob sha256:abc)", "(blob)",
+                    "(blob sha256:" + "0" * 64 + " :bytes -1)"]:
+            with self.subTest(bad=bad):
+                self.assertIn("blob-shape", codes(validate_message(aicl.parse_one(
+                    f"(tell #b.1 @b>@a ^a.1 {bad})"))))
 
     def test_status_unclosed(self):
         # Observed live: status answered {$s done}, but the real done never came.

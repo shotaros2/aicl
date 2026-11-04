@@ -179,6 +179,13 @@ def validate_message(form: Form) -> List[Issue]:
         heads = {b.head for b in m.body if isinstance(b, Form)}
         if not heads & {"amb", "unk", "parse"}:
             issues.append(_err("clar-body", "'clar' body must be (amb …), (unk …) or (parse …)", mid))
+    if "part" in m.kw:
+        p = m.kw["part"]
+        if not (m.act in ("tell", "done") and isinstance(p, KList) and len(p.items) == 2
+                and all(isinstance(x, int) and not isinstance(x, bool) for x in p.items)
+                and 1 <= p.items[0] <= p.items[1]):
+            issues.append(_err("part-shape", "':part [i n]' needs two integers 1 <= i <= n, "
+                               "on a tell or done (SPEC §4.5)", mid))
     if m.conf is not None and not 0.0 <= m.conf <= 1.0:
         issues.append(_err("conf-range", "confidence outside [0,1]", mid))
     for t in walk(form):
@@ -192,6 +199,15 @@ def validate_message(form: Form) -> List[Issue]:
             if t.head == "status":
                 if len(t.args) < 1 or not _is_ref_form(t.args[0]):
                     issues.append(_err("status-shape", "(status …) must be (status (ref #id) $s)", mid))
+            if t.head == "blob":
+                from .blob import blob_hash
+                if blob_hash(t) is None:
+                    issues.append(_err("blob-shape", "(blob …) must carry exactly one sha256:<64 hex> "
+                                       "argument (SPEC §5.2)", mid))
+                else:
+                    nb = t.kw.get("bytes")
+                    if nb is not None and (isinstance(nb, bool) or not isinstance(nb, int) or nb < 0):
+                        issues.append(_err("blob-shape", "(blob …) :bytes must be a non-negative integer", mid))
             if t.head in ACTS and t is not form:
                 try:
                     Message.from_form(t)
@@ -213,6 +229,16 @@ def unresolved_terms(form: Form, known: Set[str]) -> Set[str]:
 
 def _pair(a: str, b: str) -> FrozenSet[str]:
     return frozenset((a, b))
+
+
+def _part_of(m: Message):
+    """(i, n) of a well-shaped ':part [i n]', else None (shape errors are per-message)."""
+    p = m.kw.get("part")
+    if (isinstance(p, KList) and len(p.items) == 2
+            and all(isinstance(x, int) and not isinstance(x, bool) for x in p.items)
+            and 1 <= p.items[0] <= p.items[1]):
+        return p.items[0], p.items[1]
+    return None
 
 
 def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str] = (),
@@ -248,6 +274,7 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     why_targets: Dict[str, str] = {}                    # why id -> id it questions
     status_asks: Dict[str, Optional[str]] = {}          # status-ask id -> id of the request it queries
     status_claim: Dict[str, str] = {}                   # request id -> tell that claimed it done/failed
+    parts: Dict[str, tuple] = {}                        # request id -> (n, {i received}) of :part slices
 
     for m in msgs:
         issues.extend(validate_message(m.to_form()))
@@ -357,7 +384,18 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     target_req = status_asks[r]
                     if target_req and any(isinstance(v, Symbol) and v.name in ("done", "failed") for v in vals):
                         status_claim[target_req] = m.id
-                del open_asks[r]
+                complete = True
+                pi = _part_of(m)
+                if pi is not None:
+                    i, n = pi
+                    got = parts.setdefault(r, (n, set()))
+                    if got[0] != n or i in got[1]:
+                        issues.append(_err("part-mismatch", f"slice {i}/{n} conflicts with the "
+                                           f"earlier slices of ^{r}", m.id))
+                    got[1].add(i)
+                    complete = len(got[1]) >= got[0]
+                if complete:
+                    del open_asks[r]
             if r in var_types:
                 for b in m.body:
                     for t_ in walk(b):
@@ -400,7 +438,18 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
             if r in pending_do:
                 if act == "done" and pending_do[r] != "accepted":
                     issues.append(_err("done-without-ok", f"'done' for ^{r} without a prior 'ok'", m.id))
-                del pending_do[r]
+                complete = True
+                pi = _part_of(m) if act == "done" else None
+                if pi is not None:
+                    i, n = pi
+                    got = parts.setdefault(r, (n, set()))
+                    if got[0] != n or i in got[1]:
+                        issues.append(_err("part-mismatch", f"slice {i}/{n} conflicts with the "
+                                           f"earlier slices of ^{r}", m.id))
+                    got[1].add(i)
+                    complete = len(got[1]) >= got[0]
+                if complete:
+                    del pending_do[r]
             elif r in open_asks:
                 if act == "fail":
                     del open_asks[r]
@@ -434,6 +483,10 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 open_asks.pop(target.id, None)
                 pending_do.pop(target.id, None)
 
+    for req, (n, got) in parts.items():
+        if req in open_asks or req in pending_do:
+            issues.append(_warn("part-missing", f"only {len(got)} of {n} :part slices arrived "
+                                f"(missing {sorted(set(range(1, n + 1)) - got)})", req))
     for req, mid in status_claim.items():
         if req in pending_do or req in open_asks:
             issues.append(_warn("status-unclosed", f"status of ^{req} was answered done/failed, but the "

@@ -117,6 +117,15 @@ def cmd_hash(a):
         print(digest(t))
 
 
+def cmd_blob(a):
+    from .blob import file_hash, make_blob
+    if a.expect:
+        got = file_hash(a.file)
+        print(f"{'ok' if got == a.expect else 'MISMATCH'}: {got}")
+        sys.exit(0 if got == a.expect else 1)
+    print(to_text(make_blob(a.file, uri=a.uri, media=a.media)))
+
+
 def cmd_keygen(a):
     from .signing import generate_key
     priv, pub = generate_key()
@@ -215,6 +224,7 @@ def main(argv=None):
     s = sub.add_parser("unpack", help="map codebook forms back to concept ids (canonical text)"); s.add_argument("file"); s.add_argument("--codebook", required=True, metavar="JSON"); s.set_defaults(fn=cmd_unpack)
     s = sub.add_parser("codebook", help="validate a codebook and show the chosen forms"); s.add_argument("codebook", metavar="JSON"); s.add_argument("--tokenizer"); s.set_defaults(fn=cmd_codebook)
     s = sub.add_parser("keygen", help="generate an Ed25519 keypair for an agent (SPEC §3.1)"); s.add_argument("agent"); s.set_defaults(fn=cmd_keygen)
+    s = sub.add_parser("blob", help="print the (blob sha256:… …) form naming a file's content, or verify one (SPEC §5.2)"); s.add_argument("file"); s.add_argument("--uri", help="where a copy can currently be fetched (a hint, not an identity)"); s.add_argument("--media"); s.add_argument("--expect", metavar="HASH", help="verify: compare the file against sha256:<hex>"); s.set_defaults(fn=cmd_blob)
     s = sub.add_parser("sign", help="add :sig to each message (the whole file, or one sender's)"); s.add_argument("file"); s.add_argument("--key", required=True, metavar="PRIV", help="base64url Ed25519 private key, or a file holding it"); s.add_argument("--agent", help="sign only this sender's messages"); s.add_argument("-o", "--output"); s.set_defaults(fn=cmd_sign)
 
     a = p.parse_args(argv)

@@ -1,0 +1,19 @@
+; Large payloads (SPEC §4.5, §5.2), each rule grounded by a live incident:
+;  - blob: in examples/09 Dola delivered an image as a signed URL that expires - the
+;    link is not the thing. A blob names the content by its SHA-256; :uri is only a
+;    hint about where a copy is right now, and the receiver verifies the hash after
+;    fetching (aicl blob FILE --expect sha256:...).
+;  - :part [i n]: in the live run behind examples/13, a five-compound tell was
+;    truncated mid-:src by the chat app's output limit. Slices of one answer all
+;    reply to the same ask; lists concatenate in slice order; the ask stays open -
+;    and the answer must not be acted on - until all n slices have arrived.
+; Domain terms: top-terms term
+
+(do   #a.1 @a>@b (coop:task t9 image-gen :in {prompt "Mount Fuji at dawn" width 1024px height 1024px}))
+(ok   #b.1 @b>@a ^a.1 :at 2026-11-05T09:00+09:00 :eta PT30S)
+(done #b.2 @b>@a ^a.1 (coop:artifact a9 :type image :task t9 :data (blob sha256:6a71482da2886b31b517a1ba9faf6a77373cf62bdec6fe68bcd67b8dd97503f0 :media "image/png" :bytes 48213 :uri "https://cdn.example/a9.png?x-expires=1796369302&sig=...")))
+
+(ask  #a.2 @a>@b (top-terms log-2026-11-03 $t))
+(tell #b.3 @b>@a ^a.2 {$t [(term error :n 812) (term timeout :n 230)]} :part [1 2] :src (logstore :uri "logs://srv1/2026-11-03" :lines 184220))
+(tell #b.4 @b>@a ^a.2 {$t [(term retry :n 199)]} :part [2 2] :src (logstore :uri "logs://srv1/2026-11-03" :lines 184220))
+(end  #a.3 @a>@b)

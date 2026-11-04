@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+Large payloads — the last two §13 questions, each grounded by a live incident:
+
+- SPEC §4.5 `:part [i n]`: a long `tell`/`done` may be split into slices that all
+  reply to the same request; lists concatenate in slice order, and the request stays
+  open until every slice arrived. Checks: `part-shape` (error), `part-mismatch`
+  (error), `part-missing` (warning). (Observed: the five-compound delivery behind
+  `examples/13` was truncated mid-`:src` by the chat app's output limit.)
+- SPEC §5.2 `blob`: binary attachments named by content hash —
+  `(blob sha256:<64 hex> :media … :bytes … :uri …)`. The hash is the identity, `:uri`
+  only a hint; the receiver verifies what it fetched. `blob-shape` check,
+  `aicl blob FILE [--expect HASH]` CLI, `aicl/blob.py` helpers, `blob` joins the core
+  vocabulary. (Observed: `examples/09`'s image arrived as a signed URL that expires.)
+- `examples/15` shows both. Every question SPEC §13 opened with is now closed, each
+  by a live observation; §13 lists what the answers opened instead.
+
 Signatures and identity (SPEC §3.1):
 
 - New message key `:sig (ed25519 "<base64url signature>")`, signed over the frozen

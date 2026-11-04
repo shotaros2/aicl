@@ -129,7 +129,7 @@ FAIL_CODES = frozenset({
 CORE_HEADS = frozenset({
     "and", "or", "not", "if", "all", "some",
     "=", "!=", "<", "<=", ">", ">=", "in", "count",
-    "none", "nl", "amb", "unk", "ref", "tokenizer", "codebook", "status",
+    "none", "nl", "amb", "unk", "ref", "tokenizer", "codebook", "status", "blob",
 }) | ACTS
 
 HEAD_KEYS = ("conv", "at", "src", "why", "code", "eta", "if")
