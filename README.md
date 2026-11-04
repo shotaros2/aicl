@@ -145,11 +145,13 @@ after this eval passes for it. Results so far (`evals/results/`, first 10 messag
 |---|---|---|
 | readable | 90 % | one term "corrected" to a codebook form |
 | dense | **100 %** | — |
-| packed | 60 % → 80 % | English truncations (`deploy`, `roll`, `err`) left unexpanded |
-| packed-chars | 80 % → 90 % | same, plus one key code |
+| packed | 60 % → 80 % → 90 % | English truncations (`deploy`, `roll`, `err`) left unexpanded; last failure is one key code (`:u`) |
+| packed-chars | 80 % → 90 % → 90 % | same |
 
-The arrows are the effect of presenting the codebook form→concept and adding worked
-examples to the eval prompt. Two conclusions: **the dense form is safe even for a small
+The first arrow is the effect of presenting the codebook form→concept and adding worked
+examples to the eval prompt; the second is removing truncation forms from the codebook.
+With forms that look like forms, the only remaining miss is a dense key code, and the
+vocabulary errors are gone. Two conclusions: **the dense form is safe even for a small
 model**, and **codebook forms must look like forms** (CamelCase, all-caps, non-Latin):
 truncations that read as real words are the failure mode, so the example codebooks no
 longer contain any and the loader warns about them. Results for larger models are welcome.
