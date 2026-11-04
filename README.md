@@ -302,7 +302,8 @@ The repository is self-describing for agents that read a project folder:
   tell the agent to load the system prompt and validate every message with `aicl check`.
 - `SKILL.md` makes the folder an [Agent Skill](https://github.com/anthropics/skills):
   copy it to `.claude/skills/aicl/` (or your framework's skills directory) and the
-  agent loads AICL only when it talks to another agent.
+  agent loads AICL only when it talks to another agent. For chat apps that take a skill upload (Dola, Claude web),
+  use `rulebook/aicl-skill.zip`: a code-free skill with the rulebook inline.
 
 Two agents that have both read this folder can talk to each other in AICL with no
 further setup; the validator is the referee.

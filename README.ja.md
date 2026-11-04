@@ -213,7 +213,7 @@ python examples/llm_dialogue.py
 このリポジトリは、プロジェクトフォルダを読むタイプのエージェントがそのまま理解できるようになっています。
 
 - `AGENTS.md`（Codex、Cursor など多くの汎用エージェント）と `CLAUDE.md`（Claude Code）が、システムプロンプトを読み込み、送信前に `aicl check` で検証するよう指示します。
-- `SKILL.md` によりフォルダ全体が [Agent Skill](https://github.com/anthropics/skills) になります。`.claude/skills/aicl/`（または使っているフレームワークのスキル置き場）にコピーすると、エージェントは他のエージェントと話すときだけ AICL を読み込みます。
+- `SKILL.md` によりフォルダ全体が [Agent Skill](https://github.com/anthropics/skills) になります。`.claude/skills/aicl/`（または使っているフレームワークのスキル置き場）にコピーすると、エージェントは他のエージェントと話すときだけ AICL を読み込みます。スキルをアップロードする型のチャットアプリ（Dola、Claude のウェブ版）には、コードを含まない `rulebook/aicl-skill.zip` を使ってください。
 
 このフォルダを読んだエージェント同士は、追加設定なしで AICL で会話できます。審判役はバリデータです。
 
