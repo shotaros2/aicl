@@ -14,7 +14,7 @@ from datetime import datetime
 from .lexer import _TOKEN, IDENT, normalize_instant
 from .model import (
     ACTS, Form, Instant, Keyword, KList, KMap, LexError, Message, ModelError,
-    Ref, ReplyRef, Route, Term, is_message,
+    Ref, ReplyRef, Route, Term,
 )
 from .parser import parse
 from .printer import fmt_atom, fmt_conf, _normalize
@@ -28,7 +28,7 @@ CODE_ACT = {v: k for k, v in ACT_CODE.items()}
 assert set(ACT_CODE) == ACTS
 
 KEY_CODE = {
-    "at": "a", "conv": "c", "code": "e", "gloss": "g", "if": "i", "args": "r",
+    "at": "a", "by": "b", "conv": "c", "code": "e", "gloss": "g", "if": "i", "args": "r",
     "src": "s", "eta": "t", "unit": "u", "ret": "v", "why": "w",
 }
 CODE_KEY = {v: k for k, v in KEY_CODE.items()}
@@ -79,7 +79,10 @@ def to_dense(term: Term) -> str:
     term = _normalize(term)
     if isinstance(term, Form):
         if term.head in ACT_CODE:
-            return _dense_message(term)
+            try:
+                return _dense_message(term)
+            except ModelError:
+                return _dense_form(term.head, term)   # act-headed ordinary term, e.g. nested (done …)
         return _dense_form(term.head, term)
     if isinstance(term, KList):
         return "[" + " ".join(to_dense(a) for a in term.items) + "]"

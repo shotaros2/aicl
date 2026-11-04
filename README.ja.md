@@ -47,6 +47,12 @@ AICL は小さな形式言語です。4 つの相互変換可能なエンコー�
 
 [examples/08](examples/08_retract_and_status.aicl) に全部まとめた会話例があります。
 
+その後のライブ実験 — ハーネスが時計を注入した、締切つきの Claude と Gemini の交渉（[examples/10](examples/10_deadline_negotiation.aicl)）— がさらに 3 つ加えました。
+
+- **検証できる締切**: 標準のキーがないため、依頼側は実行のたびに `:by`、`:if (< now …)`、`:deadline` を場当たりで発明した。`do` には `:by`（これを過ぎたら結果は無価値）を付けられるようになり、`:eta` を約束する `ok` は `:at` で固定する。約束が締切を超える矛盾（`eta-overrun`）は時計なしの純粋なメッセージ計算で検出でき、`--now` を与えれば期限切れも検出できる。
+- **`retract` は一方的**: 実行側が取り下げに `fail "cannot retract"` と答えた。retract は受信した時点で効力を持ち、取り下げ済みメッセージへの返信は `stale-reply` として検出される。
+- **発話行為語は予約語ではない**: 依頼側が本文の中に自然に `(done (ref #a.1))` と書き、すべてのエンコーダが落ちた。形式がメッセージなのは、メッセージの場所（トップレベル、`#id` と経路つき）にあるときだけになった。
+
 ### 会話の例
 
 ```
@@ -54,7 +60,7 @@ AICL は小さな形式言語です。4 つの相互変換可能なエンコー�
 (tell #b.1 @b>@a ^a.1 {$s finished $at 2026-11-04T08:50Z} :src ci-api)
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1)
       :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)
 (done #b.4 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```

@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 
 import aicl
-from aicl import cbor_codec, json_codec
+from aicl import cbor_codec, dense, json_codec
 from aicl.model import Form, KList, KMap, ParseError, Quantity, Str, Symbol
 
 EXAMPLES = sorted((Path(__file__).resolve().parents[1] / "examples").glob("*.aicl"))
@@ -81,6 +81,23 @@ class RoundTripTests(unittest.TestCase):
             "k": {"src": "jma"}, "c": 0.9,
         })
         self.assertEqual(json_codec.to_json(Str("x")), {"s": "x"})
+
+    def test_act_named_body_term_round_trips(self):
+        # SPEC §3: act names are not reserved words. (done …) without #id/route,
+        # nested in a body, is an ordinary term in every encoding.
+        t = aicl.parse_one("(no #a.2 @a>@b ^b.1 :if (done (ref #a.1)) "
+                           ":why (deadline 2026-11-04T10:15+09:00))")
+        c = aicl.to_text(t)
+        self.assertIn("(done (ref #a.1))", c)
+        self.assertEqual(aicl.to_text(aicl.parse_one(c)), c)
+        self.assertEqual(aicl.to_text(json_codec.loads(json_codec.dumps(t))), c)
+        self.assertEqual(aicl.to_text(cbor_codec.from_cbor(cbor_codec.to_cbor(t))), c)
+        self.assertEqual(aicl.to_text(dense.from_dense(dense.to_dense(t))[0]), c)
+
+    def test_nested_well_formed_message_is_still_normalized(self):
+        src = "(tell #a.1 @a>@b (tell @c>@d (x) #c.9))"
+        self.assertEqual(aicl.to_text(aicl.parse_one(src)),
+                         "(tell #a.1 @a>@b (tell #c.9 @c>@d (x)))")
 
     def test_cbor_primitives(self):
         for obj in [0, 23, 24, 255, 256, 65536, -1, -500, 1.5, 0.1, 1e300, "é", [], {}, {"b": 1, "a": [None, True]}]:

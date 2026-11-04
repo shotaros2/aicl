@@ -1,12 +1,15 @@
 """Structural validation of messages and protocol validation of conversations."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set
 
 from .model import (
     ACTS, BODY_REQUIRED, CORE_HEADS, FAIL_CODES, REASON_REQUIRED, REPLY_REQUIRED, SELF_REPLY,
-    STATUS_VALUES, Form, KList, KMap, Message, ModelError, Ref, Str, Symbol, Var, walk,
+    STATUS_VALUES, Duration, Form, Instant, KList, KMap, Message, ModelError, Ref, Str, Symbol,
+    Var, walk,
 )
 from .printer import to_text
 
@@ -35,6 +38,38 @@ def _is_ref_form(t) -> bool:
     return isinstance(t, Form) and t.head == "ref" and len(t.args) == 1 and isinstance(t.args[0], Ref)
 
 
+_DURATION = re.compile(r"^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$")
+
+
+def _as_datetime(t) -> Optional[datetime]:
+    """An Instant term as an aware datetime, or None."""
+    if isinstance(t, Instant):
+        try:
+            d = datetime.fromisoformat(t.text.replace("Z", "+00:00"))
+            return d if d.tzinfo is not None else None
+        except ValueError:
+            return None
+    return None
+
+
+def _as_timedelta(t) -> Optional[timedelta]:
+    """A Duration term as a timedelta, or None."""
+    if isinstance(t, Duration):
+        m = _DURATION.match(t.text)
+        if m and any(m.groups()):
+            w, d, h, mi, s = (float(g) if g else 0.0 for g in m.groups())
+            return timedelta(weeks=w, days=d, hours=h, minutes=mi, seconds=s)
+    return None
+
+
+def parse_now(text: str) -> datetime:
+    """Parse a --now instant; raises ValueError if it is not an aware ISO instant."""
+    d = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    if d.tzinfo is None:
+        raise ValueError(f"'{text}' has no UTC offset")
+    return d
+
+
 def validate_message(form: Form) -> List[Issue]:
     """Check one message in isolation (SPEC §3, §4)."""
     issues: List[Issue] = []
@@ -49,6 +84,9 @@ def validate_message(form: Form) -> List[Issue]:
         issues.append(_err("body-required", f"'{m.act}' needs a body", mid))
     if m.act in REASON_REQUIRED and "why" not in m.kw:
         issues.append(_err("why-required", f"'{m.act}' must give :why", mid))
+    if m.act == "ok" and "eta" in m.kw and "at" not in m.kw:
+        issues.append(_warn("eta-unanchored", "an ':eta' promise without ':at' cannot be checked "
+                            "for overrun or expiry (SPEC §4.2)", mid))
     if m.act == "fail":
         code = m.kw.get("code")
         if not isinstance(code, Symbol):
@@ -84,7 +122,12 @@ def validate_message(form: Form) -> List[Issue]:
                 if len(t.args) < 1 or not _is_ref_form(t.args[0]):
                     issues.append(_err("status-shape", "(status …) must be (status (ref #id) $s)", mid))
             if t.head in ACTS and t is not form:
-                issues.append(_err("nested-act", f"speech act '{t.head}' nested inside a message", mid))
+                try:
+                    Message.from_form(t)
+                except ModelError:
+                    pass    # act-named ordinary term, e.g. (done (ref #a.1)) — fine (SPEC §3)
+                else:
+                    issues.append(_err("nested-act", f"message '{t.head}' nested inside a message", mid))
     return issues
 
 
@@ -101,8 +144,14 @@ def _pair(a: str, b: str) -> FrozenSet[str]:
     return frozenset((a, b))
 
 
-def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str] = ()) -> List[Issue]:
-    """Check protocol rules across a whole exchange (SPEC §4.4, §6)."""
+def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str] = (),
+                          now: Optional[datetime] = None) -> List[Issue]:
+    """Check protocol rules across a whole exchange (SPEC §4.4, §6).
+
+    With `now` (an aware datetime, see `parse_now`), deadlines become checkable:
+    an open `do` whose `:by` has passed, or whose promised `:at` + `:eta` has
+    elapsed, is flagged.
+    """
     msgs = list(messages)
     issues: List[Issue] = []
     shared: Set[str] = set(known_terms)                 # pre-agreed terms and broadcast defs
@@ -111,6 +160,9 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     open_asks: Dict[str, Message] = {}
     pending_do: Dict[str, str] = {}                     # id -> "sent" | "accepted"
     do_eta: Dict[str, str] = {}                         # do id -> eta promised in ok
+    do_by: Dict[str, datetime] = {}                     # do id -> :by deadline
+    do_finish: Dict[str, datetime] = {}                 # do id -> promised :at + :eta
+    retracted: Dict[str, str] = {}                      # retracted id -> id of the retract
     pending_prop: Dict[str, Message] = {}
     closed_prop: Dict[str, str] = {}                    # id -> "acc" | "rej"
     pending_def: Dict[str, tuple] = {}                  # def id -> (term, pair)
@@ -135,6 +187,9 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     issues.append(_err("bad-reply", f"^{m.reply} is not a 'sub'", m.id))
             elif target.sender != m.receiver and target.receiver != "*":
                 issues.append(_err("bad-reply", f"^{m.reply} was not sent by @{m.receiver}", m.id))
+            if m.reply in retracted and m.act != "retract":
+                issues.append(_warn("stale-reply", f"^{m.reply} was retracted by #{retracted[m.reply]}; "
+                                    "a retract is unilateral and final (SPEC §4.4)", m.id))
 
         known = set(shared)
         if m.receiver != "*":
@@ -153,6 +208,9 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 status_asks.add(m.id)
         elif act == "do":
             pending_do[m.id] = "sent"
+            by = _as_datetime(m.kw.get("by"))
+            if by is not None:
+                do_by[m.id] = by
         elif act == "prop":
             pending_prop[m.id] = m
         elif act == "def" and m.body and isinstance(m.body[0], Symbol):
@@ -178,6 +236,12 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 pending_do[r] = "accepted"
                 if "eta" in m.kw:
                     do_eta[r] = to_text(m.kw["eta"])
+                    at, eta = _as_datetime(m.kw.get("at")), _as_timedelta(m.kw["eta"])
+                    if at is not None and eta is not None:
+                        do_finish[r] = at + eta
+                        if r in do_by and at + eta > do_by[r]:
+                            issues.append(_warn("eta-overrun", f"promised finish (:at + :eta) is after "
+                                                f"the :by deadline of ^{r}", m.id))
             elif r in pending_def:
                 term, pair = pending_def.pop(r)
                 pair_known.setdefault(pair, set()).add(term)
@@ -207,6 +271,7 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 closed_prop[r] = act
         elif act == "retract" and target is not None and target.sender == m.sender:
             # Reopen whatever the retracted message had closed.
+            retracted[target.id] = m.id
             t, tr = target.act, target.reply
             if t in ("acc", "rej") and tr in closed_prop:
                 del closed_prop[tr]
@@ -230,6 +295,13 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     for mid, state in pending_do.items():
         eta = f", eta {do_eta[mid]} promised" if mid in do_eta else ""
         issues.append(_warn("open-do", f"do was never closed (state: {state}{eta})", mid))
+        if now is not None:
+            if mid in do_by and now > do_by[mid]:
+                issues.append(_warn("deadline-passed", f"the :by deadline has passed and the do is "
+                                    "still open", mid))
+            elif mid in do_finish and now > do_finish[mid]:
+                issues.append(_warn("eta-expired", f"the promised :at + :eta has elapsed without "
+                                    "done or fail", mid))
     for mid in pending_prop:
         issues.append(_warn("open-prop", "proposal was never accepted or rejected", mid))
     return issues

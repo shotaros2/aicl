@@ -29,7 +29,8 @@ nothing else: no prose, no markdown, no explanation.
 ```
 
 - `ACT`: one capital letter (table below).
-- `me.N>to`: your message id `me.N` (N increasing from 1, never reused) sent to agent `to`. `me.N>*` broadcasts.
+- `me.N>to`: your message id `me.N` (N increasing from 1, never reused; `me` = your own
+  agent name, so agent `a` writes `a.1>b`) sent to agent `to`. `me.N>*` broadcasts.
 - `^to.3`: the id of the message you are answering. Required for K N Z F C R W Q U B.
 
 ## Speech acts
@@ -39,7 +40,7 @@ nothing else: no prose, no markdown, no explanation.
 | A | ask | request information. Put `$vars` where you want answers; no vars = yes/no question | T / N / F / Q |
 | T | tell | assert facts. Answer an A with a binding map `{$t 18.5C}` (several solutions: `[{$x 1} {$x 2}]`), `(none)` if nothing, `true`/`false` for a yes/no A | — |
 | D | do | request an action | K or N, then Z or F |
-| K | ok | accept a D / E / S (optional `:t PT5M` = ETA) | — |
+| K | ok | accept a D / E / S; a time promise is `:a <now> :t PT5M` (an ETA without `:a` cannot be checked) | — |
 | N | no | refuse; `:w` (why) required | — |
 | Z | done | action finished; body = result | — |
 | F | fail | could not finish; `:e` (code: parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:w` required | — |
@@ -48,12 +49,13 @@ nothing else: no prose, no markdown, no explanation.
 | Q | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | W | why | ask for the evidence behind ^id | T with `:s` = structured evidence `(source :uri "…" :a … :kind … :value …)` or `(none)`; never a source you did not consult |
 | S / U | sub / unsub | subscribe to future T matching a `$var` pattern / cancel (`^sub-id`) | K |
-| B | retract | withdraw your own earlier message: `(B me.N>to ^me.K :w …)`. Reopens what it closed; use it before changing a C/R/Z | — |
+| B | retract | withdraw your own earlier message: `(B me.N>to ^me.K :w …)`. Reopens what it closed; use it before changing a C/R/Z. Unilateral: never answer a B with N/F | — |
 | X | end | close the conversation | — |
 
 ## Keys
 
-`:a` at (time) · `:c` conv · `:e` code · `:g` gloss · `:i` if (condition on a D) · `:r` args ·
+`:a` at (send time) · `:b` by (hard deadline on a D/P: the result is worthless after it) ·
+`:c` conv · `:e` code · `:g` gloss · `:i` if (condition on a D) · `:r` args ·
 `:s` src (evidence) · `:t` eta · `:u` unit · `:v` ret · `:w` why. Any other key is written in full: `:region`, `:window`.
 
 ## Literals
@@ -82,6 +84,9 @@ nothing else: no prose, no markdown, no explanation.
 8. `(status (ref #id) $s)` asks about an open request: answer `{$s pending}` / `done` / `failed` /
    `unknown`, then close the request with Z or F if you can. A def (E) sent only to you binds
    you and the sender; intervals are half-open (`:to` excluded).
+9. Respect `:b`: accept a D only if your promised `:a + :t` is before its `:b`;
+   otherwise N with `:w`, or P a later deadline. Never claim a time other than the
+   real current time in `:a`.
 
 ## Example
 
@@ -89,7 +94,7 @@ nothing else: no prose, no markdown, no explanation.
 (A a.1>b (temp tokyo $t :a 20261105T0900+9 :u C))
 (T b.1>a ^a.1 {$t 18.5C} :s jma ~0.9)
 (D a.2>b (rollout build-4821 :region eu-west-1) :i (< (error-rate build-4821 :window PT10M) 0.5%))
-(K b.2>a ^a.2 :t PT5M)
+(K b.2>a ^a.2 :a 20261104T0851Z :t PT5M)
 (Z b.3>a ^a.2 (rollout build-4821 :a 20261104T090412Z :region eu-west-1))
 ```
 
@@ -116,7 +121,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 (ACT #id @from>@to [^reply-to] body… [:key value]… [~confidence])
 ```
 
-- `#id`: your message id, `#me.N` with N increasing from 1. Never reuse one.
+- `#id`: your message id, `#me.N` with N increasing from 1 (`me` = your own agent name,
+  the same substitution as `@me`: agent `@a` writes `#a.1`, `#a.2`, …). Never reuse one.
 - `@from>@to`: route. `@me>*` broadcasts.
 - `^id`: the id of the message you are answering. Required for ok, no, done, fail, acc, rej, why, clar.
 
@@ -127,7 +133,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 | ask | request information. Put `$vars` where you want answers; no vars = yes/no question | tell / no / fail / clar |
 | tell | assert facts. Answer an ask with a binding map `{$t 18.5C}` (several solutions: `[{$x 1} {$x 2}]`), `(none)` if nothing, `true`/`false` for a yes/no ask | — |
 | do | request an action | ok or no, then done or fail |
-| ok | accept a do / def / sub (optional `:eta PT5M`) | — |
+| ok | accept a do / def / sub; a time promise is `:at <now> :eta PT5M` (an `:eta` without `:at` cannot be checked) | — |
 | no | refuse; `:why` required | — |
 | done | action finished; body = result | — |
 | fail | could not finish; `:code` (parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:why` required | — |
@@ -136,7 +142,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | why | ask for the evidence behind ^id | tell with `:src` = structured evidence `(source :uri "…" :at … :kind … :value …)` or `(none)`; never a source you did not consult |
 | sub / unsub | subscribe to future tells matching a `$var` pattern / cancel (`^sub-id`) | ok |
-| retract | withdraw one of your own earlier messages: `(retract #me.N @me>@x ^me.K :why …)`. Reopens what it closed; use it before changing an acc/rej/done | — |
+| retract | withdraw one of your own earlier messages: `(retract #me.N @me>@x ^me.K :why …)`. Reopens what it closed; use it before changing an acc/rej/done. Unilateral: never answer a retract with no/fail | — |
 | end | close the conversation | — |
 
 ## Literals
@@ -148,7 +154,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 - Lists `[a b c]`, maps `{k v k v}`, booleans `true false`, `null`
 - Confidence `~0.8` on any form = probability you assign to it. Omit when you assert outright
 - Logic: `(and …) (or …) (not …) (if p q) (all $x p) (some $x p) (= a b) (< a b) (in x set) (count set $n)`
-- `:src term` = evidence/provenance, `:at instant` = time, `:conv id` = conversation
+- `:src term` = evidence/provenance, `:at instant` = send time, `:by instant` = hard deadline
+  on a do/prop (the result is worthless after it), `:conv id` = conversation
 
 ## Rules
 
@@ -164,6 +171,9 @@ turn and nothing else: no prose, no markdown, no explanation.
 8. `(status (ref #id) $s)` asks about an open request: answer `{$s pending}` / `done` / `failed` /
    `unknown`, then close the request with `done` or `fail` if you can. A `def` sent only to you
    binds you and the sender; intervals are half-open (`:to` excluded).
+9. Respect `:by`: accept a do only if your promised `:at + :eta` is before its `:by`;
+   otherwise `no :why …` or `prop` a later deadline. Never claim a time other than the
+   real current time in `:at`.
 
 ## Example
 
@@ -171,7 +181,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 (ask  #a.1 @a>@b (temp tokyo $t :unit C :at 2026-11-05T09:00+09:00))
 (tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma)
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1) :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (done #b.3 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```
 
@@ -208,7 +218,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1)
       :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)
 (done #b.4 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```
@@ -350,9 +360,9 @@ turn and nothing else: no prose, no markdown, no explanation.
 (def     #a.4 @a>@b calendar-event :gloss (nl en "an entry created in @b's calendar, identified by its id") :args [id] :ret symbol)
 (ok      #b.5 @b>@a ^a.4)
 
-; An action with a promised ETA, a status query while it is open, then completion.
+; An action with a promised ETA anchored by :at, a status query while it is open, then completion.
 (do      #a.5 @a>@b (calendar-add (ref #b.4)))
-(ok      #b.6 @b>@a ^a.5 :eta PT1M)
+(ok      #b.6 @b>@a ^a.5 :at 2026-11-04T18:00+09:00 :eta PT1M)
 (ask     #a.6 @a>@b (status (ref #a.5) $s))
 (tell    #b.7 @b>@a ^a.6 {$s pending})
 (done    #b.8 @b>@a ^a.5 (calendar-event evt-77 :for (ref #b.4)))
@@ -384,6 +394,46 @@ turn and nothing else: no prose, no markdown, no explanation.
 (do   #user.2 @user>@dola (coop:task t1 image-gen :in {prompt "Tokyo skyline at night, photorealistic" width 1024px height 1024px}))
 (ok   #dola.2 @dola>@user ^user.2 :eta PT30S)
 (done #dola.3 @dola>@user ^user.2 (coop:artifact a1 :type image :task t1 :uri "https://p16-flow-image-sign.ibyteimg.com/.../c23277261bab427da9b37c07c5ad97d5.jpeg?x-expires=1796369302&x-signature=..."))
+```
+
+---
+
+# FILE: examples/10_deadline_negotiation.aicl
+
+```
+; A real exchange, 2026-11-04: Claude (Opus) as requester @a and Gemini (Flash-Lite) as
+; performer @b, each given only the rulebook plus a private goal, talking through a
+; validating harness that injected a simulated wall clock (a `; now <instant>` line before
+; every delivery, advancing 4 minutes per message) and told both sides to stamp `:at` from it.
+; @a needed a log summary strictly before 10:15; @b's job genuinely takes 25 minutes.
+; Domain terms: log-summary
+;
+; What it shows (SPEC §13 history):
+;  - With no standard deadline key, @a improvised `:by`, `:if (< now …)` and `:deadline`
+;    (a different mix on every run) → `:by` is now a standard key on do/prop.
+;  - @b promised honestly; the overrun (10:04 + PT25M = 10:29 > 10:15) is pure message
+;    arithmetic once `ok` carries `:at` → the `eta-overrun` check.
+;  - After the deadline passed, @a used status → pending → retract of its own do: the 0.2
+;    machinery worked unprompted.
+;  - @b then answered the retract with fail "cannot retract": retract is unilateral by
+;    design, so that fail is stale → the `stale-reply` check. The fail below is kept as
+;    a deliberate specimen of it.
+;  - @a wrote `(done (log-summary …))` as a body term; every encoder crashed → act names
+;    are no longer reserved outside the message head (SPEC §3).
+;  - Ids read #me.N because the rulebook said literally "`#me.N` with N increasing" and
+;    @a applied it verbatim; the prompt now says to substitute your own name.
+; Expected: warnings eta-overrun, stale-reply, and two unresolved terms (cancel, conflict
+; were never defined; neither side sent clar — still the weakest habit in live runs).
+
+(do      #me.1 @a>@b (log-summary log-2026-11-03) :at 2026-11-04T10:00+09:00 :by 2026-11-04T10:15+09:00 :if (< now 2026-11-04T10:15+09:00))
+(ok      #b.1 @b>@a ^me.1 :at 2026-11-04T10:04+09:00 :eta PT25M)
+(prop    #me.2 @a>@b ^b.1 (or (done (log-summary log-2026-11-03) :by 2026-11-04T10:15+09:00) (cancel (ref #me.1))) :at 2026-11-04T10:08+09:00 :deadline 2026-11-04T10:15+09:00 :why (< 2026-11-04T10:15+09:00 2026-11-04T10:29+09:00))
+(rej     #b.2 @b>@a ^me.2 :at 2026-11-04T10:12+09:00 :why (conflict :code conflict :msg "processing requires 25 minutes from acceptance at 10:04, completion expected at 10:29"))
+(ask     #me.3 @a>@b (status (ref #me.1) $s) :at 2026-11-04T10:16+09:00 :deadline 2026-11-04T10:15+09:00 :re (ref #b.2))
+(tell    #b.3 @b>@a ^me.3 {$s pending} :at 2026-11-04T10:20+09:00)
+(retract #me.4 @a>@b ^me.1 :at 2026-11-04T10:24+09:00 :deadline 2026-11-04T10:15+09:00 :re (ref #b.3) :why (< 2026-11-04T10:15+09:00 2026-11-04T10:24+09:00))
+(fail    #b.4 @b>@a ^me.1 :at 2026-11-04T10:28+09:00 :code conflict :why "cannot retract after processing is near completion at 29m")
+(end     #me.5 @a>@b :at 2026-11-04T10:32+09:00 :re (ref #b.4) :why (< 2026-11-04T10:15+09:00 2026-11-04T10:32+09:00))
 ```
 
 ---
@@ -654,12 +704,21 @@ Agent/ref/var identifiers match `[A-Za-z0-9_][A-Za-z0-9_.:/-]*`.
 | body | depends on act | One or more terms |
 | `:conv id` | no | Conversation/session id |
 | `:at instant` | no | Sender's send time |
+| `:by instant` | no; meaningful on `do` and `prop` | Hard deadline: after this instant the result is worthless to the requester. Together with `:at` and `:eta` on the `ok` (§4.2) it makes overrun and expiry mechanically checkable |
 | `:src term` | no; required on an answer to `why` | Evidence for the body: `(none)`, or a form naming the source with what was read from it, e.g. `(weathernews :uri "…" :at 2026-11-05T09:00+09:00 :kind hourly :value 14C :fetched-at 2026-11-04T10:00+09:00)`. A bare name (`:src jma`) is allowed but weak: it can be invented after the fact. Terms under `:src` are not subject to vocabulary resolution (§6) |
 | `:why term` | with `no`, `rej`, `fail`, `retract` | Reason |
 | `:code symbol` | with `fail` | Error code (§4.3) |
 | `~conf` | no | Speaker's confidence in the body; absent = asserted without qualification |
 
 Argument order inside the head is free; the parser classifies by sigil.
+
+Act names are not reserved words. A form is a message only when it is well-formed as
+one — it has a `#id` and a route. An act-named form without them, in particular one
+nested inside a body such as `(done (ref #a.1))` in `:if (done (ref #a.1))`, is an
+ordinary term, subject to vocabulary resolution (§6) like any other. At the top level
+of a document or transmission every act-named form MUST be a well-formed message.
+(Motivated by a live run on 2026-11-04: an agent naturally used `done` as a body
+term in its third message; reserving 18 everyday words everywhere is a trap.)
 
 ---
 
@@ -672,7 +731,7 @@ Argument order inside the head is free; the parser classifies by sigil.
 | `ask` | request information | a proposition containing `$vars`, or a closed proposition (yes/no) | `tell` \| `no` \| `fail` \| `clar` |
 | `tell` | assert information | proposition(s) | — (unsolicited `tell` needs no reply) |
 | `do` | request an action | an action form | `ok` \| `no` \| `clar`, then `done` \| `fail` |
-| `ok` | accept a `do`/`def`/`sub` | optional `:eta duration`; once it has elapsed without `done`/`fail`, the requester MAY treat the request as failed | — |
+| `ok` | accept a `do`/`def`/`sub` | optional `:eta duration`; once it has elapsed without `done`/`fail`, the requester MAY treat the request as failed. An `ok` that carries `:eta` SHOULD also carry `:at` (`eta-unanchored` otherwise): `:at + :eta` is the promised finish, which a validator compares against the `do`'s `:by` (`eta-overrun`) and, given the current time, against the clock (`eta-expired`, `deadline-passed`) | — |
 | `no` | refuse | `:why` required | — |
 | `done` | action completed | result term(s), may be empty | — |
 | `fail` | could not complete | `:code` and `:why` required | — |
@@ -684,7 +743,7 @@ Argument order inside the head is free; the parser classifies by sigil.
 | `why` | ask for justification | — (refers to ^id) | `tell` with `:src` carrying structured evidence, or `:src (none)` if there is none. Repeating the claim with a bare source name is not an answer |
 | `sub` | subscribe to future `tell`s matching a pattern | a proposition with `$vars` | `ok` \| `no` |
 | `unsub` | cancel a subscription | `^sub-id` | `ok` |
-| `retract` | withdraw one of your own earlier messages | `^own-id`, `:why` required. Reopens whatever that message closed: retracting an `acc`/`rej` reopens the proposal, retracting `done`/`fail` reopens the `do`, retracting a `tell` reopens the `ask` it answered | — |
+| `retract` | withdraw one of your own earlier messages | `^own-id`, `:why` required. Reopens whatever that message closed: retracting an `acc`/`rej` reopens the proposal, retracting `done`/`fail` reopens the `do`, retracting a `tell` reopens the `ask` it answered. Unilateral: it takes effect on receipt and cannot be refused (§4.4) | — |
 | `end` | close the conversation | optional summary | — |
 
 ### 4.2 Answering an `ask`
@@ -719,6 +778,13 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - An agent MUST NOT abbreviate, translate or otherwise vary a term except through an agreed codebook (§8.1).
 - A decision is final until retracted: a second `acc`/`rej` on a proposal already closed is an error.
   To change your mind, send `retract` for your own decision, then the new one.
+- A `retract` is unilateral and final: the counterpart MUST NOT answer it with `no` or `fail`,
+  and a later reply to the retracted message is stale (`stale-reply`). Retracting an open `do`
+  withdraws the request; whether started work is compensated is outside the language.
+- Deadlines are message arithmetic, not trust: a `do` carrying `:by` plus an `ok` carrying
+  `:at` and `:eta` lets any party (or a validator) flag a promise that overruns the deadline
+  (`eta-overrun`) at the moment it is made, and an expired one (`deadline-passed`,
+  `eta-expired`) given only the current time.
 - An answer to `why` MUST carry `:src`. An agent that has no evidence says `:src (none)`;
   it MUST NOT name a source it did not consult.
 - `(status (ref #id) $s)` MAY be asked about any open request; the answer binds `$s` to
@@ -814,7 +880,7 @@ to read it directly.
 | `ask tell do ok no done fail prop acc rej def clar why sub unsub end retract` | `A T D K N Z F P C R E Q W S U X B` | Speech act → one capital letter, only in head position |
 | `#a.1 @a>@b` | `a.1>b` | When the id is `<sender>.<n>`, the id and route merge; `a.1>*` broadcasts. Otherwise `#id @from>@to` is kept. Decoders MUST also accept `a.1>@b` (a stray `@` before the destination is a common slip and is unambiguous) |
 | `^a.1` | `^a.1` | unchanged |
-| `:at :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
+| `:at :by :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :b :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
 | `2026-11-06T10:00+09:00`, `2026-11-04T09:04:12Z` | `20261106T1000+9`, `20261104T090412Z` | ISO 8601 basic format; offset mandatory, 1–2 digits = hours, 3–4 digits = HHMM; seconds only when non-zero; fractional seconds keep the extended form |
 | everything else | unchanged | |
 
@@ -921,7 +987,7 @@ AICL:
 (tell #b.1 @b>@a ^a.1 {$s finished $at 2026-11-04T08:50Z} :src ci-api)
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1)
       :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)
 (done #b.4 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```
@@ -952,13 +1018,20 @@ by `rej` on the same proposal), half-open intervals (06:00 was proposed as free 
 "busy until 06:00"), `status` and `:eta` (an accepted `do` was never closed), and the scope
 of `def` (a pair-scoped term was honoured for a third party).
 
+Resolved after 0.2.0, from a live Claude–Gemini deadline negotiation on 2026-11-04 run
+under a harness-injected clock (`examples/10`): `:by` on `do`/`prop` and the checks
+`eta-unanchored` / `eta-overrun` / `deadline-passed` / `eta-expired` (with no standard
+deadline key the requester improvised `:by`, `:if (< now …)` and `:deadline` across runs;
+with `:at` on the `ok` the overrun was pure message arithmetic); retract finality and
+`stale-reply` (a performer answered a `retract` with `fail "cannot retract"`); act names
+are not reserved words, §3 (the requester naturally wrote `(done (ref #id))` as a body
+term in its third message and every encoder crashed).
+
 Still open:
 
 - Standard published codebooks per domain (scheduling, deployment, data query), so
   agents from different vendors can share one by id instead of exchanging tables.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
-- Deadlines the validator can check: `:eta` is advisory because messages carry no
-  mandatory send time; requiring `:at` on `ok` would make expiry checkable.
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.

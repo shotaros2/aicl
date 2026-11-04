@@ -33,7 +33,8 @@ nothing else: no prose, no markdown, no explanation.
 ```
 
 - `ACT`: one capital letter (table below).
-- `me.N>to`: your message id `me.N` (N increasing from 1, never reused) sent to agent `to`. `me.N>*` broadcasts.
+- `me.N>to`: your message id `me.N` (N increasing from 1, never reused; `me` = your own
+  agent name, so agent `a` writes `a.1>b`) sent to agent `to`. `me.N>*` broadcasts.
 - `^to.3`: the id of the message you are answering. Required for K N Z F C R W Q U B.
 
 ## Speech acts
@@ -43,7 +44,7 @@ nothing else: no prose, no markdown, no explanation.
 | A | ask | request information. Put `$vars` where you want answers; no vars = yes/no question | T / N / F / Q |
 | T | tell | assert facts. Answer an A with a binding map `{$t 18.5C}` (several solutions: `[{$x 1} {$x 2}]`), `(none)` if nothing, `true`/`false` for a yes/no A | — |
 | D | do | request an action | K or N, then Z or F |
-| K | ok | accept a D / E / S (optional `:t PT5M` = ETA) | — |
+| K | ok | accept a D / E / S; a time promise is `:a <now> :t PT5M` (an ETA without `:a` cannot be checked) | — |
 | N | no | refuse; `:w` (why) required | — |
 | Z | done | action finished; body = result | — |
 | F | fail | could not finish; `:e` (code: parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:w` required | — |
@@ -52,12 +53,13 @@ nothing else: no prose, no markdown, no explanation.
 | Q | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | W | why | ask for the evidence behind ^id | T with `:s` = structured evidence `(source :uri "…" :a … :kind … :value …)` or `(none)`; never a source you did not consult |
 | S / U | sub / unsub | subscribe to future T matching a `$var` pattern / cancel (`^sub-id`) | K |
-| B | retract | withdraw your own earlier message: `(B me.N>to ^me.K :w …)`. Reopens what it closed; use it before changing a C/R/Z | — |
+| B | retract | withdraw your own earlier message: `(B me.N>to ^me.K :w …)`. Reopens what it closed; use it before changing a C/R/Z. Unilateral: never answer a B with N/F | — |
 | X | end | close the conversation | — |
 
 ## Keys
 
-`:a` at (time) · `:c` conv · `:e` code · `:g` gloss · `:i` if (condition on a D) · `:r` args ·
+`:a` at (send time) · `:b` by (hard deadline on a D/P: the result is worthless after it) ·
+`:c` conv · `:e` code · `:g` gloss · `:i` if (condition on a D) · `:r` args ·
 `:s` src (evidence) · `:t` eta · `:u` unit · `:v` ret · `:w` why. Any other key is written in full: `:region`, `:window`.
 
 ## Literals
@@ -86,6 +88,9 @@ nothing else: no prose, no markdown, no explanation.
 8. `(status (ref #id) $s)` asks about an open request: answer `{$s pending}` / `done` / `failed` /
    `unknown`, then close the request with Z or F if you can. A def (E) sent only to you binds
    you and the sender; intervals are half-open (`:to` excluded).
+9. Respect `:b`: accept a D only if your promised `:a + :t` is before its `:b`;
+   otherwise N with `:w`, or P a later deadline. Never claim a time other than the
+   real current time in `:a`.
 
 ## Example
 
@@ -93,6 +98,6 @@ nothing else: no prose, no markdown, no explanation.
 (A a.1>b (temp tokyo $t :a 20261105T0900+9 :u C))
 (T b.1>a ^a.1 {$t 18.5C} :s jma ~0.9)
 (D a.2>b (rollout build-4821 :region eu-west-1) :i (< (error-rate build-4821 :window PT10M) 0.5%))
-(K b.2>a ^a.2 :t PT5M)
+(K b.2>a ^a.2 :a 20261104T0851Z :t PT5M)
 (Z b.3>a ^a.2 (rollout build-4821 :a 20261104T090412Z :region eu-west-1))
 ```

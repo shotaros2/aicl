@@ -6,15 +6,14 @@ import json
 from .lexer import classify_atom, ConfTok
 from .model import (
     Agent, Date, Duration, Form, Instant, Keyword, KList, KMap, ModelError,
-    Quantity, Ref, ReplyRef, Route, Str, Symbol, Term, Var, is_message, Message,
+    Quantity, Ref, ReplyRef, Route, Str, Symbol, Term, Var,
 )
-from .printer import fmt_atom
+from .printer import fmt_atom, _normalize
 
 
 def to_json(term: Term):
     """Convert a term to a JSON-compatible Python object."""
-    if is_message(term):
-        term = Message.from_form(term).to_form()
+    term = _normalize(term)
     if isinstance(term, Form):
         obj = {"f": term.head, "a": [to_json(a) for a in term.args]}
         if term.kw:

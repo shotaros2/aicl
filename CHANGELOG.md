@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+Checkable deadlines and retract finality, each from a live Claude–Gemini deadline
+negotiation on 2026-11-04 run under a harness-injected clock (`examples/10`):
+
+- SPEC §3: act names are not reserved words. A form is a message only when it is
+  well-formed as one (`#id` + route); an act-named form nested in a body, such as
+  `:if (done (ref #a.1))`, is an ordinary term. Previously the text, dense, JSON
+  and CBOR encoders all crashed on such a term. Canonical forms of previously
+  encodable documents are unchanged. (Observed: in a live deadline negotiation,
+  Claude used `done` as a body term in its third message.)
+- New standard key `:by instant` on `do`/`prop` (dense `:b`): hard deadline after
+  which the result is worthless. (Observed: with no standard key, the requester
+  improvised `:by`, `:if (< now …)` and `:deadline` across runs.)
+- An `ok` carrying `:eta` SHOULD carry `:at`; new checks `eta-unanchored` (warning,
+  `:eta` without `:at`) and `eta-overrun` (warning, `:at + :eta` past the `do`'s
+  `:by` — pure message arithmetic, no clock needed). `aicl check --now <instant>`
+  additionally flags `deadline-passed` and `eta-expired` on still-open requests.
+  This closes the §13 question "deadlines the validator can check".
+- SPEC §4.4: `retract` is unilateral and final; answering a retracted message is
+  the new warning `stale-reply`. (Observed: a performer answered a `retract` of
+  an accepted `do` with `fail "cannot retract"`.)
+- `nested-act` now fires only for a well-formed message nested inside a message,
+  not for act-named ordinary terms.
+- Prompts: ids are `#me.N` *with your own name substituted for `me`* (observed:
+  an agent emitted literal `#me.1` ids); promise `:at <now> :eta …`; respect `:by`.
+
 - `rulebook/aicl-skill.zip` (and `rulebook/skill/aicl/`): an Agent Skill for chat
   apps that install skills (Dola, Claude): `SKILL.md` with YAML name/description
   and the dense rulebook inline, plus the readable rulebook, cooperation schema

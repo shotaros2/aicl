@@ -52,7 +52,7 @@ class StatusAndEtaTests(unittest.TestCase):
         self.assertIn("status-value", codes(conv(bad)))
 
     def test_open_do_reports_promised_eta(self):
-        issues = conv("(do #a.1 @a>@b (calendar-add)) (ok #b.1 @b>@a ^a.1 :eta PT5M)")
+        issues = conv("(do #a.1 @a>@b (calendar-add)) (ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:00+09:00 :eta PT5M)")
         self.assertEqual([i.code for i in issues], ["open-do"])
         self.assertIn("eta PT5M promised", issues[0].message)
 

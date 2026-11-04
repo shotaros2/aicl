@@ -60,7 +60,8 @@ class WeatherService(Agent):
             self.known.add(m.body[0].name)
             return self.send("ok", m.sender, reply=m.id)
         if m.act == "do":
-            self.send("ok", m.sender, reply=m.id, kw={"eta": aicl.Duration("PT1S")})
+            self.send("ok", m.sender, reply=m.id,
+                      kw={"at": aicl.Instant("2026-11-04T09:00+09:00"), "eta": aicl.Duration("PT1S")})
             return self.send("done", m.sender, form("cache-cleared", kw={"entries": 3}), reply=m.id)
         if m.act == "end":
             return None

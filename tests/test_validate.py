@@ -17,12 +17,16 @@ KNOWN = {
     "07_cross_vendor_negotiation.aicl": ["busy", "meeting", "calendar-add", "status"],
     "08_retract_and_status.aicl": ["meeting", "busy", "calendar-add", "temp"],
     "09_dola_image_specialist.aicl": [],
+    "10_deadline_negotiation.aicl": ["log-summary"],
 }
 
-# Warnings an example produces on purpose (terms used before they are resolvable, caught by clar).
+# Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
+# 09 is a verbatim record from before :at-anchored etas; 10 documents its own warnings in its header).
 EXPECTED_WARNINGS = {
     "04_def_and_clar.aicl": ["unresolved-term", "unresolved-term"],
     "07_cross_vendor_negotiation.aicl": ["open-do"],
+    "09_dola_image_specialist.aicl": ["eta-unanchored"],
+    "10_deadline_negotiation.aicl": ["eta-overrun", "stale-reply", "unresolved-term", "unresolved-term"],
 }
 
 
@@ -113,6 +117,41 @@ class ConversationTests(unittest.TestCase):
 
     def test_namespaced_terms_resolve(self):
         self.assertEqual(codes(self.conv("(tell #a.1 @a>@b (schema:Person :name \"x\"))")), [])
+
+    def test_eta_unanchored(self):
+        self.assertIn("eta-unanchored", codes(self.conv("(do #a.1 @a>@b (x)) (ok #b.1 @b>@a ^a.1 :eta PT5M) "
+                                                        "(done #b.2 @b>@a ^a.1 (x))", ["x"])))
+
+    def test_eta_overrun_is_message_arithmetic(self):
+        # Observed live: do :by 10:15, ok :at 10:04 :eta PT25M — the conflict is checkable with no clock.
+        src = ("(do #a.1 @a>@b (x) :by 2026-11-04T10:15+09:00) "
+               "(ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:04+09:00 :eta PT25M) "
+               "(done #b.2 @b>@a ^a.1 (x))")
+        self.assertIn("eta-overrun", codes(self.conv(src, ["x"])))
+        fits = ("(do #a.1 @a>@b (x) :by 2026-11-04T10:15+09:00) "
+                "(ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:04+09:00 :eta PT5M) "
+                "(done #b.2 @b>@a ^a.1 (x))")
+        self.assertNotIn("eta-overrun", codes(self.conv(fits, ["x"])))
+
+    def test_stale_reply_after_retract(self):
+        # Observed live: a performer answered a retract with fail "cannot retract".
+        src = ("(do #a.1 @a>@b (x)) (ok #b.1 @b>@a ^a.1) "
+               "(retract #a.2 @a>@b ^a.1 :why (y)) "
+               "(fail #b.2 @b>@a ^a.1 :code conflict :why (y))")
+        self.assertIn("stale-reply", codes(self.conv(src, ["x", "y"])))
+
+    def test_deadlines_with_now(self):
+        from aicl.validate import parse_now, validate_conversation
+        msgs = aicl.parse_messages("(do #a.1 @a>@b (x) :by 2026-11-04T10:15+09:00) "
+                                   "(ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:04+09:00 :eta PT5M)")
+        before = validate_conversation(msgs, ["x"], now=parse_now("2026-11-04T10:00+09:00"))
+        self.assertNotIn("deadline-passed", codes(before))
+        after = validate_conversation(msgs, ["x"], now=parse_now("2026-11-04T10:16+09:00"))
+        self.assertIn("deadline-passed", codes(after))
+        # :at + :eta elapsed on a do without :by
+        msgs = aicl.parse_messages("(do #a.1 @a>@b (x)) "
+                                   "(ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:04+09:00 :eta PT5M)")
+        self.assertIn("eta-expired", codes(validate_conversation(msgs, ["x"], now=parse_now("2026-11-04T10:30+09:00"))))
 
     def test_nl_ratio(self):
         msgs = aicl.parse_messages('(tell #a.1 @a>@b (nl en "hello"))')

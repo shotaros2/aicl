@@ -70,9 +70,17 @@ def fmt_atom(t: Term) -> str:
 
 
 def _normalize(term: Term) -> Term:
-    """Return a copy with message heads reordered (act #id route ^reply body…)."""
+    """Return a copy with message heads reordered (act #id route ^reply body…).
+
+    A form with an act head is a message only when it is well-formed as one
+    (SPEC §3): an act-headed form without #id and route — e.g. (done …) nested
+    inside a body — is an ordinary term and is left untouched.
+    """
     if is_message(term):
-        return Message.from_form(term).to_form()
+        try:
+            return Message.from_form(term).to_form()
+        except ModelError:
+            return term
     return term
 
 

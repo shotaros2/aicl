@@ -18,9 +18,9 @@
 (def     #a.4 @a>@b calendar-event :gloss (nl en "an entry created in @b's calendar, identified by its id") :args [id] :ret symbol)
 (ok      #b.5 @b>@a ^a.4)
 
-; An action with a promised ETA, a status query while it is open, then completion.
+; An action with a promised ETA anchored by :at, a status query while it is open, then completion.
 (do      #a.5 @a>@b (calendar-add (ref #b.4)))
-(ok      #b.6 @b>@a ^a.5 :eta PT1M)
+(ok      #b.6 @b>@a ^a.5 :at 2026-11-04T18:00+09:00 :eta PT1M)
 (ask     #a.6 @a>@b (status (ref #a.5) $s))
 (tell    #b.7 @b>@a ^a.6 {$s pending})
 (done    #b.8 @b>@a ^a.5 (calendar-event evt-77 :for (ref #b.4)))

@@ -62,6 +62,21 @@ Gemini agent given only the rulebook, or a Claude–Gemini negotiation relayed b
 
 [examples/08](examples/08_retract_and_status.aicl) shows all of them in one conversation.
 
+A later live run — Claude and Gemini negotiating under a hard deadline with a
+harness-injected clock ([examples/10](examples/10_deadline_negotiation.aicl)) — added three more:
+
+- **Checkable deadlines**: with no standard key, the requester improvised `:by`,
+  `:if (< now …)` and `:deadline` on successive runs. A `do` may now carry `:by` (hard
+  deadline), an `ok` that promises `:eta` should anchor it with `:at`, and the validator
+  flags a promise that overruns the deadline (`eta-overrun`) with no clock at all, plus
+  expired requests given `--now`.
+- **`retract` is unilateral**: the performer answered a retraction with
+  `fail "cannot retract"`. A retract takes effect on receipt; replying to a retracted
+  message is flagged (`stale-reply`).
+- **Act names are not reserved words**: the requester naturally wrote `(done (ref #a.1))`
+  *inside* a body, and every encoder crashed. A form is a message only where a message
+  belongs: at the top level, with `#id` and route.
+
 ### A complete exchange
 
 ```
@@ -69,7 +84,7 @@ Gemini agent given only the rulebook, or a Claude–Gemini negotiation relayed b
 (tell #b.1 @b>@a ^a.1 {$s finished $at 2026-11-04T08:50Z} :src ci-api)
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1)
       :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)
 (done #b.4 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```

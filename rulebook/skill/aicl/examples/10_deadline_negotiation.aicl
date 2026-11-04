@@ -1,0 +1,33 @@
+; A real exchange, 2026-11-04: Claude (Opus) as requester @a and Gemini (Flash-Lite) as
+; performer @b, each given only the rulebook plus a private goal, talking through a
+; validating harness that injected a simulated wall clock (a `; now <instant>` line before
+; every delivery, advancing 4 minutes per message) and told both sides to stamp `:at` from it.
+; @a needed a log summary strictly before 10:15; @b's job genuinely takes 25 minutes.
+; Domain terms: log-summary
+;
+; What it shows (SPEC §13 history):
+;  - With no standard deadline key, @a improvised `:by`, `:if (< now …)` and `:deadline`
+;    (a different mix on every run) → `:by` is now a standard key on do/prop.
+;  - @b promised honestly; the overrun (10:04 + PT25M = 10:29 > 10:15) is pure message
+;    arithmetic once `ok` carries `:at` → the `eta-overrun` check.
+;  - After the deadline passed, @a used status → pending → retract of its own do: the 0.2
+;    machinery worked unprompted.
+;  - @b then answered the retract with fail "cannot retract": retract is unilateral by
+;    design, so that fail is stale → the `stale-reply` check. The fail below is kept as
+;    a deliberate specimen of it.
+;  - @a wrote `(done (log-summary …))` as a body term; every encoder crashed → act names
+;    are no longer reserved outside the message head (SPEC §3).
+;  - Ids read #me.N because the rulebook said literally "`#me.N` with N increasing" and
+;    @a applied it verbatim; the prompt now says to substitute your own name.
+; Expected: warnings eta-overrun, stale-reply, and two unresolved terms (cancel, conflict
+; were never defined; neither side sent clar — still the weakest habit in live runs).
+
+(do      #me.1 @a>@b (log-summary log-2026-11-03) :at 2026-11-04T10:00+09:00 :by 2026-11-04T10:15+09:00 :if (< now 2026-11-04T10:15+09:00))
+(ok      #b.1 @b>@a ^me.1 :at 2026-11-04T10:04+09:00 :eta PT25M)
+(prop    #me.2 @a>@b ^b.1 (or (done (log-summary log-2026-11-03) :by 2026-11-04T10:15+09:00) (cancel (ref #me.1))) :at 2026-11-04T10:08+09:00 :deadline 2026-11-04T10:15+09:00 :why (< 2026-11-04T10:15+09:00 2026-11-04T10:29+09:00))
+(rej     #b.2 @b>@a ^me.2 :at 2026-11-04T10:12+09:00 :why (conflict :code conflict :msg "processing requires 25 minutes from acceptance at 10:04, completion expected at 10:29"))
+(ask     #me.3 @a>@b (status (ref #me.1) $s) :at 2026-11-04T10:16+09:00 :deadline 2026-11-04T10:15+09:00 :re (ref #b.2))
+(tell    #b.3 @b>@a ^me.3 {$s pending} :at 2026-11-04T10:20+09:00)
+(retract #me.4 @a>@b ^me.1 :at 2026-11-04T10:24+09:00 :deadline 2026-11-04T10:15+09:00 :re (ref #b.3) :why (< 2026-11-04T10:15+09:00 2026-11-04T10:24+09:00))
+(fail    #b.4 @b>@a ^me.1 :at 2026-11-04T10:28+09:00 :code conflict :why "cannot retract after processing is near completion at 29m")
+(end     #me.5 @a>@b :at 2026-11-04T10:32+09:00 :re (ref #b.4) :why (< 2026-11-04T10:15+09:00 2026-11-04T10:32+09:00))

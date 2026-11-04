@@ -8,7 +8,7 @@ from . import __version__, cbor_codec, dense, json_codec, tokens
 from .model import AICLError, Message, is_message
 from .parser import parse
 from .printer import digest, pretty, to_text
-from .validate import nl_ratio, validate_conversation, validate_message
+from .validate import nl_ratio, parse_now, validate_conversation, validate_message
 
 
 def _read(path: str) -> str:
@@ -131,7 +131,8 @@ def cmd_check(a):
         else:
             issues.append(("error", f"top-level term is not a message: {to_text(t)[:60]}"))
     if msgs:
-        issues.extend(validate_conversation(msgs, a.known))
+        now = parse_now(a.now) if getattr(a, "now", None) else None
+        issues.extend(validate_conversation(msgs, a.known, now=now))
     errors = 0
     seen = set()
     for i in issues:
@@ -175,7 +176,7 @@ def main(argv=None):
     s = sub.add_parser("json", help="convert to JSON encoding");                  s.add_argument("file"); s.add_argument("--compact", action="store_true"); s.set_defaults(fn=cmd_json)
     s = sub.add_parser("cbor", help="convert a single term to CBOR");             s.add_argument("file"); s.add_argument("-o", "--output"); s.set_defaults(fn=cmd_cbor)
     s = sub.add_parser("hash", help="SHA-256 of canonical form, one per term");   s.add_argument("file"); s.set_defaults(fn=cmd_hash)
-    s = sub.add_parser("check", help="validate a conversation");                  s.add_argument("file"); s.add_argument("--known", action="append", default=[], metavar="TERM", help="pre-agreed domain term (repeatable)"); s.add_argument("--codebook", metavar="JSON"); s.set_defaults(fn=cmd_check)
+    s = sub.add_parser("check", help="validate a conversation");                  s.add_argument("file"); s.add_argument("--known", action="append", default=[], metavar="TERM", help="pre-agreed domain term (repeatable)"); s.add_argument("--codebook", metavar="JSON"); s.add_argument("--now", metavar="INSTANT", help="current time (ISO instant with offset); makes :by and :at+:eta deadlines checkable"); s.set_defaults(fn=cmd_check)
     s = sub.add_parser("stats", help="size, token estimate and nl ratio");        s.add_argument("file"); s.add_argument("--codebook", metavar="JSON"); s.set_defaults(fn=cmd_stats)
     s = sub.add_parser("pack", help="replace concept ids by the cheapest codebook forms"); s.add_argument("file"); s.add_argument("--codebook", required=True, metavar="JSON"); s.add_argument("--tokenizer", help="auto | chars | heuristic | cl100k_base | o200k_base | tiktoken:<name>"); s.add_argument("--readable", action="store_true", help="emit readable instead of dense text"); s.set_defaults(fn=cmd_pack)
     s = sub.add_parser("unpack", help="map codebook forms back to concept ids (canonical text)"); s.add_argument("file"); s.add_argument("--codebook", required=True, metavar="JSON"); s.set_defaults(fn=cmd_unpack)

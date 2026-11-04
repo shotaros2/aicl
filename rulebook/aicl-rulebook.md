@@ -16,7 +16,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 (ACT #id @from>@to [^reply-to] body… [:key value]… [~confidence])
 ```
 
-- `#id`: your message id, `#me.N` with N increasing from 1. Never reuse one.
+- `#id`: your message id, `#me.N` with N increasing from 1 (`me` = your own agent name,
+  the same substitution as `@me`: agent `@a` writes `#a.1`, `#a.2`, …). Never reuse one.
 - `@from>@to`: route. `@me>*` broadcasts.
 - `^id`: the id of the message you are answering. Required for ok, no, done, fail, acc, rej, why, clar.
 
@@ -27,7 +28,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 | ask | request information. Put `$vars` where you want answers; no vars = yes/no question | tell / no / fail / clar |
 | tell | assert facts. Answer an ask with a binding map `{$t 18.5C}` (several solutions: `[{$x 1} {$x 2}]`), `(none)` if nothing, `true`/`false` for a yes/no ask | — |
 | do | request an action | ok or no, then done or fail |
-| ok | accept a do / def / sub (optional `:eta PT5M`) | — |
+| ok | accept a do / def / sub; a time promise is `:at <now> :eta PT5M` (an `:eta` without `:at` cannot be checked) | — |
 | no | refuse; `:why` required | — |
 | done | action finished; body = result | — |
 | fail | could not finish; `:code` (parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:why` required | — |
@@ -36,7 +37,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | why | ask for the evidence behind ^id | tell with `:src` = structured evidence `(source :uri "…" :at … :kind … :value …)` or `(none)`; never a source you did not consult |
 | sub / unsub | subscribe to future tells matching a `$var` pattern / cancel (`^sub-id`) | ok |
-| retract | withdraw one of your own earlier messages: `(retract #me.N @me>@x ^me.K :why …)`. Reopens what it closed; use it before changing an acc/rej/done | — |
+| retract | withdraw one of your own earlier messages: `(retract #me.N @me>@x ^me.K :why …)`. Reopens what it closed; use it before changing an acc/rej/done. Unilateral: never answer a retract with no/fail | — |
 | end | close the conversation | — |
 
 ## Literals
@@ -48,7 +49,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 - Lists `[a b c]`, maps `{k v k v}`, booleans `true false`, `null`
 - Confidence `~0.8` on any form = probability you assign to it. Omit when you assert outright
 - Logic: `(and …) (or …) (not …) (if p q) (all $x p) (some $x p) (= a b) (< a b) (in x set) (count set $n)`
-- `:src term` = evidence/provenance, `:at instant` = time, `:conv id` = conversation
+- `:src term` = evidence/provenance, `:at instant` = send time, `:by instant` = hard deadline
+  on a do/prop (the result is worthless after it), `:conv id` = conversation
 
 ## Rules
 
@@ -64,6 +66,9 @@ turn and nothing else: no prose, no markdown, no explanation.
 8. `(status (ref #id) $s)` asks about an open request: answer `{$s pending}` / `done` / `failed` /
    `unknown`, then close the request with `done` or `fail` if you can. A `def` sent only to you
    binds you and the sender; intervals are half-open (`:to` excluded).
+9. Respect `:by`: accept a do only if your promised `:at + :eta` is before its `:by`;
+   otherwise `no :why …` or `prop` a later deadline. Never claim a time other than the
+   real current time in `:at`.
 
 ## Example
 
@@ -71,6 +76,6 @@ turn and nothing else: no prose, no markdown, no explanation.
 (ask  #a.1 @a>@b (temp tokyo $t :unit C :at 2026-11-05T09:00+09:00))
 (tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma)
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1) :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (done #b.3 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```

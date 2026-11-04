@@ -99,12 +99,21 @@ Agent/ref/var identifiers match `[A-Za-z0-9_][A-Za-z0-9_.:/-]*`.
 | body | depends on act | One or more terms |
 | `:conv id` | no | Conversation/session id |
 | `:at instant` | no | Sender's send time |
+| `:by instant` | no; meaningful on `do` and `prop` | Hard deadline: after this instant the result is worthless to the requester. Together with `:at` and `:eta` on the `ok` (§4.2) it makes overrun and expiry mechanically checkable |
 | `:src term` | no; required on an answer to `why` | Evidence for the body: `(none)`, or a form naming the source with what was read from it, e.g. `(weathernews :uri "…" :at 2026-11-05T09:00+09:00 :kind hourly :value 14C :fetched-at 2026-11-04T10:00+09:00)`. A bare name (`:src jma`) is allowed but weak: it can be invented after the fact. Terms under `:src` are not subject to vocabulary resolution (§6) |
 | `:why term` | with `no`, `rej`, `fail`, `retract` | Reason |
 | `:code symbol` | with `fail` | Error code (§4.3) |
 | `~conf` | no | Speaker's confidence in the body; absent = asserted without qualification |
 
 Argument order inside the head is free; the parser classifies by sigil.
+
+Act names are not reserved words. A form is a message only when it is well-formed as
+one — it has a `#id` and a route. An act-named form without them, in particular one
+nested inside a body such as `(done (ref #a.1))` in `:if (done (ref #a.1))`, is an
+ordinary term, subject to vocabulary resolution (§6) like any other. At the top level
+of a document or transmission every act-named form MUST be a well-formed message.
+(Motivated by a live run on 2026-11-04: an agent naturally used `done` as a body
+term in its third message; reserving 18 everyday words everywhere is a trap.)
 
 ---
 
@@ -117,7 +126,7 @@ Argument order inside the head is free; the parser classifies by sigil.
 | `ask` | request information | a proposition containing `$vars`, or a closed proposition (yes/no) | `tell` \| `no` \| `fail` \| `clar` |
 | `tell` | assert information | proposition(s) | — (unsolicited `tell` needs no reply) |
 | `do` | request an action | an action form | `ok` \| `no` \| `clar`, then `done` \| `fail` |
-| `ok` | accept a `do`/`def`/`sub` | optional `:eta duration`; once it has elapsed without `done`/`fail`, the requester MAY treat the request as failed | — |
+| `ok` | accept a `do`/`def`/`sub` | optional `:eta duration`; once it has elapsed without `done`/`fail`, the requester MAY treat the request as failed. An `ok` that carries `:eta` SHOULD also carry `:at` (`eta-unanchored` otherwise): `:at + :eta` is the promised finish, which a validator compares against the `do`'s `:by` (`eta-overrun`) and, given the current time, against the clock (`eta-expired`, `deadline-passed`) | — |
 | `no` | refuse | `:why` required | — |
 | `done` | action completed | result term(s), may be empty | — |
 | `fail` | could not complete | `:code` and `:why` required | — |
@@ -129,7 +138,7 @@ Argument order inside the head is free; the parser classifies by sigil.
 | `why` | ask for justification | — (refers to ^id) | `tell` with `:src` carrying structured evidence, or `:src (none)` if there is none. Repeating the claim with a bare source name is not an answer |
 | `sub` | subscribe to future `tell`s matching a pattern | a proposition with `$vars` | `ok` \| `no` |
 | `unsub` | cancel a subscription | `^sub-id` | `ok` |
-| `retract` | withdraw one of your own earlier messages | `^own-id`, `:why` required. Reopens whatever that message closed: retracting an `acc`/`rej` reopens the proposal, retracting `done`/`fail` reopens the `do`, retracting a `tell` reopens the `ask` it answered | — |
+| `retract` | withdraw one of your own earlier messages | `^own-id`, `:why` required. Reopens whatever that message closed: retracting an `acc`/`rej` reopens the proposal, retracting `done`/`fail` reopens the `do`, retracting a `tell` reopens the `ask` it answered. Unilateral: it takes effect on receipt and cannot be refused (§4.4) | — |
 | `end` | close the conversation | optional summary | — |
 
 ### 4.2 Answering an `ask`
@@ -164,6 +173,13 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - An agent MUST NOT abbreviate, translate or otherwise vary a term except through an agreed codebook (§8.1).
 - A decision is final until retracted: a second `acc`/`rej` on a proposal already closed is an error.
   To change your mind, send `retract` for your own decision, then the new one.
+- A `retract` is unilateral and final: the counterpart MUST NOT answer it with `no` or `fail`,
+  and a later reply to the retracted message is stale (`stale-reply`). Retracting an open `do`
+  withdraws the request; whether started work is compensated is outside the language.
+- Deadlines are message arithmetic, not trust: a `do` carrying `:by` plus an `ok` carrying
+  `:at` and `:eta` lets any party (or a validator) flag a promise that overruns the deadline
+  (`eta-overrun`) at the moment it is made, and an expired one (`deadline-passed`,
+  `eta-expired`) given only the current time.
 - An answer to `why` MUST carry `:src`. An agent that has no evidence says `:src (none)`;
   it MUST NOT name a source it did not consult.
 - `(status (ref #id) $s)` MAY be asked about any open request; the answer binds `$s` to
@@ -259,7 +275,7 @@ to read it directly.
 | `ask tell do ok no done fail prop acc rej def clar why sub unsub end retract` | `A T D K N Z F P C R E Q W S U X B` | Speech act → one capital letter, only in head position |
 | `#a.1 @a>@b` | `a.1>b` | When the id is `<sender>.<n>`, the id and route merge; `a.1>*` broadcasts. Otherwise `#id @from>@to` is kept. Decoders MUST also accept `a.1>@b` (a stray `@` before the destination is a common slip and is unambiguous) |
 | `^a.1` | `^a.1` | unchanged |
-| `:at :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
+| `:at :by :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :b :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
 | `2026-11-06T10:00+09:00`, `2026-11-04T09:04:12Z` | `20261106T1000+9`, `20261104T090412Z` | ISO 8601 basic format; offset mandatory, 1–2 digits = hours, 3–4 digits = HHMM; seconds only when non-zero; fractional seconds keep the extended form |
 | everything else | unchanged | |
 
@@ -366,7 +382,7 @@ AICL:
 (tell #b.1 @b>@a ^a.1 {$s finished $at 2026-11-04T08:50Z} :src ci-api)
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1)
       :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)
 (done #b.4 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
 ```
@@ -397,13 +413,20 @@ by `rej` on the same proposal), half-open intervals (06:00 was proposed as free 
 "busy until 06:00"), `status` and `:eta` (an accepted `do` was never closed), and the scope
 of `def` (a pair-scoped term was honoured for a third party).
 
+Resolved after 0.2.0, from a live Claude–Gemini deadline negotiation on 2026-11-04 run
+under a harness-injected clock (`examples/10`): `:by` on `do`/`prop` and the checks
+`eta-unanchored` / `eta-overrun` / `deadline-passed` / `eta-expired` (with no standard
+deadline key the requester improvised `:by`, `:if (< now …)` and `:deadline` across runs;
+with `:at` on the `ok` the overrun was pure message arithmetic); retract finality and
+`stale-reply` (a performer answered a `retract` with `fail "cannot retract"`); act names
+are not reserved words, §3 (the requester naturally wrote `(done (ref #id))` as a body
+term in its third message and every encoder crashed).
+
 Still open:
 
 - Standard published codebooks per domain (scheduling, deployment, data query), so
   agents from different vendors can share one by id instead of exchanging tables.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
-- Deadlines the validator can check: `:eta` is advisory because messages carry no
-  mandatory send time; requiring `:at` on `ok` would make expiry checkable.
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.

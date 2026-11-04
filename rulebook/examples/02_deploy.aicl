@@ -6,6 +6,6 @@
 
 (do   #a.2 @a>@b (rollout build-4821 :region eu-west-1)
       :if (< (error-rate build-4821 :window PT10M) 0.5%))
-(ok   #b.2 @b>@a ^a.2 :eta PT5M)
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T08:51Z :eta PT5M)
 (tell #b.3 @b>@a (error-rate build-4821 0.3% :window PT10M) :src metrics)
 (done #b.4 @b>@a ^a.2 (rollout build-4821 :region eu-west-1 :at 2026-11-04T09:04:12Z))
