@@ -133,7 +133,7 @@ term in its third message; reserving 18 everyday words everywhere is a trap.)
 | `prop` | propose (negotiation) | a proposal term | `acc` \| `rej` \| `prop` (counter) |
 | `acc` | accept a proposal | — | — |
 | `rej` | reject a proposal | `:why` required | — |
-| `def` | define a term for this conversation | `(def … term :gloss (nl …) [:args […]] [:ret type] [:uri "…"])` | `ok` \| `no` |
+| `def` | define a term for this conversation | `(def … term :gloss (nl …) [:args […]] [:ret type] [:uri "…"])`; `:args` entries are `name` or `(name type)` and `:ret` is a type (§6.1) | `ok` \| `no` |
 | `clar` | cannot interpret ^id | `(amb term [candidates…])` or `(unk term)` or `(parse "…")` | a repaired re-send with a new id |
 | `why` | ask for justification | — (refers to ^id) | `tell` with `:src` carrying structured evidence, or `:src (none)` if there is none. Repeating the claim with a bare source name is not an answer |
 | `sub` | subscribe to future `tell`s matching a pattern | a proposition with `$vars` | `ok` \| `no` |
@@ -243,6 +243,34 @@ pair accordingly, and a third party that uses a pair-scoped term is told `clar`.
 
 `def` is the only place where `nl` is *expected*. A linter SHOULD report the fraction of
 message bodies that is `nl` text; a well-formed AICL conversation drives this toward zero.
+
+### 6.1 Typed signatures
+
+A `def` MAY type its positional slots and the value the term answers with:
+
+```
+(def #a.2 @a>@b fx-rate
+     :gloss (nl en "units of quote currency per unit of base currency")
+     :args [(base symbol) (quote symbol) (at instant)]
+     :ret number)
+```
+
+- Each `:args` entry is a parameter name (untyped, as before 0.3) or `(name type)`.
+- A **type** is one of the core type names — `any bool number string symbol agent instant
+  date duration qty ref term` — or `(qty UNIT)` (a quantity in exactly that unit, e.g.
+  `(qty USD)`), or `(list TYPE)`. Any other symbol in type position is a **sort name**:
+  documentation (`transaction`, `id`), not checked.
+- `:ret` is the type a `$var` binds to in the answer: a `$var` sitting in a typed
+  argument slot takes that slot's type instead.
+- Terms under `:args`/`:ret` are parameter names and types, not vocabulary; like `:src`
+  they are exempt from resolution (§6).
+
+The validator enforces a signature with warnings once the `def` is acknowledged:
+`sig-arity` (more non-`$var` positional arguments than declared), `sig-type` (an argument
+fails its declared type), `sig-ret` (a binding in the answering `tell` fails its expected
+type), and the error `def-sig` for a malformed signature. Checking is lexical-class
+checking — a `number` is a number literal, a `(qty USD)` is a quantity in USD — so it
+needs no schema language beyond the table above.
 
 ---
 
@@ -453,9 +481,12 @@ Standard codebooks (§8.2) resolved the sharing-by-id question for the two domai
 live vocabulary (`aicl.sched.1`, `aicl.deploy.1`); further domains (data query, …) wait
 for real exchanges to ground their vocabulary.
 
+Typed signatures for `def` are §6.1: `(name type)` parameters, `(qty UNIT)` and
+`(list TYPE)` types, and the checks `sig-arity` / `sig-type` / `sig-ret`, with bare
+names and sort names staying legal and unchecked.
+
 Still open:
 
-- Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.

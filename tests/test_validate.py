@@ -19,6 +19,7 @@ KNOWN = {
     "09_dola_image_specialist.aicl": [],
     "10_deadline_negotiation.aicl": ["log-summary"],
     "11_standard_codebook.aicl": ["meeting", "busy", "calendar-add", "calendar-event"],
+    "12_typed_def.aicl": [],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
@@ -160,6 +161,50 @@ class ConversationTests(unittest.TestCase):
         msgs = aicl.parse_messages("(do #a.1 @a>@b (x)) "
                                    "(ok #b.1 @b>@a ^a.1 :at 2026-11-04T10:04+09:00 :eta PT5M)")
         self.assertIn("eta-expired", codes(validate_conversation(msgs, ["x"], now=parse_now("2026-11-04T10:30+09:00"))))
+
+    def test_typed_signature_checks(self):
+        define = ('(def #a.1 @a>@b fx-rate :gloss (nl en "units of quote currency per unit of base") '
+                  ':args [(base symbol) (quote symbol) (at instant)] :ret number) '
+                  '(ok #b.1 @b>@a ^a.1) ')
+        good = define + ('(ask #a.2 @a>@b (fx-rate usd jpy 2026-11-04T10:00+09:00 $r)) '
+                         '(tell #b.2 @b>@a ^a.2 {$r 152.31} :src (boj :uri "https://example" :kind daily))')
+        self.assertEqual(codes(self.conv(good)), [])
+        # a number where (base symbol) is declared
+        bad_arg = good.replace("(fx-rate usd", "(fx-rate 840")
+        self.assertIn("sig-type", codes(self.conv(bad_arg)))
+        # a quantity bound where :ret number is declared
+        bad_ret = good.replace("{$r 152.31}", "{$r 152.31JPY}")
+        self.assertIn("sig-ret", codes(self.conv(bad_ret)))
+        # one positional argument too many
+        bad_arity = good.replace("2026-11-04T10:00+09:00 $r", "2026-11-04T10:00+09:00 extra $r")
+        self.assertIn("sig-arity", codes(self.conv(bad_arity)))
+
+    def test_typed_signature_qty_and_list(self):
+        src = ('(def #a.1 @a>@b balance.available :gloss (nl en "spendable balance of an account") '
+               ':args [(acct symbol)] :ret (qty USD)) (ok #b.1 @b>@a ^a.1) '
+               '(ask #a.2 @a>@b (balance.available acct-1 $b)) ')
+        self.assertEqual(codes(self.conv(src + "(tell #b.2 @b>@a ^a.2 {$b 1520.4USD})")), [])
+        self.assertIn("sig-ret", codes(self.conv(src + "(tell #b.2 @b>@a ^a.2 {$b 1520.4})")))
+        self.assertIn("sig-ret", codes(self.conv(src + "(tell #b.2 @b>@a ^a.2 {$b 1520.4EUR})")))
+        lst = ('(def #a.1 @a>@b attendees :gloss (nl en "who is in the meeting") '
+               ':args [(mtg ref)] :ret (list agent)) (ok #b.1 @b>@a ^a.1) '
+               '(ask #a.2 @a>@b (attendees (ref #a.1) $who)) ')
+        self.assertEqual(codes(self.conv(lst + "(tell #b.2 @b>@a ^a.2 {$who [@a @b]})")), [])
+        self.assertIn("sig-ret", codes(self.conv(lst + "(tell #b.2 @b>@a ^a.2 {$who [@a bob]})")))
+
+    def test_untyped_args_still_work_and_sorts_are_unchecked(self):
+        # pre-0.3 defs: bare names, or sort names as types -> documentation, no checks
+        src = ('(def #a.1 @a>@b risk-score :gloss (nl en "x") :args [transaction] :ret number) '
+               '(ok #b.1 @b>@a ^a.1) (ask #a.2 @a>@b (risk-score txn-77 $r)) '
+               '(tell #b.2 @b>@a ^a.2 {$r 0.12})')
+        self.assertEqual(codes(self.conv(src)), [])
+        self.assertIn("sig-ret", codes(self.conv(src.replace("{$r 0.12}", '{$r "low"}'))))
+
+    def test_def_sig_malformed(self):
+        self.assertIn("def-sig", codes(validate_message(aicl.parse_one(
+            '(def #a.1 @a>@b foo :gloss (nl en "x") :args [(x number extra)])'))))
+        self.assertIn("def-sig", codes(validate_message(aicl.parse_one(
+            '(def #a.1 @a>@b foo :gloss (nl en "x") :ret [number])'))))
 
     def test_status_unclosed(self):
         # Observed live: status answered {$s done}, but the real done never came.

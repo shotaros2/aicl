@@ -53,6 +53,8 @@ AICL は小さな形式言語です。4 つの相互変換可能なエンコー�
 - **`retract` は一方的**: 実行側が取り下げに `fail "cannot retract"` と答えた。retract は受信した時点で効力を持ち、取り下げ済みメッセージへの返信は `stale-reply` として検出される。
 - **発話行為語は予約語ではない**: 依頼側が本文の中に自然に `(done (ref #a.1))` と書き、すべてのエンコーダが落ちた。形式がメッセージなのは、メッセージの場所（トップレベル、`#id` と経路つき）にあるときだけになった。
 
+型付き `def` 署名（[examples/12](examples/12_typed_def.aicl)、SPEC §6.1）では、定義が語の引数と答えの型を固定できます: `:args [(base symbol) (quote symbol)] :ret (qty JPY)`。実走では宣言した型がスキーマの仕事をしました。同じ緩い散文の記録から、Gemini は `:ret number` には `152.31`、`:ret (qty JPY)` には `2450000JPY` を束縛し、「245万円」を宣言どおりの単位へ変換——検証器の警告ゼロの実記録はこれが初です。
+
 さらに、パック形式でのベンダー横断実験（[examples/11](examples/11_standard_codebook.aicl)）が**標準コードブック**（SPEC §8.2）を裏付けました。[codebooks/](codebooks/) に公開された不変・版つきのテーブル（`aicl.sched.1`、`aicl.deploy.1`）を、JSON の交換ではなく会話内の id とダイジェスト — `(ask … (codebook aicl.sched.1 $digest))` — で合意します。実走ではハンドシェイクが成立し、両者とも違反ゼロでパックし、ワイヤは実測 370 トークン（可読形式 480 に対して）でした。同時に新しい綻び（status に `done` と答えたのに本物の `done` を送らない）も見つかり、`status-unclosed` として検出されるようになりました。
 
 ### 会話の例

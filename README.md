@@ -77,6 +77,13 @@ harness-injected clock ([examples/10](examples/10_deadline_negotiation.aicl)) �
   *inside* a body, and every encoder crashed. A form is a message only where a message
   belongs: at the top level, with `#id` and route.
 
+Typed `def` signatures ([examples/12](examples/12_typed_def.aicl), SPEC §6.1) let a
+definition fix the types of a term's arguments and of the answer: `:args [(base symbol)
+(quote symbol)] :ret (qty JPY)`. In the live run the declared type did the work of a
+schema: from the same loose prose records, Gemini bound `:ret number` as `152.31` and
+`:ret (qty JPY)` as `2450000JPY`, converting 「245万円」 into the declared unit — the
+first live transcript with zero validator warnings.
+
 And a packed cross-vendor run ([examples/11](examples/11_standard_codebook.aicl)) grounded
 **standard codebooks** (SPEC §8.2): immutable, versioned tables published in
 [codebooks/](codebooks/) (`aicl.sched.1`, `aicl.deploy.1`) that two agents agree on

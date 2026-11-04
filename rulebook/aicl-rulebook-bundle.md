@@ -45,7 +45,7 @@ nothing else: no prose, no markdown, no explanation.
 | Z | done | action finished; body = result | — |
 | F | fail | could not finish; `:e` (code: parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:w` required | — |
 | P / C / R | prop / acc / rej | propose, accept, reject (`:w` required for R); counter with another P | — |
-| E | def | define a term: `(E me.N>to term :g (nl en "…") :r […] :v type)` | K / N |
+| E | def | define a term: `(E me.N>to term :g (nl en "…") :r […] :v type)`. An `:r` entry is `name` or `(name type)`; types: `bool number string symbol agent instant date duration qty ref term`, `(qty USD)`, `(list agent)`; any other symbol is an unchecked sort name. `:v` is the type your answer must bind | K / N |
 | Q | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | W | why | ask for the evidence behind ^id | T with `:s` = structured evidence `(source :uri "…" :a … :kind … :value …)` or `(none)`; never a source you did not consult |
 | S / U | sub / unsub | subscribe to future T matching a `$var` pattern / cancel (`^sub-id`) | K |
@@ -138,7 +138,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 | done | action finished; body = result | — |
 | fail | could not finish; `:code` (parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:why` required | — |
 | prop / acc / rej | propose, accept, reject (`:why` required for rej); counter with another prop | — |
-| def | define a term: `(def #id @a>@b term :gloss (nl en "…") :args […] :ret type)` | ok / no |
+| def | define a term: `(def #id @a>@b term :gloss (nl en "…") :args […] :ret type)`. An `:args` entry is `name` or `(name type)`; types: `bool number string symbol agent instant date duration qty ref term`, `(qty USD)`, `(list agent)`; any other symbol is an unchecked sort name. `:ret` is the type your answer must bind | ok / no |
 | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | why | ask for the evidence behind ^id | tell with `:src` = structured evidence `(source :uri "…" :at … :kind … :value …)` or `(none)`; never a source you did not consult |
 | sub / unsub | subscribe to future tells matching a `$var` pattern / cancel (`^sub-id`) | ok |
@@ -485,6 +485,39 @@ turn and nothing else: no prose, no markdown, no explanation.
 (done #b.6 @b>@a ^a.6 (calendar-event evt-5102 :for (ref #a.3)))
 ; wire: (X a.7>b)
 (end  #a.7 @a>@b)
+```
+
+---
+
+# FILE: examples/12_typed_def.aicl
+
+```
+; A real exchange, 2026-11-05: Claude (Opus, @a) and Gemini (Flash-Lite, @b), each given
+; only the rulebook plus a private goal; runner examples/typedef_dialogue.py. @b is a data
+; service whose records exist only as loose Japanese prose: 「1ドル=152.31円」 and
+; 「口座 acct-9 の利用可能残高: 245万円」. @a must define its vocabulary in-band, with
+; typed signatures (SPEC §6.1), before using it.
+;
+; What it shows (SPEC §13 history):
+;  - @a wrote well-formed typed signatures: (name type) parameters and :ret, including the
+;    unit-exact type (qty JPY).
+;  - The types did real work: from the same prose, @b bound :ret number as the plain
+;    number 152.31 and :ret (qty JPY) as 2450000JPY - converting 「245万円」 into the unit
+;    the signature demands. Typed defs turn fuzzy source data into typed answers.
+;  - Both answers carried structured :src naming the real records.
+;  - The first live transcript with zero validator warnings; no pre-agreed domain terms
+;    (every term enters by def + ok).
+
+(def  #a.1 @a>@b fx-rate :gloss (nl en "exchange rate on a given date: amount of quote currency that one unit of base currency buys") :args [(base symbol) (quote symbol) (day date)] :ret number)
+(ok   #b.1 @b>@a ^a.1 :at 2026-11-04T09:05+09:00 :eta PT0S)
+(def  #a.2 @a>@b spendable-balance :gloss (nl en "amount of money in an account available to spend on a given date, expressed in the given currency") :args [(account symbol) (day date) (currency symbol)] :ret (qty JPY))
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T09:05:05+09:00 :eta PT0S)
+
+(ask  #a.3 @a>@b (fx-rate USD JPY 2026-11-04 $r))
+(tell #b.3 @b>@a ^a.3 {$r 152.31} :src (source :at 2026-11-04 :kind "daily" :uri "fx://boj/2026-11-04" :value 152.31))
+(ask  #a.4 @a>@b (spendable-balance acct-9 2026-11-04 JPY $b))
+(tell #b.4 @b>@a ^a.4 {$b 2450000JPY} :src (source :at 2026-11-04T09:00+09:00 :kind "ledger" :uri "ledger://acct-9" :value 2450000))
+(end  #a.5 @a>@b)
 ```
 
 ---
@@ -838,7 +871,7 @@ term in its third message; reserving 18 everyday words everywhere is a trap.)
 | `prop` | propose (negotiation) | a proposal term | `acc` \| `rej` \| `prop` (counter) |
 | `acc` | accept a proposal | — | — |
 | `rej` | reject a proposal | `:why` required | — |
-| `def` | define a term for this conversation | `(def … term :gloss (nl …) [:args […]] [:ret type] [:uri "…"])` | `ok` \| `no` |
+| `def` | define a term for this conversation | `(def … term :gloss (nl …) [:args […]] [:ret type] [:uri "…"])`; `:args` entries are `name` or `(name type)` and `:ret` is a type (§6.1) | `ok` \| `no` |
 | `clar` | cannot interpret ^id | `(amb term [candidates…])` or `(unk term)` or `(parse "…")` | a repaired re-send with a new id |
 | `why` | ask for justification | — (refers to ^id) | `tell` with `:src` carrying structured evidence, or `:src (none)` if there is none. Repeating the claim with a bare source name is not an answer |
 | `sub` | subscribe to future `tell`s matching a pattern | a proposition with `$vars` | `ok` \| `no` |
@@ -948,6 +981,34 @@ pair accordingly, and a third party that uses a pair-scoped term is told `clar`.
 
 `def` is the only place where `nl` is *expected*. A linter SHOULD report the fraction of
 message bodies that is `nl` text; a well-formed AICL conversation drives this toward zero.
+
+### 6.1 Typed signatures
+
+A `def` MAY type its positional slots and the value the term answers with:
+
+```
+(def #a.2 @a>@b fx-rate
+     :gloss (nl en "units of quote currency per unit of base currency")
+     :args [(base symbol) (quote symbol) (at instant)]
+     :ret number)
+```
+
+- Each `:args` entry is a parameter name (untyped, as before 0.3) or `(name type)`.
+- A **type** is one of the core type names — `any bool number string symbol agent instant
+  date duration qty ref term` — or `(qty UNIT)` (a quantity in exactly that unit, e.g.
+  `(qty USD)`), or `(list TYPE)`. Any other symbol in type position is a **sort name**:
+  documentation (`transaction`, `id`), not checked.
+- `:ret` is the type a `$var` binds to in the answer: a `$var` sitting in a typed
+  argument slot takes that slot's type instead.
+- Terms under `:args`/`:ret` are parameter names and types, not vocabulary; like `:src`
+  they are exempt from resolution (§6).
+
+The validator enforces a signature with warnings once the `def` is acknowledged:
+`sig-arity` (more non-`$var` positional arguments than declared), `sig-type` (an argument
+fails its declared type), `sig-ret` (a binding in the answering `tell` fails its expected
+type), and the error `def-sig` for a malformed signature. Checking is lexical-class
+checking — a `number` is a number literal, a `(qty USD)` is a quantity in USD — so it
+needs no schema language beyond the table above.
 
 ---
 
@@ -1158,9 +1219,12 @@ Standard codebooks (§8.2) resolved the sharing-by-id question for the two domai
 live vocabulary (`aicl.sched.1`, `aicl.deploy.1`); further domains (data query, …) wait
 for real exchanges to ground their vocabulary.
 
+Typed signatures for `def` are §6.1: `(name type)` parameters, `(qty UNIT)` and
+`(list TYPE)` types, and the checks `sig-arity` / `sig-type` / `sig-ret`, with bare
+names and sort names staying legal and unchecked.
+
 Still open:
 
-- Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.

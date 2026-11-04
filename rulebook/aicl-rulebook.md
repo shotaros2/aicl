@@ -33,7 +33,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 | done | action finished; body = result | — |
 | fail | could not finish; `:code` (parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:why` required | — |
 | prop / acc / rej | propose, accept, reject (`:why` required for rej); counter with another prop | — |
-| def | define a term: `(def #id @a>@b term :gloss (nl en "…") :args […] :ret type)` | ok / no |
+| def | define a term: `(def #id @a>@b term :gloss (nl en "…") :args […] :ret type)`. An `:args` entry is `name` or `(name type)`; types: `bool number string symbol agent instant date duration qty ref term`, `(qty USD)`, `(list agent)`; any other symbol is an unchecked sort name. `:ret` is the type your answer must bind | ok / no |
 | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | why | ask for the evidence behind ^id | tell with `:src` = structured evidence `(source :uri "…" :at … :kind … :value …)` or `(none)`; never a source you did not consult |
 | sub / unsub | subscribe to future tells matching a `$var` pattern / cancel (`^sub-id`) | ok |

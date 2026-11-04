@@ -1,0 +1,26 @@
+; A real exchange, 2026-11-05: Claude (Opus, @a) and Gemini (Flash-Lite, @b), each given
+; only the rulebook plus a private goal; runner examples/typedef_dialogue.py. @b is a data
+; service whose records exist only as loose Japanese prose: 「1ドル=152.31円」 and
+; 「口座 acct-9 の利用可能残高: 245万円」. @a must define its vocabulary in-band, with
+; typed signatures (SPEC §6.1), before using it.
+;
+; What it shows (SPEC §13 history):
+;  - @a wrote well-formed typed signatures: (name type) parameters and :ret, including the
+;    unit-exact type (qty JPY).
+;  - The types did real work: from the same prose, @b bound :ret number as the plain
+;    number 152.31 and :ret (qty JPY) as 2450000JPY - converting 「245万円」 into the unit
+;    the signature demands. Typed defs turn fuzzy source data into typed answers.
+;  - Both answers carried structured :src naming the real records.
+;  - The first live transcript with zero validator warnings; no pre-agreed domain terms
+;    (every term enters by def + ok).
+
+(def  #a.1 @a>@b fx-rate :gloss (nl en "exchange rate on a given date: amount of quote currency that one unit of base currency buys") :args [(base symbol) (quote symbol) (day date)] :ret number)
+(ok   #b.1 @b>@a ^a.1 :at 2026-11-04T09:05+09:00 :eta PT0S)
+(def  #a.2 @a>@b spendable-balance :gloss (nl en "amount of money in an account available to spend on a given date, expressed in the given currency") :args [(account symbol) (day date) (currency symbol)] :ret (qty JPY))
+(ok   #b.2 @b>@a ^a.2 :at 2026-11-04T09:05:05+09:00 :eta PT0S)
+
+(ask  #a.3 @a>@b (fx-rate USD JPY 2026-11-04 $r))
+(tell #b.3 @b>@a ^a.3 {$r 152.31} :src (source :at 2026-11-04 :kind "daily" :uri "fx://boj/2026-11-04" :value 152.31))
+(ask  #a.4 @a>@b (spendable-balance acct-9 2026-11-04 JPY $b))
+(tell #b.4 @b>@a ^a.4 {$b 2450000JPY} :src (source :at 2026-11-04T09:00+09:00 :kind "ledger" :uri "ledger://acct-9" :value 2450000))
+(end  #a.5 @a>@b)

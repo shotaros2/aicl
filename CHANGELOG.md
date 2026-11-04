@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+Typed signatures for `def` (SPEC §6.1), exercised live on 2026-11-05 (`examples/12`,
+runner `examples/typedef_dialogue.py`):
+
+- An `:args` entry may be `(name type)`; `:ret` is a type. Types are lexical classes —
+  `any bool number string symbol agent instant date duration qty ref term` — plus
+  `(qty UNIT)` and `(list TYPE)`; any other symbol is an unchecked sort name, and bare
+  names stay legal, so every pre-0.3 def is unchanged.
+- New checks: `sig-arity`, `sig-type`, `sig-ret` (warnings; a `$var` in a typed slot
+  takes that slot's type, otherwise `:ret`) and `def-sig` (error, malformed signature).
+  `:args`/`:ret` join `:src` in being exempt from vocabulary resolution.
+- In the live run the types did real work: from the same loose prose records
+  (「1ドル=152.31円」,「245万円」), Gemini bound `:ret number` as `152.31` and
+  `:ret (qty JPY)` as `2450000JPY` — the signature drove unit normalisation. First
+  live transcript with zero validator warnings.
+
 Standard codebooks, from a live packed Claude–Gemini exchange on 2026-11-04
 (`examples/11`, runner `examples/codebook_dialogue.py`):
 

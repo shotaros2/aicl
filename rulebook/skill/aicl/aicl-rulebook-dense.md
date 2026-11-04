@@ -34,7 +34,7 @@ nothing else: no prose, no markdown, no explanation.
 | Z | done | action finished; body = result | — |
 | F | fail | could not finish; `:e` (code: parse, unknown-term, unsupported, timeout, denied, not-found, conflict, limit, internal) and `:w` required | — |
 | P / C / R | prop / acc / rej | propose, accept, reject (`:w` required for R); counter with another P | — |
-| E | def | define a term: `(E me.N>to term :g (nl en "…") :r […] :v type)` | K / N |
+| E | def | define a term: `(E me.N>to term :g (nl en "…") :r […] :v type)`. An `:r` entry is `name` or `(name type)`; types: `bool number string symbol agent instant date duration qty ref term`, `(qty USD)`, `(list agent)`; any other symbol is an unchecked sort name. `:v` is the type your answer must bind | K / N |
 | Q | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
 | W | why | ask for the evidence behind ^id | T with `:s` = structured evidence `(source :uri "…" :a … :kind … :value …)` or `(none)`; never a source you did not consult |
 | S / U | sub / unsub | subscribe to future T matching a `$var` pattern / cancel (`^sub-id`) | K |

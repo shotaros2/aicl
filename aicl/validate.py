@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set
 
 from .model import (
-    ACTS, BODY_REQUIRED, CORE_HEADS, FAIL_CODES, REASON_REQUIRED, REPLY_REQUIRED, SELF_REPLY,
-    STATUS_VALUES, Duration, Form, Instant, KList, KMap, Message, ModelError, Ref, Str, Symbol,
-    Var, walk,
+    ACTS, Agent, BODY_REQUIRED, CORE_HEADS, Date, FAIL_CODES, REASON_REQUIRED, REPLY_REQUIRED,
+    SELF_REPLY, STATUS_VALUES, Duration, Form, Instant, KList, KMap, Message, ModelError,
+    Quantity, Ref, Str, Symbol, Term, Var, walk,
 )
 from .printer import to_text
 
@@ -70,6 +70,74 @@ def parse_now(text: str) -> datetime:
     return d
 
 
+# ------------------------------------------------------- typed signatures (SPEC §6.1)
+
+TYPE_NAMES = {"any", "bool", "number", "string", "symbol", "agent", "instant",
+              "date", "duration", "qty", "ref", "term"}
+
+
+def _valid_type(t) -> bool:
+    if isinstance(t, Symbol):
+        return True                                   # core type name, or a sort name (unchecked)
+    if isinstance(t, Form) and not t.kw and t.conf is None and len(t.args) == 1:
+        if t.head == "qty":
+            return isinstance(t.args[0], Symbol)
+        if t.head == "list":
+            return _valid_type(t.args[0])
+    return False
+
+
+def parse_signature(m: Message):
+    """The typed signature of a def: ([(name, type|None), …] | None, ret | None, error | None)."""
+    args = None
+    a = m.kw.get("args")
+    if a is not None:
+        if not isinstance(a, KList):
+            return None, None, "':args' must be a list"
+        args = []
+        for item in a.items:
+            if isinstance(item, Symbol):
+                args.append((item.name, None))        # untyped parameter name (pre-0.3 form)
+            elif (isinstance(item, Form) and not item.kw and item.conf is None
+                  and len(item.args) == 1 and _valid_type(item.args[0])):
+                args.append((item.head, item.args[0]))
+            else:
+                return None, None, f"':args' entry {to_text(item)} is not a name or (name type)"
+    ret = m.kw.get("ret")
+    if ret is not None and not _valid_type(ret):
+        return None, None, f"':ret' {to_text(ret)} is not a type"
+    return args, ret, None
+
+
+def _type_ok(v, t) -> Optional[bool]:
+    """True/False when the type is checkable; None for a sort name (documentation only)."""
+    if isinstance(t, Symbol):
+        n = t.name
+        if n not in TYPE_NAMES:
+            return None
+        return {
+            "any": True,
+            "bool": isinstance(v, bool),
+            "number": isinstance(v, (int, float)) and not isinstance(v, bool),
+            "string": isinstance(v, Str),
+            "symbol": isinstance(v, Symbol),
+            "agent": isinstance(v, Agent),
+            "instant": isinstance(v, Instant),
+            "date": isinstance(v, Date),
+            "duration": isinstance(v, Duration),
+            "qty": isinstance(v, Quantity),
+            "ref": isinstance(v, Ref) or _is_ref_form(v),
+            "term": isinstance(v, (Form, KList, KMap)),
+        }[n]
+    if isinstance(t, Form) and t.head == "qty":
+        return isinstance(v, Quantity) and v.unit == t.args[0].name
+    if isinstance(t, Form) and t.head == "list":
+        if not isinstance(v, KList):
+            return False
+        return all(_type_ok(i, t.args[0]) is not False for i in v.items)
+    return None
+
+
 def validate_message(form: Form) -> List[Issue]:
     """Check one message in isolation (SPEC §3, §4)."""
     issues: List[Issue] = []
@@ -104,6 +172,9 @@ def validate_message(form: Form) -> List[Issue]:
             issues.append(_err("def-term", "'def' body must start with the symbol being defined", mid))
         if "gloss" not in m.kw and "uri" not in m.kw:
             issues.append(_err("def-gloss", "'def' needs :gloss (nl …) or :uri", mid))
+        sig_err = parse_signature(m)[2]
+        if sig_err is not None:
+            issues.append(_err("def-sig", sig_err + " (SPEC §6.1)", mid))
     if m.act == "clar":
         heads = {b.head for b in m.body if isinstance(b, Form)}
         if not heads & {"amb", "unk", "parse"}:
@@ -165,7 +236,9 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     retracted: Dict[str, str] = {}                      # retracted id -> id of the retract
     pending_prop: Dict[str, Message] = {}
     closed_prop: Dict[str, str] = {}                    # id -> "acc" | "rej"
-    pending_def: Dict[str, tuple] = {}                  # def id -> (term, pair)
+    pending_def: Dict[str, tuple] = {}                  # def id -> (term, pair, signature)
+    sigs: Dict[tuple, tuple] = {}                       # (scope, term) -> (args, ret); scope = pair | "*"
+    var_types: Dict[str, Dict[str, Term]] = {}          # ask id -> {var name: expected type}
     why_targets: Dict[str, str] = {}                    # why id -> id it questions
     status_asks: Dict[str, Optional[str]] = {}          # status-ask id -> id of the request it queries
     status_claim: Dict[str, str] = {}                   # request id -> tell that claimed it done/failed
@@ -195,12 +268,40 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
         known = set(shared)
         if m.receiver != "*":
             known |= pair_known.get(_pair(m.sender, m.receiver), set())
-        # Evidence under :src names data sources, not vocabulary: it is not subject to resolution.
-        checked = Form(m.act, list(m.body), {k: v for k, v in m.kw.items() if k != "src"})
+        # Evidence under :src names data sources, and :args/:ret name parameters and types
+        # (SPEC §6.1), not vocabulary: none of them is subject to resolution.
+        checked = Form(m.act, list(m.body), {k: v for k, v in m.kw.items() if k not in ("src", "args", "ret")})
         for u in sorted(unresolved_terms(checked, known)):
             if m.act == "def" and m.body and isinstance(m.body[0], Symbol) and u == m.body[0].name:
                 continue
             issues.append(_warn("unresolved-term", f"'{u}' is not core, namespaced, or defined for this pair", m.id))
+
+        # Typed signatures (SPEC §6.1): check uses of defined terms, remember what each $var must bind to.
+        pair = _pair(m.sender, m.receiver)
+        expect: Dict[str, Term] = {}
+        for b in m.body:
+            for f in walk(b):
+                if not isinstance(f, Form):
+                    continue
+                sig = sigs.get((pair, f.head)) or sigs.get(("*", f.head))
+                if sig is None:
+                    continue
+                args, ret = sig
+                if args is not None:
+                    fixed = [a for a in f.args if not isinstance(a, Var)]
+                    if len(fixed) > len(args):
+                        issues.append(_warn("sig-arity", f"'{f.head}' takes {len(args)} argument(s) "
+                                            f"({', '.join(n for n, _ in args)}), got {len(fixed)}", m.id))
+                for i, v in enumerate(f.args):
+                    t = args[i][1] if args is not None and i < len(args) else None
+                    if isinstance(v, Var):
+                        if (t if t is not None else ret) is not None:
+                            expect[v.name] = t if t is not None else ret
+                    elif t is not None and _type_ok(v, t) is False:
+                        issues.append(_warn("sig-type", f"argument '{args[i][0]}' of '{f.head}' should be "
+                                            f"{to_text(t)}, got {to_text(v)}", m.id))
+        if m.act == "ask" and expect:
+            var_types[m.id] = expect
 
         act, r = m.act, m.reply
         if act == "ask":
@@ -216,10 +317,14 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
         elif act == "prop":
             pending_prop[m.id] = m
         elif act == "def" and m.body and isinstance(m.body[0], Symbol):
+            s_args, s_ret, s_err = parse_signature(m)
+            sig_val = (s_args, s_ret) if s_err is None and (s_args is not None or s_ret is not None) else None
             if m.receiver == "*":
                 shared.add(m.body[0].name)                 # a broadcast def is shared at once
+                if sig_val is not None:
+                    sigs[("*", m.body[0].name)] = sig_val
             else:
-                pending_def[m.id] = (m.body[0].name, _pair(m.sender, m.receiver))
+                pending_def[m.id] = (m.body[0].name, _pair(m.sender, m.receiver), sig_val)
         elif act == "why":
             if target is not None:
                 why_targets[m.id] = target.id
@@ -234,6 +339,16 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     if target_req and any(isinstance(v, Symbol) and v.name in ("done", "failed") for v in vals):
                         status_claim[target_req] = m.id
                 del open_asks[r]
+            if r in var_types:
+                for b in m.body:
+                    for t_ in walk(b):
+                        if not isinstance(t_, KMap):
+                            continue
+                        for k, v in t_.items:
+                            exp = var_types[r].get(k.name) if isinstance(k, Var) else None
+                            if exp is not None and not isinstance(v, Var) and _type_ok(v, exp) is False:
+                                issues.append(_warn("sig-ret", f"the binding for ${k.name} should be "
+                                                    f"{to_text(exp)}, got {to_text(v)}", m.id))
             if r in why_targets and "src" not in m.kw:
                 issues.append(_err("why-needs-src", "an answer to 'why' must carry :src (structured evidence or (none))", m.id))
         elif act == "ok":
@@ -248,8 +363,10 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                             issues.append(_warn("eta-overrun", f"promised finish (:at + :eta) is after "
                                                 f"the :by deadline of ^{r}", m.id))
             elif r in pending_def:
-                term, pair = pending_def.pop(r)
-                pair_known.setdefault(pair, set()).add(term)
+                term, def_pair, sig_val = pending_def.pop(r)
+                pair_known.setdefault(def_pair, set()).add(term)
+                if sig_val is not None:
+                    sigs[(def_pair, term)] = sig_val
         elif act == "no":
             open_asks.pop(r, None)
             pending_do.pop(r, None)
