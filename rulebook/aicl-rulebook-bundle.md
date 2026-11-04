@@ -831,6 +831,12 @@ An implementation is **AICL-conformant** if it:
   09:00 temperature with the daily high, then defended it with `false ~1.0` and no source).
   Candidate: `:src (<source> :at <instant> :kind <hourly|daily-high|…> :value <q>)`, and a
   rule that an answer to `why` MUST carry structured evidence or `(none)`.
+  A second live observation makes this urgent: after accepting a `def` for a term it had no
+  data for, the same Gem answered `{$x 0.75} ~0.8` with no source, and when asked `why`
+  it invented one (`:src jreast`). A bare source name can be fabricated after the fact;
+  evidence must be retrievable (`:uri`, `:fetched-at`, `:hash`) or absent (`(none)`), and
+  a `tell` produced without evidence SHOULD say so (`:src (none)`), so that silence and
+  fabrication are distinguishable.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).
