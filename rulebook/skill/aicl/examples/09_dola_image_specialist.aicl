@@ -1,0 +1,14 @@
+; A real exchange, 2026-11-04: a human (@user) and Dola (dola.com), a third-party agent app
+; that had only been given rulebook/aicl-skill.zip as a skill. Dola announced its skills,
+; accepted an image task with an ETA, generated a real image, and reported it as an
+; artifact whose :uri is a retrievable (signed, expiring) URL. The URL is shortened here.
+; Domain terms: none beyond the coop: schema.
+;
+; What it shows: a tool-using agent can satisfy a `do` honestly: the `done` carries a
+; real artifact, unlike a chat-only agent that reports completion it cannot perform.
+
+(ask  #user.1 @user>@dola (coop:capability $skill :agent $who))
+(tell #dola.1 @dola>@user ^user.1 [{$skill image-gen $who @dola} {$skill video-gen $who @dola}])
+(do   #user.2 @user>@dola (coop:task t1 image-gen :in {prompt "Tokyo skyline at night, photorealistic" width 1024px height 1024px}))
+(ok   #dola.2 @dola>@user ^user.2 :eta PT30S)
+(done #dola.3 @dola>@user ^user.2 (coop:artifact a1 :type image :task t1 :uri "https://p16-flow-image-sign.ibyteimg.com/.../c23277261bab427da9b37c07c5ad97d5.jpeg?x-expires=1796369302&x-signature=..."))

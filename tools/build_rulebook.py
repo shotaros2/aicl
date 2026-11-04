@@ -47,7 +47,7 @@ repository by `tools/build_rulebook.py`; do not edit files here by hand.
 | `aicl-rulebook-dense.md` | An LLM agent that will talk to another LLM agent. The dense form uses ~22 % fewer tokens; paste the part after `---` as the system prompt and replace `me` with the agent's id. / LLM 同士で会話させるエージェント。`---` 以降をシステムプロンプトに貼り、`me` をエージェント名に置き換える。 |
 | `aicl-rulebook.md` | The same language in readable form: for debugging, for humans, or for an agent that only talks to you. / 同じ言語の可読形式。デバッグ用、人間用、人と話すだけのエージェント用。 |
 | `codebooks/*.json` | Only when both agents agree to use one. Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。表にある表記以外の省略は禁止。 |
-| `examples/*.aicl` | Eight complete conversations, seven written and one recorded live between Claude and a Gemini Gem; useful as few-shot examples. / 会話例 8 本（7 本は作成、1 本は Claude と Gemini の実際の交渉記録）。few-shot の材料に。 |
+| `examples/*.aicl` | Nine complete conversations, seven written and two recorded live (Claude with a Gemini Gem; a human with Dola, which generated a real image); useful as few-shot examples. / 会話例 9 本（7 本は作成、2 本は実記録: Claude と Gemini の交渉、Dola による実際の画像生成）。few-shot の材料に。 |
 | `schemas/cooperation.md` | How specialists (image, video, code, …) register, receive tasks and return artifacts through a hub: the `coop:` vocabulary. / 専門エージェントがハブを介して登録・受注・成果物返却する手順と `coop:` 語彙。 |
 | `SPEC.md`, `grammar/aicl.ebnf` | The normative specification and grammar, for implementers and for an agent that needs the exact rules. / 規範となる仕様と文法。実装者向け、正確な規則が要るエージェント向け。 |
 
@@ -121,7 +121,7 @@ generate the media, attach it, and report
 result you did not produce. The cooperation vocabulary is in `schemas/cooperation.md`.
 
 The complete language reference follows; `aicl-rulebook.md` is the same in readable form
-and `examples/` holds eight complete conversations.
+and `examples/` holds nine complete conversations.
 
 ---
 
