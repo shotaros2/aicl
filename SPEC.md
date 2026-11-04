@@ -392,6 +392,12 @@ An implementation is **AICL-conformant** if it:
   `:to` and `:after` include the endpoint. Candidate rule for the core: time intervals are
   half-open (`:from` inclusive, `:to` exclusive) and `:after`/`:before` are strict unless a
   schema says otherwise; `(>= a b)` exists for the inclusive case.
+- Progress and deadlines. Observed live: a chat-based agent answered a conditional `do` with
+  `ok`, evaluated the condition correctly when asked (`{$p 80%}`, then `true`), and never
+  sent `done` or `fail`, because nothing in the exchange gave it a turn to do so. The
+  language has no way to ask about an open request. Candidates: a core `(status (ref #id) $s)`
+  query with the answers `pending | done | failed | unknown`, an `:eta` on `ok` that the
+  requester may enforce, and a rule that an `ok` older than its `:eta` may be treated as `fail`.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).
