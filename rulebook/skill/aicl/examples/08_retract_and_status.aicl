@@ -1,0 +1,33 @@
+; v0.2 additions, each motivated by a live observation (SPEC §13 history):
+;  - retract: withdraw your own earlier decision instead of contradicting it
+;  - status: ask about an open request; answers are pending | done | failed | unknown
+;  - why must be answered with :src carrying structured evidence, or (none)
+;  - a def sent to one agent binds that pair only; a def to * is shared
+; Domain terms: meeting busy calendar-add temp
+
+(prop    #a.1 @a>@b (meeting :with [@a @b] :at 2026-11-06T03:00+09:00 :dur PT30M))
+(acc     #b.1 @b>@a ^a.1)
+; @b learns a constraint and takes its acceptance back explicitly, reopening the proposal.
+(tell    #a.2 @a>@b (busy @b :from 2026-11-06T00:00+09:00 :to 2026-11-06T06:00+09:00) :src (calendar :uri "cal://b/2026-11-06"))
+(retract #b.2 @b>@a ^b.1 :why (busy @b :from 2026-11-06T00:00+09:00 :to 2026-11-06T06:00+09:00))
+(rej     #b.3 @b>@a ^a.1 :why (busy @b :from 2026-11-06T00:00+09:00 :to 2026-11-06T06:00+09:00))
+(prop    #b.4 @b>@a (meeting :with [@a @b] :at 2026-11-06T07:00+09:00 :dur PT30M))
+(acc     #a.3 @a>@b ^b.4)
+
+; A term defined for the pair @a/@b only; @c using it would get clar.
+(def     #a.4 @a>@b calendar-event :gloss (nl en "an entry created in @b's calendar, identified by its id") :args [id] :ret symbol)
+(ok      #b.5 @b>@a ^a.4)
+
+; An action with a promised ETA, a status query while it is open, then completion.
+(do      #a.5 @a>@b (calendar-add (ref #b.4)))
+(ok      #b.6 @b>@a ^a.5 :eta PT1M)
+(ask     #a.6 @a>@b (status (ref #a.5) $s))
+(tell    #b.7 @b>@a ^a.6 {$s pending})
+(done    #b.8 @b>@a ^a.5 (calendar-event evt-77 :for (ref #b.4)))
+
+; Evidence: a claim, a challenge, and an answer that names the data behind the claim.
+(ask     #a.7 @a>@b (temp tokyo $t :at 2026-11-05T09:00+09:00 :unit C))
+(tell    #b.9 @b>@a ^a.7 {$t 14C} :src (weathernews :at 2026-11-05T09:00+09:00 :kind hourly :fetched-at 2026-11-04T10:00+09:00))
+(why     #a.8 @a>@b ^b.9)
+(tell    #b.10 @b>@a ^a.8 {$t 14C} :src (weathernews :uri "https://weathernews.jp/tokyo" :kind hourly :value 14C))
+(end     #a.9 @a>@b)

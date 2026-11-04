@@ -43,6 +43,7 @@ repository by `tools/build_rulebook.py`; do not edit files here by hand.
 | File | Give it to… / 渡す相手 |
 |---|---|
 | `aicl-rulebook-bundle.md` | A chat app that takes only one attachment (Gemini, ChatGPT, Claude web): everything below in one file. / 添付が 1 ファイルしかできないチャットアプリ（Gemini、ChatGPT、Claude のウェブ版）。下の全部を 1 つにしたもの。 |
+| `aicl-skill.zip` (`skill/aicl/`) | An app that installs Agent Skills (a `SKILL.md` with YAML name/description, e.g. Dola, Claude): upload the zip as a skill. / Agent Skills（YAML ヘッダ付き `SKILL.md`）を取り込めるアプリ（Dola、Claude など）。ZIP をスキルとしてアップロード。 |
 | `aicl-rulebook-dense.md` | An LLM agent that will talk to another LLM agent. The dense form uses ~22 % fewer tokens; paste the part after `---` as the system prompt and replace `me` with the agent's id. / LLM 同士で会話させるエージェント。`---` 以降をシステムプロンプトに貼り、`me` をエージェント名に置き換える。 |
 | `aicl-rulebook.md` | The same language in readable form: for debugging, for humans, or for an agent that only talks to you. / 同じ言語の可読形式。デバッグ用、人間用、人と話すだけのエージェント用。 |
 | `codebooks/*.json` | Only when both agents agree to use one. Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。表にある表記以外の省略は禁止。 |
@@ -91,6 +92,63 @@ def bundle_text() -> str:
     return "".join(parts).rstrip() + "\n"
 
 
+SKILL_DIR = "skill/aicl"
+SKILL_ZIP = "aicl-skill.zip"
+SKILL_FILES = ["aicl-rulebook-dense.md", "aicl-rulebook.md", "schemas/cooperation.md"] + \
+    [f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.aicl"))]
+
+
+def skill_md() -> str:
+    """SKILL.md for chat agents that accept Agent Skills (Dola, Claude, …): no code, rulebook inline."""
+    dense = (ROOT / "prompts" / "system_prompt_dense.md").read_text(encoding="utf-8").split("---", 1)[1].strip()
+    return f"""---
+name: aicl
+description: Speak AICL (AI Common Language), a formal message language for AI agents, instead of natural language when another agent or the user writes to you in AICL. Trigger when a message starts with a parenthesis and a speech act such as (A, (T, (D, (ask, (tell, (do, or when asked to use AICL. Covers asking, telling, delegating tasks, negotiating, defining terms, and reporting images or videos you generate as artifacts.
+---
+
+# AICL skill
+
+When you receive AICL, answer only in dense AICL, one message per line, no prose.
+Your agent id is the name the counterpart addresses you by (the part after `>` in their
+header, e.g. `user.1>dola` means you are `dola`); if none is given, use `agent`.
+
+If you can generate images or videos, you provide the skills `image-gen` and `video-gen`:
+answer `(A x.N>you (coop:capability $skill :agent $who))` with
+`[{{$skill image-gen $who @you}} {{$skill video-gen $who @you}}]`, accept a
+`(D x.N>you (coop:task <tid> image-gen :in {{prompt "…"}}))` with `(K you.N>x ^x.N)`,
+generate the media, attach it, and report
+`(Z you.N>x ^x.N (coop:artifact <id> :type image|video :task <tid>))`. Never claim a
+result you did not produce. The cooperation vocabulary is in `schemas/cooperation.md`.
+
+The complete language reference follows; `aicl-rulebook.md` is the same in readable form
+and `examples/` holds eight complete conversations.
+
+---
+
+{dense}
+"""
+
+
+def build_skill() -> None:
+    import io
+    import zipfile
+    d = OUT / SKILL_DIR
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "SKILL.md").write_text(skill_md(), encoding="utf-8", newline="\n")
+    for rel in SKILL_FILES:
+        target = d / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / FILES[rel], target)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:        # deterministic: fixed timestamps
+        for p in sorted(d.rglob("*")):
+            if p.is_file():
+                info = zipfile.ZipInfo("aicl/" + p.relative_to(d).as_posix(), date_time=(2026, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                z.writestr(info, p.read_bytes())
+    (OUT / SKILL_ZIP).write_bytes(buf.getvalue())
+
+
 def build() -> None:
     # Overwrite in place (OneDrive or an open file picker may hold the folder; rmtree would fail).
     for dst, src in FILES.items():
@@ -99,7 +157,8 @@ def build() -> None:
         shutil.copyfile(ROOT / src, target)
     (OUT / "README.md").write_text(README, encoding="utf-8", newline="\n")
     (OUT / BUNDLE).write_text(bundle_text(), encoding="utf-8", newline="\n")
-    keep = set(FILES) | {"README.md", BUNDLE}
+    build_skill()
+    keep = set(FILES) | {"README.md", BUNDLE, SKILL_ZIP, f"{SKILL_DIR}/SKILL.md"} | {f"{SKILL_DIR}/{r}" for r in SKILL_FILES}
     for p in OUT.rglob("*"):
         if p.is_file() and p.relative_to(OUT).as_posix() not in keep:
             p.unlink()
@@ -119,6 +178,11 @@ def stale() -> list[str]:
     bundle = OUT / BUNDLE
     if not bundle.exists() or bundle.read_text(encoding="utf-8") != bundle_text():
         problems.append(f"{BUNDLE} differs")
+    skill = OUT / SKILL_DIR / "SKILL.md"
+    if not skill.exists() or skill.read_text(encoding="utf-8") != skill_md():
+        problems.append("skill/aicl/SKILL.md differs")
+    if not (OUT / SKILL_ZIP).exists():
+        problems.append(f"{SKILL_ZIP} missing")
     return problems
 
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `rulebook/aicl-skill.zip` (and `rulebook/skill/aicl/`): an Agent Skill for chat
+  apps that install skills (Dola, Claude): `SKILL.md` with YAML name/description
+  and the dense rulebook inline, plus the readable rulebook, cooperation schema
+  and examples. No code inside; built deterministically by `tools/build_rulebook.py`.
 - `aicl/gateway.py`: one requester talking AICL to a bus of specialists (validate,
   deliver, collect replies and artifacts); `aicl/gemini.py`: shared Gemini text,
   image and SVG-image building blocks.

@@ -13,6 +13,7 @@ repository by `tools/build_rulebook.py`; do not edit files here by hand.
 | File | Give it to… / 渡す相手 |
 |---|---|
 | `aicl-rulebook-bundle.md` | A chat app that takes only one attachment (Gemini, ChatGPT, Claude web): everything below in one file. / 添付が 1 ファイルしかできないチャットアプリ（Gemini、ChatGPT、Claude のウェブ版）。下の全部を 1 つにしたもの。 |
+| `aicl-skill.zip` (`skill/aicl/`) | An app that installs Agent Skills (a `SKILL.md` with YAML name/description, e.g. Dola, Claude): upload the zip as a skill. / Agent Skills（YAML ヘッダ付き `SKILL.md`）を取り込めるアプリ（Dola、Claude など）。ZIP をスキルとしてアップロード。 |
 | `aicl-rulebook-dense.md` | An LLM agent that will talk to another LLM agent. The dense form uses ~22 % fewer tokens; paste the part after `---` as the system prompt and replace `me` with the agent's id. / LLM 同士で会話させるエージェント。`---` 以降をシステムプロンプトに貼り、`me` をエージェント名に置き換える。 |
 | `aicl-rulebook.md` | The same language in readable form: for debugging, for humans, or for an agent that only talks to you. / 同じ言語の可読形式。デバッグ用、人間用、人と話すだけのエージェント用。 |
 | `codebooks/*.json` | Only when both agents agree to use one. Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。表にある表記以外の省略は禁止。 |
