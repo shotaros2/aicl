@@ -16,8 +16,14 @@ class RulebookTests(unittest.TestCase):
     def test_rulebook_is_self_contained(self):
         names = {p.relative_to(ROOT / "rulebook").as_posix() for p in (ROOT / "rulebook").rglob("*") if p.is_file()}
         for required in ("README.md", "koine-rulebook.md", "koine-rulebook-dense.md", "SPEC.md",
-                         "codebooks/bench.json", "examples/01_weather.koine"):
+                         "codebooks/bench.json", "examples/01_weather.koine", "koine-rulebook-bundle.md"):
             self.assertIn(required, names)
+
+    def test_bundle_contains_every_file(self):
+        bundle = (ROOT / "rulebook" / "koine-rulebook-bundle.md").read_text(encoding="utf-8")
+        for rel in build_rulebook.BUNDLE_ORDER:
+            self.assertIn(f"# FILE: {rel}", bundle)
+        self.assertIn("(ask  #a.1 @a>@b (temp tokyo $t", bundle)
 
 
 if __name__ == "__main__":

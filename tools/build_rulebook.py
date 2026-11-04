@@ -41,6 +41,7 @@ repository by `tools/build_rulebook.py`; do not edit files here by hand.
 
 | File | Give it to… / 渡す相手 |
 |---|---|
+| `koine-rulebook-bundle.md` | A chat app that takes only one attachment (Gemini, ChatGPT, Claude web): everything below in one file. / 添付が 1 ファイルしかできないチャットアプリ（Gemini、ChatGPT、Claude のウェブ版）。下の全部を 1 つにしたもの。 |
 | `koine-rulebook-dense.md` | An LLM agent that will talk to another LLM agent. The dense form uses ~22 % fewer tokens; paste the part after `---` as the system prompt and replace `me` with the agent's id. / LLM 同士で会話させるエージェント。`---` 以降をシステムプロンプトに貼り、`me` をエージェント名に置き換える。 |
 | `koine-rulebook.md` | The same language in readable form: for debugging, for humans, or for an agent that only talks to you. / 同じ言語の可読形式。デバッグ用、人間用、人と話すだけのエージェント用。 |
 | `codebooks/*.json` | Only when both agents agree to use one. Forms in the codebook may replace concept ids; nothing else may be abbreviated. / 両エージェントが使うと合意したときだけ。表にある表記以外の省略は禁止。 |
@@ -69,14 +70,37 @@ Natural language only inside `(nl lang "…")`. Every request is closed.
 """
 
 
+BUNDLE = "koine-rulebook-bundle.md"
+BUNDLE_ORDER = ["koine-rulebook-dense.md", "koine-rulebook.md"] + \
+    [f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.koine"))] + \
+    ["codebooks/bench.json", "codebooks/imagegen.json", "SPEC.md", "grammar/koine.ebnf"]
+
+
+def bundle_text() -> str:
+    """Everything in one Markdown file, for chat apps that accept a single attachment."""
+    parts = ["# Koine rulebook (single-file bundle)\n\n"
+             "Generated from the Koine repository. Sections: the dense language reference (use this as the\n"
+             "system prompt of an LLM agent, replacing `me` with its id), the readable reference, six example\n"
+             "conversations, two example codebooks, the specification and the grammar.\n"]
+    for rel in BUNDLE_ORDER:
+        text = (ROOT / FILES[rel]).read_text(encoding="utf-8").rstrip("\n")
+        fence = "" if rel.endswith(".md") else ("```json\n" if rel.endswith(".json") else "```\n")
+        parts.append(f"\n\n---\n\n# FILE: {rel}\n\n{fence}{text}\n{'```' if fence else ''}")
+    return "".join(parts).rstrip() + "\n"
+
+
 def build() -> None:
-    if OUT.exists():
-        shutil.rmtree(OUT)
+    # Overwrite in place (OneDrive or an open file picker may hold the folder; rmtree would fail).
     for dst, src in FILES.items():
         target = OUT / dst
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / src, target)
     (OUT / "README.md").write_text(README, encoding="utf-8", newline="\n")
+    (OUT / BUNDLE).write_text(bundle_text(), encoding="utf-8", newline="\n")
+    keep = set(FILES) | {"README.md", BUNDLE}
+    for p in OUT.rglob("*"):
+        if p.is_file() and p.relative_to(OUT).as_posix() not in keep:
+            p.unlink()
 
 
 def stale() -> list[str]:
@@ -90,6 +114,9 @@ def stale() -> list[str]:
     readme = OUT / "README.md"
     if not readme.exists() or readme.read_text(encoding="utf-8") != README:
         problems.append("README.md differs")
+    bundle = OUT / BUNDLE
+    if not bundle.exists() or bundle.read_text(encoding="utf-8") != bundle_text():
+        problems.append(f"{BUNDLE} differs")
     return problems
 
 
@@ -101,7 +128,7 @@ def main(argv=None) -> int:
             print(p)
         return 1 if problems else 0
     build()
-    print(f"rulebook/ rebuilt: {len(FILES) + 1} files")
+    print(f"rulebook/ rebuilt: {len(FILES) + 2} files")
     return 0
 
 
