@@ -1,0 +1,59 @@
+(* Koine text encoding, v0.1.0 — ISO/IEC 14977 EBNF *)
+
+document     = { ws | comment | term } ;
+comment      = ";" , { ? any character except newline ? } ;
+
+term         = form | list | map | atom ;
+
+form         = "(" , ws? , symbol , { ws , form-item } , ws? , ")" ;
+form-item    = keyword , ws , term       (* keyword argument *)
+             | confidence               (* ~0.85, at most once per form *)
+             | term ;                    (* positional argument *)
+
+list         = "[" , ws? , [ term , { ws , term } ] , ws? , "]" ;
+map          = "{" , ws? , [ term , ws , term , { ws , term , ws , term } ] , ws? , "}" ;
+
+atom         = boolean | null | route | agent | ref | reply-ref | variable
+             | keyword | instant | date | duration | quantity | number
+             | string | symbol ;
+
+boolean      = "true" | "false" ;
+null         = "null" ;
+
+agent        = "@" , ident ;
+route        = agent , ">" , ( agent | "*" ) ;
+ref          = "#" , ident ;
+reply-ref    = "^" , ident ;
+variable     = "$" , ident ;
+keyword      = ":" , ident ;
+confidence   = "~" , ( "0" , [ "." , digits ] | "1" , [ "." , { "0" } ] ) ;
+
+symbol       = ( letter | "_" ) , { letter | digit | "_" | "." | ":" | "/" | "-" }
+             | "=" | "!=" | "<" | "<=" | ">" | ">=" ;
+ident        = ( letter | digit | "_" ) , { letter | digit | "_" | "." | ":" | "/" | "-" } ;
+
+number       = [ "-" ] , ( digits , [ "." , { digit } ] | "." , digits ) , [ exponent ] ;
+exponent     = ( "e" | "E" ) , [ "+" | "-" ] , digits ;
+quantity     = number , unit ;
+unit         = ( letter | "%" ) , { letter | digit | "/" | "^" | "%" } ;
+
+instant      = date , "T" , digit2 , ":" , digit2 , [ ":" , digit2 , [ "." , digits ] ] , offset ;
+offset       = "Z" | ( "+" | "-" ) , digit2 , ":" , digit2 ;
+date         = digit , digit , digit , digit , "-" , digit2 , "-" , digit2 ;
+duration     = "P" , [ digits , "Y" ] , [ digits , "M" ] , [ digits , "W" ] , [ digits , "D" ]
+             , [ "T" , [ digits , "H" ] , [ digits , "M" ] , [ digits , [ "." , digits ] , "S" ] ] ;
+             (* at least one component is required *)
+
+string       = '"' , { ? any character except '"' and '\' ? | escape } , '"' ;
+escape       = "\" , ( '"' | "\" | "/" | "b" | "f" | "n" | "r" | "t" | "u" , hex , hex , hex , hex ) ;
+
+letter       = "A" | ... | "Z" | "a" | ... | "z" ;
+digit        = "0" | ... | "9" ;
+digit2       = digit , digit ;
+digits       = digit , { digit } ;
+hex          = digit | "a" | ... | "f" | "A" | ... | "F" ;
+ws           = { " " | "\t" | "\n" | "\r" } ;
+
+(* Message = a top-level form whose head is a speech act:
+   (ACT #id @from>@to [^reply] body... [:key value]... [~conf])
+   ACT ∈ ask tell do ok no done fail prop acc rej def clar why sub unsub end *)

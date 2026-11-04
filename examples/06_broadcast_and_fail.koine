@@ -1,0 +1,12 @@
+; Broadcast discovery, delegation to a third agent, and a coded failure.
+; Domain terms: capability ocr
+
+(ask  #a.1 @a>* (capability $c :agent $who))
+(tell #b.1 @b>@a ^a.1 {$c translate $who @b})
+(tell #c.1 @c>@a ^a.1 {$c ocr $who @c})
+
+(do   #a.2 @a>@c (ocr :file (ref #doc-1) :lang ja))
+(ok   #c.2 @c>@a ^a.2)
+(fail #c.3 @c>@a ^a.2 :code not-found :why (unk doc-1))
+
+(end  #a.3 @a>*)

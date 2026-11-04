@@ -1,0 +1,5 @@
+(ask  #a.1 @a>@b (temp tokyo $t :unit C :at 2026-11-05T09:00+09:00))
+(tell #b.1 @b>@a ^a.1 {$t 18.5C} ~0.9 :src jma)
+(ask  #a.2 @a>@b (rain tokyo :on 2026-11-05))
+(tell #b.2 @b>@a ^a.2 false ~0.8 :src jma)
+(end  #a.3 @a>@b)

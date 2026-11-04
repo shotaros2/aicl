@@ -1,0 +1,7 @@
+A: Hello! Would a 30-minute meeting between the two of us work on Thursday, November 6th at 10am Japan time?
+
+B: Thanks for reaching out! Unfortunately 10am doesn't work for me — I'm busy from 9 to 11 that morning. How about 2pm the same day instead, also for 30 minutes?
+
+A: 2pm on the 6th works perfectly for me. Could you add it to the calendar?
+
+B: Will do! I've added it to the calendar — the event ID is evt-9931. See you then!

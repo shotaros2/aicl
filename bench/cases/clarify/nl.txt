@@ -1,0 +1,15 @@
+A: Hey, what's the risk score for transaction txn-77?
+
+B: Sorry, I'm not sure what you mean by "risk score" — could you clarify which score you're referring to?
+
+A: Ah, sorry. By risk score I mean the probability (between 0 and 1) that a transaction is fraudulent, as produced by fraud model v3. It takes a transaction and returns a number.
+
+B: Got it, thanks for explaining! For txn-77, fraud model v3 gives a risk score of 0.12. I'm quite confident in that figure.
+
+A: Thanks. And what's the balance on account acct-1, in US dollars?
+
+B: Just to double-check — do you mean the available balance or the ledger balance? They can differ.
+
+A: The available balance, please.
+
+B: The available balance on acct-1 is $1,520.40.

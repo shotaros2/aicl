@@ -1,0 +1,11 @@
+; Subscriptions: a pattern with $variables; each matching event is a tell that
+; replies to the subscription id. Free text from a log line is quarantined in (nl …).
+; Domain terms: alert
+
+(sub   #a.1 @a>@b (alert $svc $level :min-level error))
+(ok    #b.1 @b>@a ^a.1)
+(tell  #b.2 @b>@a ^a.1 (alert payments error :at 2026-11-04T10:12:03Z
+                        :msg (nl en "db connection pool exhausted")))
+(tell  #b.3 @b>@a ^a.1 (alert search critical :at 2026-11-04T10:14:40Z :msg (nl en "index unavailable")))
+(unsub #a.2 @a>@b ^a.1)
+(ok    #b.4 @b>@a ^a.2)

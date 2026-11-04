@@ -1,0 +1,9 @@
+A: Hi! Could you tell me what the temperature in Tokyo is expected to be tomorrow morning at 9am (Japan time)? Celsius please. Thanks!
+
+B: Sure thing! According to the JMA forecast, it should be around 18.5°C in Tokyo at 9am tomorrow. I'm fairly confident in that, though forecasts can of course change.
+
+A: Great, thanks. And is it going to rain there tomorrow?
+
+B: It doesn't look like it — the JMA forecast shows no rain for Tokyo tomorrow, though I'd say there's still a small chance. Let me know if you need anything else!
+
+A: That's all, thanks!

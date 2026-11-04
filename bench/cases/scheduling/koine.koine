@@ -1,0 +1,7 @@
+(prop #a.1 @a>@b (meeting :with [@a @b] :at 2026-11-06T10:00:00+09:00 :dur PT30M))
+(rej  #b.1 @b>@a ^a.1 :why (busy @b :from 2026-11-06T09:00:00+09:00 :to 2026-11-06T11:00:00+09:00))
+(prop #b.2 @b>@a (meeting :with [@a @b] :at 2026-11-06T14:00:00+09:00 :dur PT30M))
+(acc  #a.2 @a>@b ^b.2)
+(do   #a.3 @a>@b (calendar-add (ref #b.2)))
+(ok   #b.3 @b>@a ^a.3)
+(done #b.4 @b>@a ^a.3 (calendar-event evt-9931 :for (ref #b.2)))
