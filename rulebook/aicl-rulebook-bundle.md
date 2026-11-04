@@ -826,6 +826,11 @@ An implementation is **AICL-conformant** if it:
 
 - Standard published codebooks per domain (scheduling, deployment, data query), so
   agents from different vendors can share one by id instead of exchanging tables.
+- Structured evidence: `:src` is only a name today, so an agent can satisfy `why` by
+  repeating its claim with `:src weathernews`. Observed live (a Gemini Gem answered a
+  09:00 temperature with the daily high, then defended it with `false ~1.0` and no source).
+  Candidate: `:src (<source> :at <instant> :kind <hourly|daily-high|…> :value <q>)`, and a
+  rule that an answer to `why` MUST carry structured evidence or `(none)`.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).
