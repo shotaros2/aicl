@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import __version__, cbor_codec, json_codec, tokens
+from . import __version__, cbor_codec, dense, json_codec, tokens
 from .model import KoineError, Message, is_message
 from .parser import parse
 from .printer import digest, pretty, to_text
@@ -27,7 +27,15 @@ def _load(path: str):
     if path.endswith(".cbor"):
         with open(path, "rb") as f:
             return [cbor_codec.from_cbor(f.read())]
-    return parse(_read(path))
+    text = _read(path)
+    if path.endswith(".kd") or dense.looks_dense(text):
+        return dense.from_dense(text)
+    return parse(text)
+
+
+def cmd_dense(a):
+    for t in _load(a.file):
+        print(dense.to_dense(t))
 
 
 def cmd_fmt(a):
@@ -100,10 +108,13 @@ def cmd_stats(a):
     terms = _load(a.file)
     msgs = [Message.from_form(t) for t in terms if is_message(t)]
     canon = "\n".join(to_text(t) for t in terms)
+    dn = "\n".join(dense.to_dense(t) for t in terms)
     print(f"messages:          {len(msgs)}")
     print(f"chars (source):    {len(text)}")
     print(f"chars (canonical): {len(canon)}")
+    print(f"chars (dense):     {len(dn)}")
     print(f"tokens (canonical, {tokens.METHOD}): {tokens.count(canon)}")
+    print(f"tokens (dense, {tokens.METHOD}):     {tokens.count(dn)}")
     print(f"nl ratio:          {nl_ratio(msgs):.1%}")
 
 
@@ -114,6 +125,7 @@ def main(argv=None):
 
     s = sub.add_parser("fmt", help="print canonical single-line form");          s.add_argument("file"); s.set_defaults(fn=cmd_fmt)
     s = sub.add_parser("pretty", help="print human-readable multi-line form");    s.add_argument("file"); s.add_argument("--width", type=int, default=72); s.set_defaults(fn=cmd_pretty)
+    s = sub.add_parser("dense", help="print dense (tokenizer-tuned) text encoding"); s.add_argument("file"); s.set_defaults(fn=cmd_dense)
     s = sub.add_parser("json", help="convert to JSON encoding");                  s.add_argument("file"); s.add_argument("--compact", action="store_true"); s.set_defaults(fn=cmd_json)
     s = sub.add_parser("cbor", help="convert a single term to CBOR");             s.add_argument("file"); s.add_argument("-o", "--output"); s.set_defaults(fn=cmd_cbor)
     s = sub.add_parser("hash", help="SHA-256 of canonical form, one per term");   s.add_argument("file"); s.set_defaults(fn=cmd_hash)

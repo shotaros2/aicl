@@ -4,11 +4,12 @@
 
 First public draft.
 
-- Specification: abstract model, text / JSON / CBOR encodings, 16 speech acts,
+- Specification: abstract model, text / dense text / JSON / CBOR encodings, 16 speech acts,
   core logical vocabulary, vocabulary resolution via `def` and namespaces,
   canonical form and hashing, conformance criteria.
 - Reference implementation (Python, no dependencies): lexer, parser, canonical
-  and pretty printers, JSON and deterministic CBOR codecs, message and
+  and pretty printers, dense text codec (22 % fewer cl100k tokens than the
+  readable form), JSON and deterministic CBOR codecs, message and
   conversation validator, `koine` CLI.
 - Six worked examples, a two-agent in-process demo, an LLM-to-LLM demo, a
   system prompt that teaches any LLM to speak Koine, and a token benchmark.

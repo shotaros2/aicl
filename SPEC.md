@@ -19,9 +19,10 @@ interchangeable concrete encodings:
 
 | Encoding | Purpose | Example |
 |---|---|---|
-| **Text** | Prompts, logs, humans reading over agents' shoulders | `(ask #a.1 @a>@b (temp tokyo $t :unit C))` |
+| **Text** | Canonical form; logs, humans reading over agents' shoulders | `(ask #a.1 @a>@b (temp tokyo $t :unit C))` |
+| **Dense text** | What LLM agents actually exchange: same structure, fewer tokens (§8) | `(A a.1>b (temp tokyo $t :u C))` |
 | **JSON** | Tooling, interop with MCP / A2A / JSON-RPC transports | `{"f":"ask","a":["#a.1", ...]}` |
-| **CBOR** | Wire efficiency, signing, hashing | binary |
+| **CBOR** | Program-to-program wire format, signing, hashing | binary |
 
 Every message has exactly one **canonical form** per encoding, so agents can hash,
 sign, and compare messages without disagreement.
@@ -222,7 +223,39 @@ A canonical text form exists so that `sha256(canonical(msg))` is identical acros
 
 ---
 
-## 8. JSON Encoding
+## 8. Dense Text Encoding
+
+LLMs read and write tokens, not bytes, so the most efficient form for agent-to-agent
+exchange is text tuned to BPE tokenizers, not binary. The dense encoding is a purely
+lexical, bijective rewriting of the canonical text (§7): same parentheses, same order,
+shorter atoms. `koine fmt` turns it back into the readable form; humans are not expected
+to read it directly.
+
+| Canonical | Dense | Rule |
+|---|---|---|
+| `ask tell do ok no done fail prop acc rej def clar why sub unsub end` | `A T D K N Z F P C R E Q W S U X` | Speech act → one capital letter, only in head position |
+| `#a.1 @a>@b` | `a.1>b` | When the id is `<sender>.<n>`, the id and route merge; `a.1>*` broadcasts. Otherwise `#id @from>@to` is kept |
+| `^a.1` | `^a.1` | unchanged |
+| `:at :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
+| `2026-11-06T10:00+09:00`, `2026-11-04T09:04:12Z` | `20261106T1000+9`, `20261104T090412Z` | ISO 8601 basic format; offset mandatory, 1–2 digits = hours, 3–4 digits = HHMM; seconds only when non-zero; fractional seconds keep the extended form |
+| everything else | unchanged | |
+
+Reserved in the readable form as a consequence: single capital letters are not valid
+domain heads, and the single-letter keywords above are not valid domain keys.
+
+```
+(P a.1>b (meeting :a 20261106T1000+9 :dur PT30M :with [@a @b]))
+(R b.1>a ^a.1 :w (busy @b :from 20261106T0900+9 :to 20261106T1100+9))
+(P b.2>a (meeting :a 20261106T1400+9 :dur PT30M :with [@a @b]))
+(C a.2>b ^b.2)
+```
+
+Measured on `bench/`, the dense form uses 22 % fewer cl100k tokens than the canonical
+text and about the same as a polite natural-language exchange carrying less information.
+The remaining tokens are domain vocabulary; shortening those needs a shared codebook
+(§13).
+
+## 9. JSON Encoding
 
 | Koine | JSON |
 |---|---|
@@ -243,14 +276,14 @@ sorted object keys, no whitespace, UTF-8.
 
 ---
 
-## 9. CBOR Encoding
+## 10. CBOR Encoding
 
 The JSON model is mapped to CBOR with the standard JSON↔CBOR correspondence (RFC 8949 §6).
 Canonical CBOR follows RFC 8949 §4.2 (shortest integer encoding, definite lengths, sorted map keys).
 
 ---
 
-## 10. Worked Example
+## 11. Worked Example
 
 Natural-language exchange (what agents do today):
 
@@ -278,19 +311,21 @@ tokenizers trained for English prose).
 
 ---
 
-## 11. Conformance
+## 12. Conformance
 
 An implementation is **Koine-conformant** if it:
 
 1. Parses every text in `examples/` and reproduces its canonical form byte-for-byte.
-2. Round-trips text → JSON → text and text → CBOR → text without change in canonical form.
+2. Round-trips text → dense → text, text → JSON → text and text → CBOR → text without change in canonical form.
 3. Rejects the malformed inputs in `tests/` with the specified error class.
 4. Enforces the protocol rules in §4.4 when validating a conversation.
 
 ---
 
-## 12. Open Questions (for v0.2)
+## 13. Open Questions (for v0.2)
 
+- Shared codebooks: pre-agreed schemas that map domain terms to short codes
+  (`deploy-status` → `d1`), the only remaining lever for token cost below the dense form.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
 - A standard set of domain schemas (scheduling, data query, tool invocation).
 - Signatures and identity (`@agent` → public key binding).

@@ -22,8 +22,9 @@ exchange is machine-checkable: no one can verify that every request got an answe
 
 ## What Koine does
 
-Koine is a small formal message language with three interchangeable encodings
-(compact text, JSON, deterministic CBOR) and one canonical form that can be hashed and signed.
+Koine is a small formal message language with four interchangeable encodings
+(readable text, dense text for LLM-to-LLM exchange, JSON, deterministic CBOR) and one
+canonical form that can be hashed and signed.
 Its design rules are the whole point:
 
 | Rule | In practice |
@@ -56,29 +57,44 @@ The full specification is in [SPEC.md](SPEC.md) (16 pages, CC BY 4.0); the gramm
 More in [examples/](examples/): negotiation, in-band term definition and clarification,
 subscriptions, broadcast discovery, coded failures.
 
+### The dense form: what agents actually send
+
+LLMs consume tokens, not bytes, so "binary" would make LLM-to-LLM traffic *more*
+expensive (it would be base64 in the prompt). Instead, Koine has a **dense text encoding**
+(SPEC §8): the same structure with one-letter speech acts, merged headers, one-letter
+core keys and ISO-basic timestamps. It is bijective with the readable form, so
+`koine fmt` always recovers the readable version for audit and debugging.
+
+```
+(P a.1>b (meeting :a 20261106T1000+9 :dur PT30M :with [@a @b]))
+(R b.1>a ^a.1 :w (busy @b :from 20261106T0900+9 :to 20261106T1100+9))
+(P b.2>a (meeting :a 20261106T1400+9 :dur PT30M :with [@a @b]))
+(C a.2>b ^b.2)
+```
+
 ## Honest numbers: precision is not free
 
 `bench/compare.py` compares realistic natural-language agent dialogues with the same
 information in Koine (cl100k_base tokenizer, which GPT-4-class and many open models use):
 
-| case | NL chars | NL tokens | Koine chars | Koine tokens | tokens ratio |
+| case | NL tokens | Koine readable | ratio | Koine dense | ratio |
 |---|---|---|---|---|---|
-| weather | 551 | 138 | 220 | 128 | 0.93 |
-| clarify | 721 | 188 | 564 | 239 | 1.27 |
-| deploy | 597 | 150 | 432 | 201 | 1.34 |
-| scheduling | 433 | 124 | 402 | 211 | 1.70 |
-| **total** | | **600** | | **779** | **1.30** |
+| weather | 138 | 128 | 0.93 | 98 | 0.71 |
+| clarify | 188 | 239 | 1.27 | 190 | 1.01 |
+| deploy | 150 | 201 | 1.34 | 164 | 1.09 |
+| scheduling | 124 | 211 | 1.70 | 158 | 1.27 |
+| **total** | **600** | **779** | **1.30** | **610** | **1.02** |
 
-Koine is **shorter in characters and bytes** and removes every ambiguity, but on today's
-BPE tokenizers it costs **about 30 % more tokens** than polite English, because those
-vocabularies are tuned for prose: an ISO instant with offset is ~16 tokens, a message
-header `#a.1 @a>@b ^a.1` ~11. The scheduling case carries four instants, which alone are
-more than a quarter of its tokens. Where the information density is high (weather) Koine already wins.
+The readable form costs about 30 % more tokens than polite English, because BPE
+vocabularies are tuned for prose. The dense form removes 22 % of that and lands at
+**parity with natural language while carrying strictly more information** (exact instants
+with time zones, ids, thresholds, provenance) and zero ambiguity. In characters, both
+Koine forms are far shorter.
 
-So the claim is not "fewer tokens". The claim is: **zero guesses, machine-verifiable
-protocol, and a measurable budget for the ambiguous parts** (`nl ratio`). Token cost is
-an engineering problem we are working on in the open (see Roadmap); if you use a
-tokenizer-aware id scheme or your model's own tokenizer, re-run the benchmark.
+What remains is domain vocabulary (`deploy-status`, `build-4821`, `eu-west-1`), which is
+the information itself. Going below that requires a **shared codebook** that maps domain
+terms to short codes; that is the next item on the roadmap. Re-run the benchmark with your
+own model's tokenizer before drawing conclusions for it.
 
 ## Install and use
 
@@ -87,7 +103,8 @@ pip install -e .            # or: pip install koine-lang  (once published)
 ```
 
 ```bash
-koine fmt    examples/02_deploy.koine        # canonical single-line form
+koine fmt    examples/02_deploy.koine        # canonical single-line form (also decodes dense input)
+koine dense  examples/02_deploy.koine        # dense text encoding for LLM-to-LLM exchange
 koine pretty examples/02_deploy.koine        # readable layout
 koine json   examples/02_deploy.koine        # JSON encoding
 koine cbor   examples/01_weather.koine -o m.cbor
@@ -106,6 +123,7 @@ for issue in koine.validate_conversation(msgs, known_terms=["deploy-status", "ro
 m = msgs[1]
 print(m.act, m.sender, m.receiver, m.reply)  # tell b a a.1
 print(koine.to_text(m.to_form()))            # canonical text
+print(koine.to_dense(m.to_form()))           # dense text
 print(koine.to_json_text(m.to_form()))       # canonical JSON
 print(koine.digest(m.to_form()))             # sha256
 
@@ -116,7 +134,9 @@ reply = msg("tell", "b.9", "b", "a", koine.KMap([(koine.Var("t"), q(18.5, "C"))]
 ## Make an LLM speak Koine
 
 [prompts/system_prompt.md](prompts/system_prompt.md) is a ~700-token system prompt that
-teaches any instruction-following model the language. `examples/llm_dialogue.py` runs two
+teaches any instruction-following model the readable language;
+[prompts/system_prompt_dense.md](prompts/system_prompt_dense.md) teaches the dense form,
+which is what two LLM agents should use with each other. `examples/llm_dialogue.py` runs two
 Claude instances negotiating a meeting in Koine, with every message parsed and validated
 at the boundary before it is delivered:
 
@@ -127,6 +147,19 @@ python examples/llm_dialogue.py
 
 `examples/two_agents_demo.py` does the same with rule-based agents and no network.
 
+### Hand the folder to your own agent
+
+The repository is self-describing for agents that read a project folder:
+
+- `AGENTS.md` (Codex, Cursor and most general agents) and `CLAUDE.md` (Claude Code)
+  tell the agent to load the system prompt and validate every message with `koine check`.
+- `SKILL.md` makes the folder an [Agent Skill](https://github.com/anthropics/skills):
+  copy it to `.claude/skills/koine/` (or your framework's skills directory) and the
+  agent loads Koine only when it talks to another agent.
+
+Two agents that have both read this folder can talk to each other in Koine with no
+further setup; the validator is the referee.
+
 ## Repository layout
 
 ```
@@ -135,6 +168,7 @@ grammar/koine.ebnf      text encoding grammar
 koine/                  reference implementation (Python ≥ 3.11, no dependencies)
   lexer.py parser.py    text → terms
   printer.py            canonical + pretty text, sha256 digest
+  dense.py              dense text encoding (tokenizer-tuned, bijective with canonical)
   json_codec.py         JSON encoding
   cbor_codec.py         deterministic CBOR (RFC 8949 §4.2)
   validate.py           message + conversation validator, nl ratio
@@ -157,11 +191,11 @@ tests/                  unittest suite (also the conformance tests)
 
 ## Roadmap
 
-- v0.2: typed `def` signatures; standard schemas for scheduling, data query and tool
-  invocation; conversation-level time anchor (RFC open: it saves ~10 tokens per instant at the
-  price of context dependence); tokenizer-aware id conventions.
-- Ports: the implementation is ~1300 lines including docstrings and meant to be re-implemented in an afternoon.
-  Conformance criteria are in SPEC §11; open an issue to be listed here.
+- v0.2: shared codebooks (pre-agreed schemas that map domain terms to short codes, the
+  remaining lever for token cost); typed `def` signatures; standard schemas for
+  scheduling, data query and tool invocation.
+- Ports: the implementation is ~1500 lines including docstrings and meant to be re-implemented in an afternoon.
+  Conformance criteria are in SPEC §12; open an issue to be listed here.
 - Identity and signatures (`@agent` → public key).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how language changes are proposed.

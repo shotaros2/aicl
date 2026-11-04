@@ -19,7 +19,7 @@
 
 ## Koine が提供するもの
 
-Koine は小さな形式言語です。3 つの相互変換可能なエンコーディング（コンパクトなテキスト、JSON、決定的 CBOR）と、ハッシュ・署名できる 1 つの正規形を持ちます。設計原則そのものが本体です。
+Koine は小さな形式言語です。4 つの相互変換可能なエンコーディング（可読テキスト、LLM 同士の交換用の密テキスト、JSON、決定的 CBOR）と、ハッシュ・署名できる 1 つの正規形を持ちます。設計原則そのものが本体です。
 
 | 原則 | 実際の形 |
 |---|---|
@@ -51,21 +51,32 @@ Koine は小さな形式言語です。3 つの相互変換可能なエンコー
 
 [examples/](examples/) には交渉、会話内での語の定義と問い返し、購読、ブロードキャスト、コード付き失敗の例があります。
 
+### 密形式: エージェントが実際に送るもの
+
+LLM はバイトではなくトークンを読むので、「二進数」にすると LLM 同士の通信はかえって**高く**なります（プロンプト内で base64 になるため）。そこで Koine には **密テキストエンコーディング**（SPEC §8）があります。構造は同じまま、発話行為は 1 文字、ヘッダは結合、主要キーは 1 文字、時刻は ISO 基本形式です。可読形式と 1 対 1 で相互変換できるので、監査やデバッグのときは `koine fmt` で必ず可読形式に戻せます。
+
+```
+(P a.1>b (meeting :a 20261106T1000+9 :dur PT30M :with [@a @b]))
+(R b.1>a ^a.1 :w (busy @b :from 20261106T0900+9 :to 20261106T1100+9))
+(P b.2>a (meeting :a 20261106T1400+9 :dur PT30M :with [@a @b]))
+(C a.2>b ^b.2)
+```
+
 ## 正直な数字: 正確さはタダではない
 
 `bench/compare.py` は、現実的な自然言語のエージェント対話と同じ情報を Koine で書いたものを比較します（トークナイザは GPT-4 系や多くの公開モデルが使う cl100k_base）。
 
-| ケース | 自然言語 文字 | 自然言語 トークン | Koine 文字 | Koine トークン | トークン比 |
+| ケース | 自然言語 | Koine 可読 | 比 | Koine 密 | 比 |
 |---|---|---|---|---|---|
-| weather | 551 | 138 | 220 | 128 | 0.93 |
-| clarify | 721 | 188 | 564 | 239 | 1.27 |
-| deploy | 597 | 150 | 432 | 201 | 1.34 |
-| scheduling | 433 | 124 | 402 | 211 | 1.70 |
-| **合計** | | **600** | | **779** | **1.30** |
+| weather | 138 | 128 | 0.93 | 98 | 0.71 |
+| clarify | 188 | 239 | 1.27 | 190 | 1.01 |
+| deploy | 150 | 201 | 1.34 | 164 | 1.09 |
+| scheduling | 124 | 211 | 1.70 | 158 | 1.27 |
+| **合計** | **600** | **779** | **1.30** | **610** | **1.02** |
 
-Koine は**文字数・バイト数では短く**、曖昧さをすべて取り除きますが、現在の BPE トークナイザでは丁寧な英語より**約 3 割多くトークンを使います**。語彙が散文向けに最適化されているためで、オフセット付き ISO 時刻は約 16 トークン、ヘッダ `#a.1 @a>@b ^a.1` は約 11 トークンです。scheduling には時刻が 4 つあり、それだけでトークンの 4 分の 1 以上を占めます。情報密度が高い weather ではすでに Koine が勝っています。
+可読形式は丁寧な英語より約 3 割多くトークンを使います。BPE の語彙が散文向けだからです。密形式はそこから 22% 削り、**自然言語と同じトークン数で、厳密により多くの情報**（タイムゾーン付きの正確な時刻、ID、閾値、根拠）を曖昧さゼロで運びます。文字数ではどちらの形式も自然言語よりはるかに短くなります。
 
-したがって主張は「トークンが減る」ではありません。主張は **推測ゼロ、機械検証できるプロトコル、曖昧な部分の割合（nl ratio）を測れること** です。トークンコストは工学的課題として公開で取り組みます（ロードマップ参照）。モデル固有のトークナイザやトークナイザを意識した ID 規約を使う場合は、ベンチを再実行してください。
+残っているのは `deploy-status`、`build-4821`、`eu-west-1` のような領域語で、これは情報そのものです。これより下げるには、領域語を短いコードに対応づける**共有コードブック**が必要で、ロードマップの次の項目にしています。自分のモデルのトークナイザでベンチを再実行してから結論を出してください。
 
 ## インストールと使い方
 
@@ -74,7 +85,8 @@ pip install -e .            # 公開後は: pip install koine-lang
 ```
 
 ```bash
-koine fmt    examples/02_deploy.koine        # 正規形（1 行）
+koine fmt    examples/02_deploy.koine        # 正規形（1 行。密形式の入力も可読形式に戻す）
+koine dense  examples/02_deploy.koine        # LLM 同士の交換用の密テキスト形式
 koine pretty examples/02_deploy.koine        # 読みやすい整形
 koine json   examples/02_deploy.koine        # JSON エンコーディング
 koine cbor   examples/01_weather.koine -o m.cbor
@@ -93,6 +105,7 @@ for issue in koine.validate_conversation(msgs, known_terms=["deploy-status", "ro
 m = msgs[1]
 print(m.act, m.sender, m.receiver, m.reply)  # tell b a a.1
 print(koine.to_text(m.to_form()))            # 正規形テキスト
+print(koine.to_dense(m.to_form()))           # 密テキスト
 print(koine.to_json_text(m.to_form()))       # 正規形 JSON
 print(koine.digest(m.to_form()))             # sha256
 
@@ -102,7 +115,7 @@ reply = msg("tell", "b.9", "b", "a", koine.KMap([(koine.Var("t"), q(18.5, "C"))]
 
 ## LLM に Koine を話させる
 
-[prompts/system_prompt.md](prompts/system_prompt.md) は約 700 トークンのシステムプロンプトで、指示追従できるモデルならどれでも Koine を話せるようにします。`examples/llm_dialogue.py` は 2 つの Claude が会議の日程を Koine で交渉するデモで、すべてのメッセージは相手に渡す前にパース・検証されます。
+[prompts/system_prompt.md](prompts/system_prompt.md) は約 700 トークンのシステムプロンプトで、指示追従できるモデルならどれでも可読形式の Koine を話せるようにします。[prompts/system_prompt_dense.md](prompts/system_prompt_dense.md) は密形式を教えるもので、LLM エージェント同士はこちらを使うべきです。`examples/llm_dialogue.py` は 2 つの Claude が会議の日程を Koine で交渉するデモで、すべてのメッセージは相手に渡す前にパース・検証されます。
 
 ```bash
 pip install anthropic
@@ -110,6 +123,15 @@ python examples/llm_dialogue.py
 ```
 
 `examples/two_agents_demo.py` はルールベースのエージェントで同じことをネットワークなしで行います。
+
+### 自分のエージェントにフォルダを渡す
+
+このリポジトリは、プロジェクトフォルダを読むタイプのエージェントがそのまま理解できるようになっています。
+
+- `AGENTS.md`（Codex、Cursor など多くの汎用エージェント）と `CLAUDE.md`（Claude Code）が、システムプロンプトを読み込み、送信前に `koine check` で検証するよう指示します。
+- `SKILL.md` によりフォルダ全体が [Agent Skill](https://github.com/anthropics/skills) になります。`.claude/skills/koine/`（または使っているフレームワークのスキル置き場）にコピーすると、エージェントは他のエージェントと話すときだけ Koine を読み込みます。
+
+このフォルダを読んだエージェント同士は、追加設定なしで Koine で会話できます。審判役はバリデータです。
 
 ## リポジトリ構成
 
@@ -119,6 +141,7 @@ grammar/koine.ebnf      テキストエンコーディングの文法
 koine/                  リファレンス実装（Python 3.11 以上、依存なし）
   lexer.py parser.py    テキスト → 項
   printer.py            正規形・整形出力、sha256
+  dense.py              密テキストエンコーディング（トークナイザ向け、正規形と 1 対 1）
   json_codec.py         JSON エンコーディング
   cbor_codec.py         決定的 CBOR（RFC 8949 §4.2）
   validate.py           メッセージ・会話のバリデータ、nl ratio
@@ -164,8 +187,8 @@ git push -u origin main
 
 ## ロードマップ
 
-- v0.2: 型付き `def` シグネチャ、日程調整・データ問い合わせ・ツール呼び出しの標準スキーマ、会話単位の時刻アンカー（RFC 募集中: 時刻 1 つあたり約 10 トークン減るが文脈依存が生まれる）、トークナイザを意識した ID 規約。
-- 他言語への移植: 実装はコメント込みで約 1300 行で、半日で移植できる規模を意図しています。適合基準は SPEC §11。
+- v0.2: 共有コードブック（領域語を短いコードに対応づける事前合意スキーマ。トークンコストを下げる残された手段）、型付き `def` シグネチャ、日程調整・データ問い合わせ・ツール呼び出しの標準スキーマ。
+- 他言語への移植: 実装はコメント込みで約 1500 行で、半日で移植できる規模を意図しています。適合基準は SPEC §12。
 - ID と署名（`@agent` → 公開鍵）。
 
 ## ライセンス

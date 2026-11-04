@@ -38,5 +38,5 @@ NL side to make Koine look better; the comparison is only useful if it is fair.
 ## Ports
 
 Implementations in other languages are welcome in separate repositories.
-They are conformant when they pass the criteria in SPEC.md §11; open an issue
+They are conformant when they pass the criteria in SPEC.md §12; open an issue
 to be listed in the README.
