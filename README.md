@@ -160,7 +160,8 @@ longer contain any and the loader warns about them. Results for larger models ar
 ## Install and use
 
 ```bash
-pip install -e .            # or: pip install aicl-lang  (once published)
+pip install aicl-lang       # from PyPI: https://pypi.org/project/aicl-lang/
+pip install -e .            # or from a checkout
 ```
 
 ```bash

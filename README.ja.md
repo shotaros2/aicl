@@ -120,7 +120,8 @@ python evals/readback.py --provider gemini --model gemini-3.8-flash --out evals/
 ## インストールと使い方
 
 ```bash
-pip install -e .            # 公開後は: pip install aicl-lang
+pip install aicl-lang       # PyPI から: https://pypi.org/project/aicl-lang/
+pip install -e .            # または作業コピーから
 ```
 
 ```bash
@@ -233,7 +234,7 @@ tests/                  unittest（適合性テストを兼ねる）
 - ソースコードと仕様: https://github.com/shotaros2/aicl
 - 問題報告と仕様への提案（`RFC:` プレフィックス）: https://github.com/shotaros2/aicl/issues
 - push のたびに GitHub Actions が Windows / Ubuntu × Python 3.11–3.13 でテストを走らせます。
-- PyPI への公開は `pip install build twine && python -m build && twine upload dist/*`（パッケージ名 `aicl-lang`）。
+- PyPI: https://pypi.org/project/aicl-lang/ （`pip install aicl-lang`）。新版は `python -m build` のあと `run_pypi_upload.cmd`。
 
 ## ロードマップ
 
