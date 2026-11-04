@@ -62,8 +62,11 @@ Gemini agent given only the rulebook, or a Claude–Gemini negotiation relayed b
 
 [examples/08](examples/08_retract_and_status.aicl) shows all of them in one conversation.
 
-A later live run — Claude and Gemini negotiating under a hard deadline with a
-harness-injected clock ([examples/10](examples/10_deadline_negotiation.aicl)) — added three more:
+### What live experiments changed (0.3)
+
+Version 0.3 closes every question §13 had left open, again one live run at a time —
+first Claude and Gemini negotiating under a hard deadline with a harness-injected clock
+([examples/10](examples/10_deadline_negotiation.aicl)):
 
 - **Checkable deadlines**: with no standard key, the requester improvised `:by`,
   `:if (< now …)` and `:deadline` on successive runs. A `do` may now carry `:by` (hard
@@ -77,17 +80,14 @@ harness-injected clock ([examples/10](examples/10_deadline_negotiation.aicl)) �
   *inside* a body, and every encoder crashed. A form is a message only where a message
   belongs: at the top level, with `#id` and route.
 
-Large payloads stay out of band ([examples/15](examples/15_blob_and_part.aicl)): a long
-answer is sliced with `:part [i n]` and the request stays open until every slice arrived
-(a live delivery was once truncated by a chat app's output limit), and bytes travel as
-`(blob sha256:… :uri …)` — the hash is the identity, the URI only a hint (a live image
-once arrived as a signed URL that expires).
-
-Identity is message arithmetic too ([examples/14](examples/14_signed_identity.aicl),
-SPEC §3.1): a message may carry `:sig (ed25519 …)` over its frozen canonical form, the
-agent → public-key binding is a keys file, and `aicl check --keys` flags a forged,
-altered or unsigned message. Signing is the transport's job, not the model's — an LLM
-can no more compute Ed25519 than it can know the time.
+A packed cross-vendor run ([examples/11](examples/11_standard_codebook.aicl)) grounded
+**standard codebooks** (SPEC §8.2): immutable, versioned tables published in
+[codebooks/](codebooks/) (`aicl.sched.1`, `aicl.deploy.1`) that two agents agree on
+in-band by id and digest — `(ask … (codebook aicl.sched.1 $digest))` — instead of
+exchanging JSON. In the live run the handshake succeeded, both sides packed with zero
+violations, and the wire cost measured 370 tokens against 480 readable. It also exposed
+a new slip, a status answered `done` with no real `done` ever sent, now flagged as
+`status-unclosed`.
 
 Typed `def` signatures ([examples/12](examples/12_typed_def.aicl), SPEC §6.1) let a
 definition fix the types of a term's arguments and of the answer: `:args [(base symbol)
@@ -96,14 +96,23 @@ schema: from the same loose prose records, Gemini bound `:ret number` as `152.31
 `:ret (qty JPY)` as `2450000JPY`, converting 「245万円」 into the declared unit — the
 first live transcript with zero validator warnings.
 
-And a packed cross-vendor run ([examples/11](examples/11_standard_codebook.aicl)) grounded
-**standard codebooks** (SPEC §8.2): immutable, versioned tables published in
-[codebooks/](codebooks/) (`aicl.sched.1`, `aicl.deploy.1`) that two agents agree on
-in-band by id and digest — `(ask … (codebook aicl.sched.1 $digest))` — instead of
-exchanging JSON. In the live run the handshake succeeded, both sides packed with zero
-violations, and the wire cost measured 370 tokens against 480 readable. It also exposed
-a new slip, a status answered `done` with no real `done` ever sent, now flagged as
-`status-unclosed`.
+Identity is message arithmetic too ([examples/14](examples/14_signed_identity.aicl),
+SPEC §3.1): a message may carry `:sig (ed25519 …)` over its frozen canonical form, the
+agent → public-key binding is a keys file, and `aicl check --keys` flags a forged,
+altered or unsigned message. Signing is the transport's job, not the model's — an LLM
+can no more compute Ed25519 than it can know the time.
+
+Large payloads stay out of band ([examples/15](examples/15_blob_and_part.aicl)): a long
+answer is sliced with `:part [i n]` and the request stays open until every slice arrived
+(a live delivery was once truncated by a chat app's output limit), and bytes travel as
+`(blob sha256:… :uri …)` — the hash is the identity, the URI only a hint (a live image
+once arrived as a signed URL that expires).
+
+A chat agent given only the skill zip completed a research task against a typed report
+schema ([examples/13](examples/13_dola_research_task.aicl)) — and contributed the
+`ok-for-ask` error by acknowledging an `ask` with `ok`. The experiment harness behind
+all of these runs is in the library (`aicl.dialogue`): LLM agents exchanging AICL at
+machine speed, the validator at the boundary, every byte on the record.
 
 ### A complete exchange
 

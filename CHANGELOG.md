@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-11-05
+
+Every open question SPEC §13 listed at 0.2.0 is closed in this release — checkable
+deadlines, standard codebooks, typed def signatures, signatures and identity, split
+answers and binary attachments — each by a live cross-vendor run (`examples/10`–`15`,
+runners in `examples/*_dialogue.py`, harness `aicl.dialogue`). Canonical forms of 0.2
+messages are unchanged; dense adds the key code `:b` (`:by`). Entries below are newest
+first.
 
 Large payloads — the last two §13 questions, each grounded by a live incident:
 

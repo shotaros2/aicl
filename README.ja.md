@@ -47,19 +47,23 @@ AICL は小さな形式言語です。4 つの相互変換可能なエンコー�
 
 [examples/08](examples/08_retract_and_status.aicl) に全部まとめた会話例があります。
 
-その後のライブ実験 — ハーネスが時計を注入した、締切つきの Claude と Gemini の交渉（[examples/10](examples/10_deadline_negotiation.aicl)）— がさらに 3 つ加えました。
+### 実験で変わったこと（0.3）
+
+0.3 は §13 に残っていた未解決課題を、やはり 1 本ずつのライブ実験で全部閉じた版です。まず、ハーネスが時計を注入した締切つきの Claude と Gemini の交渉（[examples/10](examples/10_deadline_negotiation.aicl)）から。
 
 - **検証できる締切**: 標準のキーがないため、依頼側は実行のたびに `:by`、`:if (< now …)`、`:deadline` を場当たりで発明した。`do` には `:by`（これを過ぎたら結果は無価値）を付けられるようになり、`:eta` を約束する `ok` は `:at` で固定する。約束が締切を超える矛盾（`eta-overrun`）は時計なしの純粋なメッセージ計算で検出でき、`--now` を与えれば期限切れも検出できる。
 - **`retract` は一方的**: 実行側が取り下げに `fail "cannot retract"` と答えた。retract は受信した時点で効力を持ち、取り下げ済みメッセージへの返信は `stale-reply` として検出される。
 - **発話行為語は予約語ではない**: 依頼側が本文の中に自然に `(done (ref #a.1))` と書き、すべてのエンコーダが落ちた。形式がメッセージなのは、メッセージの場所（トップレベル、`#id` と経路つき）にあるときだけになった。
 
-大きなペイロードは帯域の外に置きます（[examples/15](examples/15_blob_and_part.aicl)）。長い答えは `:part [i n]` でスライスし、全スライスが届くまで依頼は開いたまま（実走でチャットアプリの出力限界により納品が千切れた事故が根拠）。バイト列は `(blob sha256:… :uri …)` で運びます——ハッシュが本体、URIはただのヒント（実走で画像が期限切れする署名URLで届いたのが根拠）。
-
-同一性もメッセージ演算です（[examples/14](examples/14_signed_identity.aicl)、SPEC §3.1）。メッセージは凍結された正規形に対する `:sig (ed25519 …)` を持て、@agent と公開鍵の対応は鍵ファイルで検証器に渡し、`aicl check --keys` が偽造・改竄・未署名を検出します。署名はモデルではなくトランスポートの仕事です——LLMは時刻を知れないのと同じように、Ed25519を計算できません。
+パック形式でのベンダー横断実験（[examples/11](examples/11_standard_codebook.aicl)）は**標準コードブック**（SPEC §8.2）を裏付けました。[codebooks/](codebooks/) に公開された不変・版つきのテーブル（`aicl.sched.1`、`aicl.deploy.1`）を、JSON の交換ではなく会話内の id とダイジェスト — `(ask … (codebook aicl.sched.1 $digest))` — で合意します。実走ではハンドシェイクが成立し、両者とも違反ゼロでパックし、ワイヤは実測 370 トークン（可読形式 480 に対して）でした。同時に新しい綻び（status に `done` と答えたのに本物の `done` を送らない）も見つかり、`status-unclosed` として検出されるようになりました。
 
 型付き `def` 署名（[examples/12](examples/12_typed_def.aicl)、SPEC §6.1）では、定義が語の引数と答えの型を固定できます: `:args [(base symbol) (quote symbol)] :ret (qty JPY)`。実走では宣言した型がスキーマの仕事をしました。同じ緩い散文の記録から、Gemini は `:ret number` には `152.31`、`:ret (qty JPY)` には `2450000JPY` を束縛し、「245万円」を宣言どおりの単位へ変換——検証器の警告ゼロの実記録はこれが初です。
 
-さらに、パック形式でのベンダー横断実験（[examples/11](examples/11_standard_codebook.aicl)）が**標準コードブック**（SPEC §8.2）を裏付けました。[codebooks/](codebooks/) に公開された不変・版つきのテーブル（`aicl.sched.1`、`aicl.deploy.1`）を、JSON の交換ではなく会話内の id とダイジェスト — `(ask … (codebook aicl.sched.1 $digest))` — で合意します。実走ではハンドシェイクが成立し、両者とも違反ゼロでパックし、ワイヤは実測 370 トークン（可読形式 480 に対して）でした。同時に新しい綻び（status に `done` と答えたのに本物の `done` を送らない）も見つかり、`status-unclosed` として検出されるようになりました。
+同一性もメッセージ演算です（[examples/14](examples/14_signed_identity.aicl)、SPEC §3.1）。メッセージは凍結された正規形に対する `:sig (ed25519 …)` を持て、@agent と公開鍵の対応は鍵ファイルで検証器に渡し、`aicl check --keys` が偽造・改竄・未署名を検出します。署名はモデルではなくトランスポートの仕事です——LLMは時刻を知れないのと同じように、Ed25519を計算できません。
+
+大きなペイロードは帯域の外に置きます（[examples/15](examples/15_blob_and_part.aicl)）。長い答えは `:part [i n]` でスライスし、全スライスが届くまで依頼は開いたまま（実走でチャットアプリの出力限界により納品が千切れた事故が根拠）。バイト列は `(blob sha256:… :uri …)` で運びます——ハッシュが本体、URIはただのヒント（実走で画像が期限切れする署名URLで届いたのが根拠）。
+
+スキル ZIP だけを渡されたチャットエージェントが、型付きの報告スキーマに沿って調査タスクを完遂した記録もあります（[examples/13](examples/13_dola_research_task.aicl)。`ask` に `ok` で相槌を打つ `ok-for-ask` エラーの出どころでもあります）。これらの実験を回したハーネスはライブラリに入っています（`aicl.dialogue`）: LLM エージェント同士が機械速度で AICL を交換し、境界には検証器、全バイトが記録に残ります。
 
 ### 会話の例
 

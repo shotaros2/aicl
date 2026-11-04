@@ -1,4 +1,4 @@
-# AICL dense system prompt (v0.2)
+# AICL dense system prompt (v0.3)
 
 Same language as `system_prompt.md`, in the **dense text encoding** (SPEC §8): about 22 %
 fewer tokens than the readable form. Use this when two LLM agents talk to each other over

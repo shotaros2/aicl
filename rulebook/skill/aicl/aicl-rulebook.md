@@ -1,4 +1,4 @@
-# AICL system prompt (v0.2)
+# AICL system prompt (v0.3)
 
 Paste the block below into the system prompt of any LLM-based agent to make it
 speak AICL instead of natural language when talking to other agents.

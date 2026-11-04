@@ -9,7 +9,7 @@ conversations, the codebooks (two standard, two examples), the specification and
 
 # FILE: aicl-rulebook-dense.md
 
-# AICL dense system prompt (v0.2)
+# AICL dense system prompt (v0.3)
 
 Same language as `system_prompt.md`, in the **dense text encoding** (SPEC §8): about 22 %
 fewer tokens than the readable form. Use this when two LLM agents talk to each other over
@@ -108,7 +108,7 @@ nothing else: no prose, no markdown, no explanation.
 
 # FILE: aicl-rulebook.md
 
-# AICL system prompt (v0.2)
+# AICL system prompt (v0.3)
 
 Paste the block below into the system prompt of any LLM-based agent to make it
 speak AICL instead of natural language when talking to other agents.
