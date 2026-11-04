@@ -117,6 +117,23 @@ def cmd_hash(a):
         print(digest(t))
 
 
+def cmd_relay(a):
+    from .relay import Relay, make_server
+    keys = None
+    if a.keys:
+        from .signing import load_keys
+        keys = load_keys(a.keys)
+    relay = Relay(tuple(a.known), keys)
+    srv = make_server(relay, a.host, a.port)
+    sig = " (signatures enforced)" if keys else ""
+    print(f"aicl relay on http://{a.host}:{a.port}{sig} — POST /c/<conv>, GET /c/<conv>?for=<agent>,"
+          f" /c/<conv>/transcript, /c/<conv>/check. Ctrl+C to stop.")
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
 def cmd_blob(a):
     from .blob import file_hash, make_blob
     if a.expect:
@@ -224,6 +241,7 @@ def main(argv=None):
     s = sub.add_parser("unpack", help="map codebook forms back to concept ids (canonical text)"); s.add_argument("file"); s.add_argument("--codebook", required=True, metavar="JSON"); s.set_defaults(fn=cmd_unpack)
     s = sub.add_parser("codebook", help="validate a codebook and show the chosen forms"); s.add_argument("codebook", metavar="JSON"); s.add_argument("--tokenizer"); s.set_defaults(fn=cmd_codebook)
     s = sub.add_parser("keygen", help="generate an Ed25519 keypair for an agent (SPEC §3.1)"); s.add_argument("agent"); s.set_defaults(fn=cmd_keygen)
+    s = sub.add_parser("relay", help="run an HTTP relay where independent agents meet (validates every message at the boundary)"); s.add_argument("--host", default="127.0.0.1"); s.add_argument("--port", type=int, default=8700); s.add_argument("--known", action="append", default=[], metavar="TERM"); s.add_argument("--keys", metavar="JSON", help="agent -> public key; enforce :sig at the door"); s.set_defaults(fn=cmd_relay)
     s = sub.add_parser("blob", help="print the (blob sha256:… …) form naming a file's content, or verify one (SPEC §5.2)"); s.add_argument("file"); s.add_argument("--uri", help="where a copy can currently be fetched (a hint, not an identity)"); s.add_argument("--media"); s.add_argument("--expect", metavar="HASH", help="verify: compare the file against sha256:<hex>"); s.set_defaults(fn=cmd_blob)
     s = sub.add_parser("sign", help="add :sig to each message (the whole file, or one sender's)"); s.add_argument("file"); s.add_argument("--key", required=True, metavar="PRIV", help="base64url Ed25519 private key, or a file holding it"); s.add_argument("--agent", help="sign only this sender's messages"); s.add_argument("-o", "--output"); s.set_defaults(fn=cmd_sign)
 

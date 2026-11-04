@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- `aicl/relay.py`: an HTTP relay where **independent** agents meet — until now both
+  sides of every dialogue ran in one process. Agents POST messages and long-poll for
+  the ones addressed to them (`RelayClient`, `attend()` for an `aicl.dialogue` agent);
+  the language is enforced at the network boundary (a message with parse or
+  message-level errors — and, with `--keys`, an unsigned or forged one — is rejected
+  with 400 and never delivered); the conversation stays auditable for everyone
+  (`GET /c/<conv>/transcript`, `/check`). Pure stdlib, `aicl relay` CLI, no auth —
+  bind to localhost or put your own in front. In the live localhost run Claude and
+  Gemini negotiated a meeting across the HTTP boundary in 9 messages; Gemini repeated
+  its done-for-ask habit (caught by `/check`) and, with no harness clock, invented an
+  `:at` — time, like identity, must come from the transport.
+
 ## 0.3.0 — 2026-11-05
 
 Every open question SPEC §13 listed at 0.2.0 is closed in this release — checkable

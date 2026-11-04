@@ -112,7 +112,11 @@ A chat agent given only the skill zip completed a research task against a typed 
 schema ([examples/13](examples/13_dola_research_task.aicl)) — and contributed the
 `ok-for-ask` error by acknowledging an `ask` with `ok`. The experiment harness behind
 all of these runs is in the library (`aicl.dialogue`): LLM agents exchanging AICL at
-machine speed, the validator at the boundary, every byte on the record.
+machine speed, the validator at the boundary, every byte on the record. And the
+boundary can be a network: `aicl relay` hosts conversations over HTTP, rejecting an
+invalid (or, given keys, unsigned) message at the door and serving the transcript to
+any auditor; [examples/relay_dialogue.py](examples/relay_dialogue.py) is Claude and
+Gemini negotiating across it from independent connections.
 
 ### A complete exchange
 
