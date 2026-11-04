@@ -77,6 +77,12 @@ harness-injected clock ([examples/10](examples/10_deadline_negotiation.aicl)) �
   *inside* a body, and every encoder crashed. A form is a message only where a message
   belongs: at the top level, with `#id` and route.
 
+Identity is message arithmetic too ([examples/14](examples/14_signed_identity.aicl),
+SPEC §3.1): a message may carry `:sig (ed25519 …)` over its frozen canonical form, the
+agent → public-key binding is a keys file, and `aicl check --keys` flags a forged,
+altered or unsigned message. Signing is the transport's job, not the model's — an LLM
+can no more compute Ed25519 than it can know the time.
+
 Typed `def` signatures ([examples/12](examples/12_typed_def.aicl), SPEC §6.1) let a
 definition fix the types of a term's arguments and of the answer: `:args [(base symbol)
 (quote symbol)] :ret (qty JPY)`. In the live run the declared type did the work of a

@@ -1,0 +1,12 @@
+; Signatures and identity (SPEC §3.1): every message carries :sig (ed25519 "…") over
+; the canonical form of the message with :sig removed. The agent -> public-key binding
+; is out of band: examples/demo_keys.json (DEMO keys, private halves published on
+; purpose so this file can be regenerated; never reuse them).
+;
+; Verify:  aicl check examples/14_signed_identity.aicl --known temp --keys examples/demo_keys.json
+; Change one digit of 18.5C and sig-invalid fires; delete a :sig and sig-missing fires.
+; Signing is the transport's job (aicl sign / the aicl.dialogue harness), not the LLM's.
+
+(ask  #a.1 @a>@b (temp tokyo $t :unit C) :sig (ed25519 "qKstOX-16xNCehKCgx6505sIjLAzXzDpMwB0VUQ2RaIkzobMSiavs9IZbPRqUf9q9aymnriDplIiObM07v9cBQ"))
+(tell #b.1 @b>@a ^a.1 {$t 18.5C} :sig (ed25519 "EsDQvKruUAsNljbNO6rBcfqeid4-yZ_jEpkgExRR7eVU9ng_k04rUynCruXUdwMaFQ-GcV5Q2E7u0_VoSvceAQ") :src jma)
+(end  #a.2 @a>@b :sig (ed25519 "RxVR0oU0KqmNBBFSw-30UpvOVowQE3ggeghOooosuGMcabhd4MlEgEt7FIePrBSTtlQRGafv86M6sAV8niFNBQ"))

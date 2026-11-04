@@ -103,6 +103,7 @@ Agent/ref/var identifiers match `[A-Za-z0-9_][A-Za-z0-9_.:/-]*`.
 | `:src term` | no; required on an answer to `why` | Evidence for the body: `(none)`, or a form naming the source with what was read from it, e.g. `(weathernews :uri "…" :at 2026-11-05T09:00+09:00 :kind hourly :value 14C :fetched-at 2026-11-04T10:00+09:00)`. A bare name (`:src jma`) is allowed but weak: it can be invented after the fact. Terms under `:src` are not subject to vocabulary resolution (§6) |
 | `:why term` | with `no`, `rej`, `fail`, `retract` | Reason |
 | `:code symbol` | with `fail` | Error code (§4.3) |
+| `:sig term` | no; required when the sender's key is known to the verifier | `(ed25519 "<base64url signature>")` over the canonical form of the message with `:sig` removed (§3.1). Transport metadata, exempt from vocabulary resolution |
 | `~conf` | no | Speaker's confidence in the body; absent = asserted without qualification |
 
 Argument order inside the head is free; the parser classifies by sigil.
@@ -114,6 +115,32 @@ ordinary term, subject to vocabulary resolution (§6) like any other. At the top
 of a document or transmission every act-named form MUST be a well-formed message.
 (Motivated by a live run on 2026-11-04: an agent naturally used `done` as a body
 term in its third message; reserving 18 everyday words everywhere is a trap.)
+
+### 3.1 Signatures and identity
+
+`@agent` is a claim; a signature makes it checkable. The binding of an agent name to
+an **Ed25519 public key** is exchanged out of band (a keys file `{"a": "<base64url
+public key>", …}`, handed to the validator like pre-agreed terms), and every message
+from a bound agent carries
+
+```
+:sig (ed25519 "<base64url signature>")
+```
+
+- **The payload is the canonical form** (§7) of the message with the `:sig` key
+  removed. Canonical form is frozen, so a signature survives re-encoding — dense,
+  JSON, CBOR, packing through a codebook, pretty-printing — and breaks on any
+  semantic change: one argument, one keyword, one digit.
+- **Signing is the transport's job, not the model's.** An LLM can no more compute
+  Ed25519 than it can know the time; like `; now`, identity is supplied by the layer
+  that delivers messages (`aicl sign`, or a harness such as `aicl.dialogue`).
+- A verifier given keys flags: a message from a bound agent without a well-formed
+  `:sig` (`sig-missing`, error), one whose signature does not verify (`sig-invalid`,
+  error: forged, altered, or signed with another key), and one from an agent it has
+  no key for (`sig-no-key`, warning).
+- Terms under `:sig` are transport metadata, exempt from vocabulary resolution (§6).
+- Key distribution, rotation and revocation are out of scope of the language;
+  `aicl keygen` makes a keypair, and the keys file is the trust anchor.
 
 ---
 
@@ -487,9 +514,11 @@ Typed signatures for `def` are §6.1: `(name type)` parameters, `(qty UNIT)` and
 `(list TYPE)` types, and the checks `sig-arity` / `sig-type` / `sig-ret`, with bare
 names and sort names staying legal and unchecked.
 
+Signatures and identity are §3.1: `:sig (ed25519 …)` over the frozen canonical form,
+keys bound out of band, checked by `aicl check --keys`.
+
 Still open:
 
-- Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.
 

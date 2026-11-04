@@ -21,6 +21,7 @@ KNOWN = {
     "11_standard_codebook.aicl": ["meeting", "busy", "calendar-add", "calendar-event"],
     "12_typed_def.aicl": [],
     "13_dola_research_task.aicl": [],
+    "14_signed_identity.aicl": ["temp"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;

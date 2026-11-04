@@ -23,6 +23,7 @@ dependencies = []
 
 [project.optional-dependencies]
 tokens = ["tiktoken>=0.7"]
+crypto = ["cryptography>=42"]
 llm = ["anthropic>=1.0", "google-genai>=1.0"]
 mcp = ["mcp>=2.0", "google-genai>=1.0"]
 dev = ["pytest"]

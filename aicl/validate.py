@@ -216,12 +216,18 @@ def _pair(a: str, b: str) -> FrozenSet[str]:
 
 
 def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str] = (),
-                          now: Optional[datetime] = None) -> List[Issue]:
+                          now: Optional[datetime] = None,
+                          keys: Optional[Dict[str, str]] = None) -> List[Issue]:
     """Check protocol rules across a whole exchange (SPEC §4.4, §6).
 
     With `now` (an aware datetime, see `parse_now`), deadlines become checkable:
     an open `do` whose `:by` has passed, or whose promised `:at` + `:eta` has
     elapsed, is flagged.
+
+    With `keys` ({agent name: base64url Ed25519 public key}, SPEC §3.1), identity
+    becomes checkable: a message from an agent with a known key must carry a valid
+    `:sig` (`sig-missing`, `sig-invalid`); one from an agent without a key is
+    flagged `sig-no-key`. Needs the optional crypto dependency to verify.
     """
     msgs = list(messages)
     issues: List[Issue] = []
@@ -249,6 +255,18 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
             issues.append(_err("dup-id", f"message id reused by {seen[m.id].sender}/{m.sender}", m.id))
         seen[m.id] = m
 
+        if keys is not None:
+            from .signing import sig_of, verify_form
+            if m.sender not in keys:
+                issues.append(_warn("sig-no-key", f"no public key known for @{m.sender}; "
+                                    "signature not checked", m.id))
+            elif sig_of(m.to_form()) is None:
+                issues.append(_err("sig-missing", f"@{m.sender} has a known key but the message "
+                                   "carries no well-formed :sig (SPEC §3.1)", m.id))
+            elif not verify_form(m.to_form(), keys[m.sender]):
+                issues.append(_err("sig-invalid", f"the :sig does not verify against @{m.sender}'s "
+                                   "key: forged, altered, or signed with another key", m.id))
+
         target = seen.get(m.reply) if m.reply is not None else None
         if m.reply is not None:
             if target is None:
@@ -268,9 +286,10 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
         known = set(shared)
         if m.receiver != "*":
             known |= pair_known.get(_pair(m.sender, m.receiver), set())
-        # Evidence under :src names data sources, and :args/:ret name parameters and types
-        # (SPEC §6.1), not vocabulary: none of them is subject to resolution.
-        checked = Form(m.act, list(m.body), {k: v for k, v in m.kw.items() if k not in ("src", "args", "ret")})
+        # Evidence under :src names data sources, :args/:ret name parameters and types
+        # (SPEC §6.1), and :sig is transport metadata (SPEC §3.1), not vocabulary:
+        # none of them is subject to resolution.
+        checked = Form(m.act, list(m.body), {k: v for k, v in m.kw.items() if k not in ("src", "args", "ret", "sig")})
         for u in sorted(unresolved_terms(checked, known)):
             if m.act == "def" and m.body and isinstance(m.body[0], Symbol) and u == m.body[0].name:
                 continue

@@ -557,6 +557,25 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
+# FILE: examples/14_signed_identity.aicl
+
+```
+; Signatures and identity (SPEC §3.1): every message carries :sig (ed25519 "…") over
+; the canonical form of the message with :sig removed. The agent -> public-key binding
+; is out of band: examples/demo_keys.json (DEMO keys, private halves published on
+; purpose so this file can be regenerated; never reuse them).
+;
+; Verify:  aicl check examples/14_signed_identity.aicl --known temp --keys examples/demo_keys.json
+; Change one digit of 18.5C and sig-invalid fires; delete a :sig and sig-missing fires.
+; Signing is the transport's job (aicl sign / the aicl.dialogue harness), not the LLM's.
+
+(ask  #a.1 @a>@b (temp tokyo $t :unit C) :sig (ed25519 "qKstOX-16xNCehKCgx6505sIjLAzXzDpMwB0VUQ2RaIkzobMSiavs9IZbPRqUf9q9aymnriDplIiObM07v9cBQ"))
+(tell #b.1 @b>@a ^a.1 {$t 18.5C} :sig (ed25519 "EsDQvKruUAsNljbNO6rBcfqeid4-yZ_jEpkgExRR7eVU9ng_k04rUynCruXUdwMaFQ-GcV5Q2E7u0_VoSvceAQ") :src jma)
+(end  #a.2 @a>@b :sig (ed25519 "RxVR0oU0KqmNBBFSw-30UpvOVowQE3ggeghOooosuGMcabhd4MlEgEt7FIePrBSTtlQRGafv86M6sAV8niFNBQ"))
+```
+
+---
+
 # FILE: schemas/cooperation.md
 
 # AICL cooperation schema (`coop:` namespace), v0.1
@@ -876,6 +895,7 @@ Agent/ref/var identifiers match `[A-Za-z0-9_][A-Za-z0-9_.:/-]*`.
 | `:src term` | no; required on an answer to `why` | Evidence for the body: `(none)`, or a form naming the source with what was read from it, e.g. `(weathernews :uri "…" :at 2026-11-05T09:00+09:00 :kind hourly :value 14C :fetched-at 2026-11-04T10:00+09:00)`. A bare name (`:src jma`) is allowed but weak: it can be invented after the fact. Terms under `:src` are not subject to vocabulary resolution (§6) |
 | `:why term` | with `no`, `rej`, `fail`, `retract` | Reason |
 | `:code symbol` | with `fail` | Error code (§4.3) |
+| `:sig term` | no; required when the sender's key is known to the verifier | `(ed25519 "<base64url signature>")` over the canonical form of the message with `:sig` removed (§3.1). Transport metadata, exempt from vocabulary resolution |
 | `~conf` | no | Speaker's confidence in the body; absent = asserted without qualification |
 
 Argument order inside the head is free; the parser classifies by sigil.
@@ -887,6 +907,32 @@ ordinary term, subject to vocabulary resolution (§6) like any other. At the top
 of a document or transmission every act-named form MUST be a well-formed message.
 (Motivated by a live run on 2026-11-04: an agent naturally used `done` as a body
 term in its third message; reserving 18 everyday words everywhere is a trap.)
+
+### 3.1 Signatures and identity
+
+`@agent` is a claim; a signature makes it checkable. The binding of an agent name to
+an **Ed25519 public key** is exchanged out of band (a keys file `{"a": "<base64url
+public key>", …}`, handed to the validator like pre-agreed terms), and every message
+from a bound agent carries
+
+```
+:sig (ed25519 "<base64url signature>")
+```
+
+- **The payload is the canonical form** (§7) of the message with the `:sig` key
+  removed. Canonical form is frozen, so a signature survives re-encoding — dense,
+  JSON, CBOR, packing through a codebook, pretty-printing — and breaks on any
+  semantic change: one argument, one keyword, one digit.
+- **Signing is the transport's job, not the model's.** An LLM can no more compute
+  Ed25519 than it can know the time; like `; now`, identity is supplied by the layer
+  that delivers messages (`aicl sign`, or a harness such as `aicl.dialogue`).
+- A verifier given keys flags: a message from a bound agent without a well-formed
+  `:sig` (`sig-missing`, error), one whose signature does not verify (`sig-invalid`,
+  error: forged, altered, or signed with another key), and one from an agent it has
+  no key for (`sig-no-key`, warning).
+- Terms under `:sig` are transport metadata, exempt from vocabulary resolution (§6).
+- Key distribution, rotation and revocation are out of scope of the language;
+  `aicl keygen` makes a keypair, and the keys file is the trust anchor.
 
 ---
 
@@ -1260,9 +1306,11 @@ Typed signatures for `def` are §6.1: `(name type)` parameters, `(qty UNIT)` and
 `(list TYPE)` types, and the checks `sig-arity` / `sig-type` / `sig-ret`, with bare
 names and sort names staying legal and unchecked.
 
+Signatures and identity are §3.1: `:sig (ed25519 …)` over the frozen canonical form,
+keys bound out of band, checked by `aicl check --keys`.
+
 Still open:
 
-- Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.
 

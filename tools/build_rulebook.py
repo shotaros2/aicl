@@ -26,6 +26,7 @@ FILES = {
 }
 FILES.update({f"codebooks/{p.name}": f"codebooks/{p.name}" for p in sorted((ROOT / "codebooks").glob("*.json"))})
 FILES.update({f"examples/{p.name}": f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.aicl"))})
+FILES["examples/demo_keys.json"] = "examples/demo_keys.json"   # referenced by example 14
 
 README = """# AICL rulebook / AICL ルールブック
 

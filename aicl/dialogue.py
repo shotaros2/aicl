@@ -109,6 +109,7 @@ def run_dialogue(agents: Dict[str, AiclAgent],
                  codebook: Optional[Codebook] = None,
                  retries: int = 1,
                  now: Optional[datetime] = None,
+                 signers: Optional[Dict[str, str]] = None,
                  echo: Optional[Callable[[str], None]] = print) -> DialogueResult:
     """Run one conversation between `agents` until (end …), an abort, or max_turns.
 
@@ -117,6 +118,10 @@ def run_dialogue(agents: Dict[str, AiclAgent],
     with a harness comment naming the error. Each delivery is the sender's wire text,
     untouched; with `clock`, a `; now <instant>` line precedes it and the clock advances
     one step per message.
+
+    With `signers` ({agent name: base64url Ed25519 private key}, SPEC §3.1) the harness
+    signs each of that agent's messages before delivery - identity, like the clock, is
+    supplied by the transport, not the model - and the wire carries the signed form.
     """
     say = echo or (lambda s: None)
     log: List[Message] = []
@@ -148,6 +153,10 @@ def run_dialogue(agents: Dict[str, AiclAgent],
             notes.append(f"@{speaker} failed {retries + 1} times; aborted")
             say(f"!! @{speaker} failed {retries + 1} times; aborting")
             break
+        if signers and speaker in signers:
+            from .signing import sign_form
+            m = Message.from_form(sign_form(m.to_form(), signers[speaker]))
+            raw = to_text(m.to_form())        # the wire carries the signed form
         canon = to_text(m.to_form())
         say(canon if raw == canon else f"wire:  {raw}\ncanon: {canon}")
         for i in validate_message(m.to_form()):

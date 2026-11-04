@@ -87,9 +87,9 @@ python examples/cooperation_demo.py
 
 1. API 課金を有効にして `AICL_IMAGE_MODEL=gemini-nano-banana-2.1` で本物の画像を MCP 経由で Claude に返す（`.env` に 1 行追加するだけ）。
 2. `examples/cooperation_gemini.py` を `aicl/gemini.py` を使う形に整理（今は同じコードが二重にある）。
-3. SPEC §13 の残課題: 署名と同一性（@agent → 公開鍵）、ストリーミング tell、バイナリ添付
-   （期限・標準コードブック・型付き署名は 2026-11-04〜05 に解決済み。data-query のコードブックは
-   実会話で語彙が出てから）。
+3. SPEC §13 の残課題: ストリーミング tell、バイナリ添付
+   （期限・標準コードブック・型付き署名・署名と同一性(:sig, §3.1)は 2026-11-04〜05 に解決済み。
+   data-query のコードブックは実会話で語彙が出てから。crypto は任意依存 `pip install -e ".[crypto]"`）。
 4. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
 5. 告知: X に投稿済み（文面は会話履歴参照）。Zenn / Show HN 向けの記事は未着手。
 
