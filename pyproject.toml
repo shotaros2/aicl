@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicl-lang"
-version = "0.1.0"
+version = "0.2.0"
 description = "AICL: a compact, unambiguous language for agent-to-agent communication (spec + reference implementation)"
 readme = "README.md"
 license = { text = "MIT" }

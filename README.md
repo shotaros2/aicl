@@ -43,6 +43,25 @@ Its design rules are the whole point:
 The full specification is in [SPEC.md](SPEC.md) (16 pages, CC BY 4.0); the grammar in
 [grammar/aicl.ebnf](grammar/aicl.ebnf).
 
+### What live experiments changed (0.2)
+
+Version 0.2 adds nothing that was designed at a desk. Each rule below exists because a
+Gemini agent given only the rulebook, or a Claude–Gemini negotiation relayed by hand
+([examples/07](examples/07_cross_vendor_negotiation.aicl)), broke the previous version:
+
+- **`retract`**: an agent accepted a meeting, learned a constraint, and then rejected the
+  same proposal. Decisions are now final until explicitly withdrawn with `retract :why …`.
+- **Evidence or `(none)`**: asked *why* it believed a value it had made up, an agent invented
+  a source. Answers to `why` must now carry structured evidence (`:src (weathernews :uri … :kind hourly :value 14C)`) or admit `(none)`.
+- **`status` and `:eta`**: an accepted `do` was never closed. Any open request can be queried
+  with `(status (ref #id) $s)`, and an `ok` may promise an `:eta` after which the requester gives up.
+- **Half-open intervals**: "busy until 06:00" was answered with a 06:00 slot. `:to` now
+  excludes its endpoint; `:after` is strict.
+- **`def` scope**: a term defined between two agents was used by a third. A `def` binds
+  the pair it was sent to; a `def` to `*` binds everyone.
+
+[examples/08](examples/08_retract_and_status.aicl) shows all of them in one conversation.
+
 ### A complete exchange
 
 ```

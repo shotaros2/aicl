@@ -112,12 +112,14 @@ Term = Any  # Union of the classes above plus int, float, bool, None
 
 ACTS = frozenset({
     "ask", "tell", "do", "ok", "no", "done", "fail",
-    "prop", "acc", "rej", "def", "clar", "why", "sub", "unsub", "end",
+    "prop", "acc", "rej", "def", "clar", "why", "sub", "unsub", "end", "retract",
 })
 
-REPLY_REQUIRED = frozenset({"ok", "no", "done", "fail", "acc", "rej", "why", "clar", "unsub"})
-REASON_REQUIRED = frozenset({"no", "rej", "fail"})
+REPLY_REQUIRED = frozenset({"ok", "no", "done", "fail", "acc", "rej", "why", "clar", "unsub", "retract"})
+REASON_REQUIRED = frozenset({"no", "rej", "fail", "retract"})
 BODY_REQUIRED = frozenset({"ask", "tell", "do", "prop", "def", "clar", "sub"})
+SELF_REPLY = frozenset({"unsub", "retract"})      # ^id refers to the sender's own earlier message
+STATUS_VALUES = frozenset({"pending", "done", "failed", "unknown"})
 
 FAIL_CODES = frozenset({
     "parse", "unknown-term", "unsupported", "timeout", "denied",
@@ -127,7 +129,7 @@ FAIL_CODES = frozenset({
 CORE_HEADS = frozenset({
     "and", "or", "not", "if", "all", "some",
     "=", "!=", "<", "<=", ">", ">=", "in", "count",
-    "none", "nl", "amb", "unk", "ref", "tokenizer", "codebook",
+    "none", "nl", "amb", "unk", "ref", "tokenizer", "codebook", "status",
 }) | ACTS
 
 HEAD_KEYS = ("conv", "at", "src", "why", "code", "eta", "if")

@@ -13,7 +13,7 @@ from .dense import to_dense, from_dense, dense_document
 from .codebook import Codebook
 from .validate import Issue, nl_ratio, validate_conversation, validate_message
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "ACTS", "Agent", "Date", "Duration", "Form", "Instant", "Keyword", "KList", "KMap",

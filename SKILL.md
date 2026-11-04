@@ -52,5 +52,5 @@ A binding map `{$t 18.5C}` in a `tell` answers the `$t` of the `ask` it replies 
 ## Reference
 
 - `SPEC.md` — normative specification (speech acts §4, core vocabulary §5, canonical form §7)
-- `examples/*.aicl` — seven complete conversations (six written, one recorded live between Claude and Gemini)
+- `examples/*.aicl` — eight complete conversations (seven written, one recorded live between Claude and Gemini)
 - `grammar/aicl.ebnf` — text grammar

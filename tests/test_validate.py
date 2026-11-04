@@ -15,6 +15,7 @@ KNOWN = {
     "05_subscription.aicl": ["alert"],
     "06_broadcast_and_fail.aicl": ["capability", "ocr"],
     "07_cross_vendor_negotiation.aicl": ["busy", "meeting", "calendar-add", "status"],
+    "08_retract_and_status.aicl": ["meeting", "busy", "calendar-add", "temp"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar).

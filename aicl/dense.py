@@ -22,7 +22,7 @@ from .printer import fmt_atom, fmt_conf, _normalize
 ACT_CODE = {
     "ask": "A", "tell": "T", "do": "D", "ok": "K", "no": "N", "done": "Z", "fail": "F",
     "prop": "P", "acc": "C", "rej": "R", "def": "E", "clar": "Q", "why": "W",
-    "sub": "S", "unsub": "U", "end": "X",
+    "sub": "S", "unsub": "U", "end": "X", "retract": "B",   # B: take Back
 }
 CODE_ACT = {v: k for k, v in ACT_CODE.items()}
 assert set(ACT_CODE) == ACTS

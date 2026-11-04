@@ -1,6 +1,6 @@
 # AICL — A Language for Agent-to-Agent Communication
 
-**Version:** 0.1.0 (draft)  
+**Version:** 0.2.0 (draft)  
 **Status:** Request for Comments  
 **License:** CC BY 4.0 (this specification), MIT (reference implementation)
 
@@ -99,8 +99,8 @@ Agent/ref/var identifiers match `[A-Za-z0-9_][A-Za-z0-9_.:/-]*`.
 | body | depends on act | One or more terms |
 | `:conv id` | no | Conversation/session id |
 | `:at instant` | no | Sender's send time |
-| `:src term` | no | Evidence or provenance for the body |
-| `:why term` | with `no`, `rej`, `fail` | Reason |
+| `:src term` | no; required on an answer to `why` | Evidence for the body: `(none)`, or a form naming the source with what was read from it, e.g. `(weathernews :uri "…" :at 2026-11-05T09:00+09:00 :kind hourly :value 14C :fetched-at 2026-11-04T10:00+09:00)`. A bare name (`:src jma`) is allowed but weak: it can be invented after the fact. Terms under `:src` are not subject to vocabulary resolution (§6) |
+| `:why term` | with `no`, `rej`, `fail`, `retract` | Reason |
 | `:code symbol` | with `fail` | Error code (§4.3) |
 | `~conf` | no | Speaker's confidence in the body; absent = asserted without qualification |
 
@@ -117,7 +117,7 @@ Argument order inside the head is free; the parser classifies by sigil.
 | `ask` | request information | a proposition containing `$vars`, or a closed proposition (yes/no) | `tell` \| `no` \| `fail` \| `clar` |
 | `tell` | assert information | proposition(s) | — (unsolicited `tell` needs no reply) |
 | `do` | request an action | an action form | `ok` \| `no` \| `clar`, then `done` \| `fail` |
-| `ok` | accept a `do`/`def`/`sub` | optional ETA `:eta duration` | — |
+| `ok` | accept a `do`/`def`/`sub` | optional `:eta duration`; once it has elapsed without `done`/`fail`, the requester MAY treat the request as failed | — |
 | `no` | refuse | `:why` required | — |
 | `done` | action completed | result term(s), may be empty | — |
 | `fail` | could not complete | `:code` and `:why` required | — |
@@ -126,9 +126,10 @@ Argument order inside the head is free; the parser classifies by sigil.
 | `rej` | reject a proposal | `:why` required | — |
 | `def` | define a term for this conversation | `(def … term :gloss (nl …) [:args […]] [:ret type] [:uri "…"])` | `ok` \| `no` |
 | `clar` | cannot interpret ^id | `(amb term [candidates…])` or `(unk term)` or `(parse "…")` | a repaired re-send with a new id |
-| `why` | ask for justification | — (refers to ^id) | `tell` with `:src` |
+| `why` | ask for justification | — (refers to ^id) | `tell` with `:src` carrying structured evidence, or `:src (none)` if there is none. Repeating the claim with a bare source name is not an answer |
 | `sub` | subscribe to future `tell`s matching a pattern | a proposition with `$vars` | `ok` \| `no` |
 | `unsub` | cancel a subscription | `^sub-id` | `ok` |
+| `retract` | withdraw one of your own earlier messages | `^own-id`, `:why` required. Reopens whatever that message closed: retracting an `acc`/`rej` reopens the proposal, retracting `done`/`fail` reopens the `do`, retracting a `tell` reopens the `ask` it answered | — |
 | `end` | close the conversation | optional summary | — |
 
 ### 4.2 Answering an `ask`
@@ -161,6 +162,15 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - An agent MUST NOT act on a `do` before sending `ok`.
 - `tell` MUST NOT contain `$vars` except as keys of a binding map (§4.2).
 - An agent MUST NOT abbreviate, translate or otherwise vary a term except through an agreed codebook (§8.1).
+- A decision is final until retracted: a second `acc`/`rej` on a proposal already closed is an error.
+  To change your mind, send `retract` for your own decision, then the new one.
+- An answer to `why` MUST carry `:src`. An agent that has no evidence says `:src (none)`;
+  it MUST NOT name a source it did not consult.
+- `(status (ref #id) $s)` MAY be asked about any open request; the answer binds `$s` to
+  one of `pending done failed unknown`. An agent asked for status SHOULD then close the
+  request with `done`/`fail` if it can.
+- A `def` sent to one agent binds only that pair; a `def` sent to `*` binds every agent in
+  the conversation. A third party using a pair-scoped term gets `clar`.
 
 ---
 
@@ -182,6 +192,13 @@ These heads are reserved and have fixed semantics in every AICL conversation.
 | `(unk term)` | Term is unknown |
 | `(ref #id)` | Explicit reference to the content of an earlier message |
 | `(tokenizer name)`, `(codebook id)` | Capability facts used to agree on packing (§8.1): `(tokenizer $t)` is answered with e.g. `{$t cl100k_base}`, `(codebook $id)` with the codebook's content hash |
+| `(status (ref #id) $s)` | Query the state of an open request; `$s` ∈ `pending done failed unknown` |
+
+### 5.1 Time intervals
+
+Intervals written with `:from`/`:to` are half-open: `:from` is included, `:to` is not, so
+`(busy @b :from 00:00 :to 06:00)` leaves 06:00 free. `:after`/`:before` are strict. A schema
+that needs inclusive bounds says so explicitly (`:until`, or `(>= …)` in a condition).
 
 Any other head is a **domain term** and must be resolvable (§6).
 
@@ -202,6 +219,10 @@ A head or symbol is resolvable if one of the following holds, checked in order:
       :args [transaction] :ret number)
 (ok   #b.2 @b>@a ^a.2)
 ```
+
+A `def` addressed to one agent binds the sender and that agent once acknowledged with `ok`;
+a `def` addressed to `*` binds every participant immediately. Validators resolve terms per
+pair accordingly, and a third party that uses a pair-scoped term is told `clar`.
 
 `def` is the only place where `nl` is *expected*. A linter SHOULD report the fraction of
 message bodies that is `nl` text; a well-formed AICL conversation drives this toward zero.
@@ -235,7 +256,7 @@ to read it directly.
 
 | Canonical | Dense | Rule |
 |---|---|---|
-| `ask tell do ok no done fail prop acc rej def clar why sub unsub end` | `A T D K N Z F P C R E Q W S U X` | Speech act → one capital letter, only in head position |
+| `ask tell do ok no done fail prop acc rej def clar why sub unsub end retract` | `A T D K N Z F P C R E Q W S U X B` | Speech act → one capital letter, only in head position |
 | `#a.1 @a>@b` | `a.1>b` | When the id is `<sender>.<n>`, the id and route merge; `a.1>*` broadcasts. Otherwise `#id @from>@to` is kept. Decoders MUST also accept `a.1>@b` (a stray `@` before the destination is a common slip and is unambiguous) |
 | `^a.1` | `^a.1` | unchanged |
 | `:at :conv :code :gloss :if :args :src :eta :unit :ret :why` | `:a :c :e :g :i :r :s :t :u :v :w` | Head keys → one letter. Other keys unchanged |
@@ -367,44 +388,22 @@ An implementation is **AICL-conformant** if it:
 
 ---
 
-## 13. Open Questions (for v0.2)
+## 13. Open Questions
+
+Resolved in 0.2.0, each from a live observation with a Gemini Gem and a Claude–Gemini
+negotiation on 2026-11-04 (`examples/07`, `examples/08`): structured evidence and the
+`why` rule (a source name was invented after the fact), `retract` (an `acc` was followed
+by `rej` on the same proposal), half-open intervals (06:00 was proposed as free after
+"busy until 06:00"), `status` and `:eta` (an accepted `do` was never closed), and the scope
+of `def` (a pair-scoped term was honoured for a third party).
+
+Still open:
 
 - Standard published codebooks per domain (scheduling, deployment, data query), so
   agents from different vendors can share one by id instead of exchanging tables.
-- Structured evidence: `:src` is only a name today, so an agent can satisfy `why` by
-  repeating its claim with `:src weathernews`. Observed live (a Gemini Gem answered a
-  09:00 temperature with the daily high, then defended it with `false ~1.0` and no source).
-  Candidate: `:src (<source> :at <instant> :kind <hourly|daily-high|…> :value <q>)`, and a
-  rule that an answer to `why` MUST carry structured evidence or `(none)`.
-  A second live observation makes this urgent: after accepting a `def` for a term it had no
-  data for, the same Gem answered `{$x 0.75} ~0.8` with no source, and when asked `why`
-  it invented one (`:src jreast`). A bare source name can be fabricated after the fact;
-  evidence must be retrievable (`:uri`, `:fetched-at`, `:hash`) or absent (`(none)`), and
-  a `tell` produced without evidence SHOULD say so (`:src (none)`), so that silence and
-  fabrication are distinguishable.
-- Retraction. Observed live: an agent sent `acc` to a proposal, was then told a constraint,
-  and sent `rej` to the same proposal. There is no act for withdrawing an earlier `acc`,
-  `tell` or `done`; the validator now flags a second decision on a closed proposal
-  (`prop-closed`). Candidate: a `retract` act (`(retract #id @a>@b ^own-id :why …)`) that
-  reopens the referenced exchange, so corrections are explicit instead of contradictory.
-- Interval endpoints. Observed live: told `(busy @g :from 00:00 :to 06:00)` and asked for a
-  slot `:after 06:00`, an agent answered exactly 06:00. Nothing in the language says whether
-  `:to` and `:after` include the endpoint. Candidate rule for the core: time intervals are
-  half-open (`:from` inclusive, `:to` exclusive) and `:after`/`:before` are strict unless a
-  schema says otherwise; `(>= a b)` exists for the inclusive case.
-- Progress and deadlines. Observed live: a chat-based agent answered a conditional `do` with
-  `ok`, evaluated the condition correctly when asked (`{$p 80%}`, then `true`), and never
-  sent `done` or `fail`, because nothing in the exchange gave it a turn to do so. The
-  language has no way to ask about an open request. Candidates: a core `(status (ref #id) $s)`
-  query with the answers `pending | done | failed | unknown`, an `:eta` on `ok` that the
-  requester may enforce, and a rule that an `ok` older than its `:eta` may be treated as `fail`.
-- Scope of `def`. Observed live: a term defined by `@user` to `@gemini` was later used by
-  `@claude` in the same session and `@gemini` answered without `clar`. §6 says a `def` is
-  valid "in this conversation" but not whether it binds only the two parties or everyone in
-  the conversation. Candidate: a `def` sent to `*` is shared; one sent to a single agent
-  binds that pair only, and a third party using it gets `clar`.
 - Typed signatures for `def` (`:args`/`:ret` currently use symbols only).
-- A standard set of domain schemas (scheduling, data query, tool invocation).
+- Deadlines the validator can check: `:eta` is advisory because messages carry no
+  mandatory send time; requiring `:at` on `ok` would make expiry checkable.
 - Signatures and identity (`@agent` → public key binding).
 - Streaming / partial `tell` for long results.
 - Binary attachments by content hash.

@@ -1,4 +1,4 @@
-# AICL system prompt (v0.1)
+# AICL system prompt (v0.2)
 
 Paste the block below into the system prompt of any LLM-based agent to make it
 speak AICL instead of natural language when talking to other agents.
@@ -34,8 +34,9 @@ turn and nothing else: no prose, no markdown, no explanation.
 | prop / acc / rej | propose, accept, reject (`:why` required for rej); counter with another prop | — |
 | def | define a term: `(def #id @a>@b term :gloss (nl en "…") :args […] :ret type)` | ok / no |
 | clar | you cannot interpret ^id: `(unk term)`, `(amb term [c1 c2])` or `(parse "…")`. Never guess. | a resend |
-| why | ask for the evidence behind ^id | tell with :src |
+| why | ask for the evidence behind ^id | tell with `:src` = structured evidence `(source :uri "…" :at … :kind … :value …)` or `(none)`; never a source you did not consult |
 | sub / unsub | subscribe to future tells matching a `$var` pattern / cancel (`^sub-id`) | ok |
+| retract | withdraw one of your own earlier messages: `(retract #me.N @me>@x ^me.K :why …)`. Reopens what it closed; use it before changing an acc/rej/done | — |
 | end | close the conversation | — |
 
 ## Literals
@@ -58,6 +59,11 @@ turn and nothing else: no prose, no markdown, no explanation.
 5. Do not act on a `do` before you have sent `ok`.
 6. Never abbreviate, translate or rename a term on your own. Vocabulary changes only through
    `def` or an agreed codebook; anything else is an unknown term and gets `clar`.
+7. Never invent a value or a source. If you have no data for a term you know, answer
+   `no :why (unk data)`; if asked `why`, give the data you actually read or `:src (none)`.
+8. `(status (ref #id) $s)` asks about an open request: answer `{$s pending}` / `done` / `failed` /
+   `unknown`, then close the request with `done` or `fail` if you can. A `def` sent only to you
+   binds you and the sender; intervals are half-open (`:to` excluded).
 
 ## Example
 
