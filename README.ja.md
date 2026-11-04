@@ -228,32 +228,12 @@ tests/                  unittest（適合性テストを兼ねる）
 - **JSON-RPC, MCP, A2A** はトランスポートやツール呼び出しの封筒であり、エージェントが交換する*内容*については何も定めません。AICL メッセージは JSON エンコーディングでそれらの中を流せます。
 - **ロジバン、イスクイル** は人間向けの無曖昧言語です。AICL は機械向けで、意図的に極小です。
 
-## 世界に公開する手順
+## 公開場所
 
-リポジトリはそのまま公開できる状態です（テスト、CI、ライセンス、貢献ガイド込み）。
-
-1. GitHub に空のリポジトリ `aicl` を作り、`pyproject.toml` の `YOUR-ORG` を自分のアカウント名に置き換える。
-2. このフォルダで以下を実行:
-
-```bash
-git init -b main
-```
-```bash
-git add -A
-```
-```bash
-git commit -m "AICL v0.1.0: spec, reference implementation, examples, benchmark"
-```
-```bash
-git remote add origin https://github.com/YOUR-ORG/aicl.git
-```
-```bash
-git push -u origin main
-```
-
-3. push すると GitHub Actions が Windows / Ubuntu × Python 3.11–3.13 でテストを走らせます。
-4. PyPI に出すなら `pip install build twine && python -m build && twine upload dist/*`（パッケージ名 `aicl-lang` が取得可能か先に確認）。
-5. 仕様への意見募集は Issue の `RFC:` プレフィックスで（[CONTRIBUTING.md](CONTRIBUTING.md)）。
+- ソースコードと仕様: https://github.com/vzdvnj8j6k-bot/aicl
+- 問題報告と仕様への提案（`RFC:` プレフィックス）: https://github.com/vzdvnj8j6k-bot/aicl/issues
+- push のたびに GitHub Actions が Windows / Ubuntu × Python 3.11–3.13 でテストを走らせます。
+- PyPI への公開は `pip install build twine && python -m build && twine upload dist/*`（パッケージ名 `aicl-lang`）。
 
 ## ロードマップ
 

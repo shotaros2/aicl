@@ -30,7 +30,9 @@ dev = ["pytest"]
 aicl = "aicl.cli:main"
 
 [project.urls]
-Specification = "https://github.com/YOUR-ORG/aicl/blob/main/SPEC.md"
+Homepage = "https://github.com/vzdvnj8j6k-bot/aicl"
+Issues = "https://github.com/vzdvnj8j6k-bot/aicl/issues"
+Specification = "https://github.com/vzdvnj8j6k-bot/aicl/blob/main/SPEC.md"
 
 [tool.setuptools]
 packages = ["aicl"]
