@@ -5,7 +5,7 @@
 
 A simulated wall clock is injected: every delivered message is preceded by a comment
 line `; now <instant>` and the clock advances 4 minutes per message. Both agents are
-told to stamp `:at` from that line (they have no other clock — an LLM cannot know the
+told to stamp `:at` from that line (they have no other clock - an LLM cannot know the
 time, so the transport must provide it).
 
 Requires:  pip install anthropic google-genai   and ANTHROPIC_API_KEY, GEMINI_API_KEY in .env
@@ -20,12 +20,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import anthropic
-
-import aicl
-from aicl import tokens
+from aicl import claude, gemini
+from aicl.dialogue import AiclAgent, Clock, run_dialogue
 from aicl.env import load_dotenv
-from aicl.gemini import text_ask
 
 load_dotenv()
 
@@ -58,87 +55,19 @@ GOAL_B = (
     "Treat log-summary as known."
 )
 
-CLAUDE_MODEL = "claude-opus-5-5"
-START = datetime(2026, 11, 4, 10, 0, tzinfo=timezone(timedelta(hours=9)))
-STEP = timedelta(minutes=4)
 
-
-def fmt_now(t: datetime) -> str:
-    return t.strftime("%Y-%m-%dT%H:%M+09:00")
-
-
-class ClaudeAgent:
-    def __init__(self, name: str, goal: str):
-        self.client = anthropic.Anthropic()
-        self.system = AICL_PROMPT.replace("@me", f"@{name}") + "\n\n" + CLOCK_RULE + "\n\n" + goal
-        self.history: list[dict] = []
-
-    def turn(self, incoming: str) -> str:
-        self.history.append({"role": "user", "content": incoming})
-        resp = self.client.beta.messages.create(
-            model=CLAUDE_MODEL, max_tokens=2000, system=self.system, messages=self.history,
-            output_config={"effort": "low"}, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
-        )
-        text = "".join(b.text for b in resp.content if b.type == "text").strip()
-        self.history.append({"role": "assistant", "content": text})
-        return text
-
-
-class GeminiAgent:
-    def __init__(self, name: str, goal: str):
-        self.ask = text_ask(sleep=6.0)
-        self.system = AICL_PROMPT.replace("@me", f"@{name}") + "\n\n" + CLOCK_RULE + "\n\n" + goal
-        self.history: list[dict] = []
-
-    def turn(self, incoming: str) -> str:
-        self.history.append({"role": "user", "content": incoming})
-        text = self.ask(self.system, self.history).strip()
-        if text.startswith("```"):
-            text = text.strip("`").removeprefix("lisp").removeprefix("aicl").strip()
-        self.history.append({"role": "assistant", "content": text})
-        return text
+def system(name: str, goal: str) -> str:
+    return AICL_PROMPT.replace("@me", f"@{name}") + "\n\n" + CLOCK_RULE + "\n\n" + goal
 
 
 def main(max_turns: int = 18) -> int:
-    agents = {"a": ClaudeAgent("a", GOAL_A), "b": GeminiAgent("b", GOAL_B)}
-    log: list[aicl.Message] = []
-    now = START
-    speaker = "a"
-    incoming = f"; now {fmt_now(now)}\n; conversation start: send your first AICL message to @b"
-
-    for _ in range(max_turns):
-        m = None
-        for attempt in range(2):
-            raw = agents[speaker].turn(incoming)
-            try:
-                m = aicl.Message.from_form(aicl.parse_one(raw))
-                break
-            except aicl.AICLError as e:
-                print(f"!! @{speaker} invalid (attempt {attempt + 1}): {e}\n   {raw[:200]}")
-                incoming = f"; harness: your message was not valid AICL ({e}); resend one valid AICL message"
-        if m is None:
-            print(f"!! @{speaker} failed twice; aborting")
-            break
-        line = aicl.to_text(m.to_form())
-        print(line)
-        for i in aicl.validate_message(m.to_form()):
-            print("   ", i)
-        log.append(m)
-        if m.act == "end":
-            break
-        now += STEP
-        incoming = f"; now {fmt_now(now)}\n{line}"
-        speaker = m.receiver if m.receiver in agents else ("b" if speaker == "a" else "a")
-
-    print("\n--- protocol check ---")
-    for i in aicl.validate_conversation(log, ["log-summary"]):
-        print(" ", i)
-    canon = "\n".join(aicl.to_text(m.to_form()) for m in log)
-    out = ROOT / "out" / "deadline_dialogue.aicl"
-    out.parent.mkdir(exist_ok=True)
-    out.write_text(canon + "\n", encoding="utf-8")
-    print(f"\n{len(log)} messages, {tokens.count(canon)} tokens ({tokens.METHOD}), "
-          f"nl ratio {aicl.nl_ratio(log):.0%}; saved {out}")
+    agents = {"a": AiclAgent("a", claude.text_ask(), system("a", GOAL_A)),
+              "b": AiclAgent("b", gemini.text_ask(sleep=6.0), system("b", GOAL_B))}
+    clock = Clock(datetime(2026, 11, 4, 10, 0, tzinfo=timezone(timedelta(hours=9))), timedelta(minutes=4))
+    r = run_dialogue(agents, "a", opening="; conversation start: send your first AICL message to @b",
+                     max_turns=max_turns, known_terms=("log-summary",), clock=clock)
+    r.save(ROOT / "out" / "deadline_dialogue.aicl")
+    print("\n" + r.stats())
     return 0
 
 

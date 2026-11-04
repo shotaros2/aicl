@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- `aicl/dialogue.py`: the experiment harness promoted into the library — `AiclAgent`
+  (an LLM as a one-message-per-turn AICL speaker), `Clock` (simulated `; now` wall
+  clock), and `run_dialogue()` (validator at the boundary, one bounce per invalid
+  message, optional codebook packing/unpacking, canonical + wire transcripts). This
+  removes the human relay: LLM agents talk AICL at machine speed while every byte
+  stays auditable. `aicl/claude.py`: a Claude ask() (lazy anthropic import), the
+  counterpart of `gemini.text_ask`. The four example runners are now thin configs
+  over it; verified with a live re-run of the typed-def dialogue.
+
 A hand-relayed research task given to Dola (`examples/13`, 2026-11-05): a typed def
 worked as a report schema for a third-party chat agent — five compounds delivered in
 the declared `(list term)` shape with nine structured `:src` entries. It also showed
