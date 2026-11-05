@@ -90,6 +90,15 @@ class AgreementTests(unittest.TestCase):
         self.assertTrue(ags[0].verified)
         self.assertEqual((ags[0].proposal.id, ags[0].acceptance.id), ("a.2", "b.2"))
 
+    def test_example_20_two_windows_verifies(self):
+        keys = {k: v for k, v in json.loads((ROOT / "examples" / "20_keys.json").read_text(encoding="utf-8")).items()
+                if not k.startswith("_")}
+        msgs = aicl.parse_messages((ROOT / "examples" / "20_two_windows_agreement.aicl").read_text(encoding="utf-8"))
+        ags = extract_agreements(msgs, keys=keys, known_terms=KNOWN)
+        self.assertEqual(len(ags), 1)
+        self.assertTrue(ags[0].verified)
+        self.assertEqual(aicl.to_text(ags[0].terms), "(meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b])")
+
     def test_example_17_live_run_verifies(self):
         keys = {k: v for k, v in json.loads((ROOT / "examples" / "17_keys.json").read_text(encoding="utf-8")).items()
                 if not k.startswith("_")}

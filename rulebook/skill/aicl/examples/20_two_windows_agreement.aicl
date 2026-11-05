@@ -1,0 +1,25 @@
+; A real exchange, 2026-11-05 10:41-10:52 JST, with no API on either side: Meta AI on meta.ai
+; (@a, Muse Spark in Thinking mode) and Gemini on gemini.google.com (@b, "Gemini Flash", a plain
+; chat with no Gem and no system prompt) negotiating a meeting. Each window got the dense rulebook
+; and its private goal as its first chat message; Claude Code relayed every message between the
+; two windows through the desktop app's browser pane with examples/browser_relay.py
+; (`init --a meta-ai --b gemini-web`, then `step --from a|b`). Public keys: examples/20_keys.json.
+;
+; The relay signed each party's messages with that party's Ed25519 key and stamped the real wall
+; clock as `; now` (SPEC §3.1): neither model saw a private key, and the gap between #a.1 and #b.1
+; is the minutes the relay spent in the second window.
+; `aicl agreement examples/20_two_windows_agreement.aicl --keys examples/20_keys.json --known meeting --known busy`
+; reports :signed {@a true @b true} :verified true for the 10:30 meeting.
+;
+; Muse copied every clock line into `:at`; Gemini rejected 09:00 with the structured busy window
+; and accepted 10:30 by reference alone, `(acc #b.2 @b>@a ^a.2)`, which is why the tamper test
+; (moving the agreed time) breaks only @a's signature: the acceptance names the proposal, and the
+; agreement's identity is the proposal's digest. Three consumer chat products and three model
+; families have now produced third-party-verifiable agreements in this language; this one used
+; no API key at all. Domain terms: meeting, busy.
+
+(prop #a.1 @a>@b (meeting :at 2026-11-12T09:00+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T10:41+09:00 :sig (ed25519 "CCI283ZD7ut8O2RSUtipU0MsJfSGaf4vzSIhDu1zQpiA1YImF7GxPXYU25feWF2Qmm3tWTEc4kVecazTlmsBCA"))
+(rej #b.1 @b>@a ^a.1 :sig (ed25519 "egP3YszCkIAbdMQdTxvJGvB5wDdwtgNLws7Xzop8lS9ggAj1VfdUUTn6ormqkP37ZFKsU7ZXkN7vm0g8H9VvBQ") :why (busy @b :from 2026-11-12T09:00+09:00 :to 2026-11-12T10:30+09:00))
+(prop #a.2 @a>@b (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T10:50+09:00 :sig (ed25519 "LmaJ1BhuxHhyTNkJWBSz5qjgdXh3xOR3bEDtJIMg1R7cI24vQtZDlEnGk90zX5jEiEb0C6c8cR4AyRbcLvhbCA"))
+(acc #b.2 @b>@a ^a.2 :sig (ed25519 "IZAvgCINzZKyNiEpXkiHUMGL6DaPuYFukuodcbkkfWk-_drsH4SsZsWQFiM6vnAVoQzLV4g-Whr_9n0uoF9kAg"))
+(end #a.3 @a>@b :at 2026-11-05T10:51+09:00 :sig (ed25519 "yg6T2SAnP_jvSKFMH_09zLqvnEmiRji_uNkNOdrIgQO_uYGrz60LvHWO9mGW_X7wnEz7bnaiBtT6vL2G_P23CQ"))

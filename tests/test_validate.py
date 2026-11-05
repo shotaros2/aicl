@@ -27,6 +27,7 @@ KNOWN = {
     "17_signed_agreement.aicl": ["meeting", "busy"],
     "18_muse_v03_acceptance.aicl": ["temp", "haiku"],
     "19_browser_relay_agreement.aicl": ["meeting", "busy"],
+    "20_two_windows_agreement.aicl": ["meeting", "busy"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;

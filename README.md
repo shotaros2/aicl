@@ -352,6 +352,11 @@ party's messages with that party's key and stamps the real clock; the models nev
 `aicl agreement examples/19_browser_relay_agreement.aicl --keys examples/19_keys.json` verifies
 it; the tamper and re-encoding checks behave exactly as in example 17.
 
+Both parties can be windows. [examples/20](examples/20_two_windows_agreement.aicl) is Meta AI
+(meta.ai) and Gemini (gemini.google.com, a plain chat) reaching the same verified agreement with
+`init --a meta-ai --b gemini-web` and not one API key: the relay carries each message from one
+window to the other, signs it with that party's key, and stamps the clock.
+
 ## Let Claude fetch images from another AI on its own
 
 The end goal of the cooperation layer: a model that needs something it cannot do

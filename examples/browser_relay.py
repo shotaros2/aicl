@@ -1,24 +1,28 @@
-"""A signed agreement with a model that has no API: the browser window is the transport.
+"""A signed agreement with parties that have no API: the browser window is the transport.
 
 Same scenario as contract_dialogue.py (@a wants a 45-minute meeting, @b is busy part of the
-morning), but @b is a chat window - meta.ai, a Gemini Gem, any consumer product - and a
-human or an agent with a browser relays the messages one turn at a time. This script is
-the harness split into steps so it can wait between turns:
+morning), but either party may be a chat window - meta.ai, gemini.google.com, a Gem, any
+consumer product - and a human or an agent with a browser relays the messages one turn at
+a time. This script is the dialogue harness split into steps so it can wait between turns.
 
-  python examples/browser_relay.py init [--a claude] [--b muse]
-      generates keys, runs @a's first turn, and writes out/browser_relay/first_message.txt:
-      the dense rulebook for @b, its private goal, the clock line and @a's first message.
-      Paste that as the first chat message.
-  python examples/browser_relay.py step --file reply.txt      (or:  step < reply.txt)
-      feeds @b's reply in, signs it with @b's transport key, runs @a's next turn and prints
-      the next message to paste (with a fresh `; now` line). Repeat until it says done.
+  python examples/browser_relay.py init --a claude --b muse
+  python examples/browser_relay.py init --a muse --b gemini-web      # two chat windows, no API at all
+      A party named after a vendor (claude, gemini, muse) is driven through its API; any
+      other name is a browser party. For each browser party this writes
+      out/browser_relay/first_message_<side>.txt: the dense rulebook for that side, its
+      private goal, and (once something is to be delivered) the clock line and the message.
+      Paste that as the first chat message of that window.
+  python examples/browser_relay.py step --from b --file reply.txt   (or:  step < reply.txt)
+      feeds a browser party's reply in, signs it with that party's transport key, and either
+      runs the other party's API turn or prints what to paste into the other window.
+      Repeat until it says to run `finish`.
   python examples/browser_relay.py finish
       validates the whole conversation, saves out/browser_relay/transcript.aicl and keys.json,
       and extracts and verifies the agreement, with the tamper and re-encoding checks.
 
 Identity comes from the transport (SPEC §3.1): the relay signs each party's messages with
-that party's key, so the model never sees a private key and cannot forge the other side.
-The clock is the relay's real wall clock, rounded to the minute.
+that party's key, so no model ever sees a private key or can forge the other side. The
+clock is the relay's real wall clock, rounded to the minute.
 """
 from __future__ import annotations
 
@@ -51,6 +55,8 @@ DIR = ROOT / "out" / "browser_relay"
 STATE = DIR / "state.json"
 JST = timezone(timedelta(hours=9))
 DENSE_RULEBOOK = (ROOT / "rulebook" / "aicl-rulebook-dense.md").read_text(encoding="utf-8").split("---", 1)[1].strip()
+GOALS = {"a": GOAL_A, "b": GOAL_B}
+OTHER = {"a": "b", "b": "a"}
 
 
 def now_line() -> str:
@@ -66,6 +72,10 @@ def load() -> dict:
 def save(st: dict) -> None:
     DIR.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(st, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def is_api(st: dict, side: str) -> bool:
+    return st["party"][side] in vendors.VENDORS
 
 
 def accept(raw: str, speaker: str, st: dict) -> Message:
@@ -91,65 +101,94 @@ def accept(raw: str, speaker: str, st: dict) -> Message:
     return m
 
 
-def a_turn(st: dict, incoming: str) -> Message:
-    ag = AiclAgent("a", vendors.text_ask(st["a_vendor"]), AICL_PROMPT.replace("@me", "@a") + "\n\n" + GOAL_A)
-    ag.history = st["a_history"]
+def api_turn(st: dict, side: str, incoming: str) -> Message:
+    ag = AiclAgent(side, vendors.text_ask(st["party"][side]), AICL_PROMPT.replace("@me", f"@{side}") + "\n\n" + GOALS[side])
+    ag.history = st["history"][side]
     for attempt in range(2):
         raw = ag.turn(incoming)
-        st["a_history"] = ag.history
+        st["history"][side] = ag.history
         try:
-            return accept(raw, "a", st)
+            return accept(raw, side, st)
         except AICLError as e:
-            st["notes"].append(f"@a invalid (attempt {attempt + 1}): {e} | {raw[:200]}")
+            st["notes"].append(f"@{side} invalid (attempt {attempt + 1}): {e} | {raw[:200]}")
             incoming = f"; harness: your message was not valid AICL ({e}); resend one valid AICL message"
-    sys.exit("@a failed twice; aborted")
+    sys.exit(f"@{side} failed twice; aborted")
 
 
 def to_send(m: Message) -> str:
     return now_line() + "\n" + aicl.to_dense(m.to_form())
 
 
+def briefing(side: str) -> str:
+    other = OTHER[side]
+    return (re.sub(r"\bme\b", side, DENSE_RULEBOOK) + "\n\n" + GOALS[side]
+            + f"\n\nThe other agent is `{other}`. From now on every message you receive is AICL from @{other}, "
+              "possibly preceded by the transport's `; now` clock line. Reply with exactly one AICL "
+              "message, nothing else.")
+
+
+def deliver(st: dict, side: str, m: Message | None) -> None:
+    """Hand `m` (or, with None, the opening) to a browser party: the first time inside its briefing."""
+    body = to_send(m) if m is not None else now_line() + "\n; conversation start: send your first AICL message"
+    if not st["briefed"][side]:
+        path = DIR / f"first_message_{side}.txt"
+        path.write_text(briefing(side) + "\n\n" + body, encoding="utf-8", newline="\n")
+        st["briefed"][side] = True
+        print(f"\n=== paste {path} as the first chat message of @{side} ({st['party'][side]}) ===")
+        print(f"(it ends with)\n{body}")
+    else:
+        print(f"\n=== paste this to @{side} ({st['party'][side]}) ===")
+        print(body)
+
+
+def advance(st: dict, speaker: str, m: Message) -> bool:
+    """After `m` from `speaker` was logged, move the conversation on. True when finished."""
+    other = OTHER[speaker]
+    if m.act == "end":
+        if not is_api(st, other):
+            deliver(st, other, m)
+        print("\n=== the conversation is closed: run `finish` ===")
+        return True
+    if is_api(st, other):
+        reply = api_turn(st, other, now_line() + "\n" + to_text(m.to_form()))
+        return advance(st, other, reply)
+    deliver(st, other, m)
+    return False
+
+
 def cmd_init(args) -> int:
     priv_a, pub_a = generate_key()
     priv_b, pub_b = generate_key()
-    st = {"a_vendor": args.a, "b_name": args.b, "pub": {"a": pub_a, "b": pub_b},
-          "priv": {"a": priv_a, "b": priv_b}, "a_history": [], "messages": [], "wire": [], "notes": [],
-          "started": now_line()[6:]}
-    m = a_turn(st, now_line() + "\n; conversation start: send your first AICL message")
-    first = (re.sub(r"\bme\b", "b", DENSE_RULEBOOK)
-             + "\n\n" + GOAL_B
-             + "\n\nThe other agent is `a`. From now on every message you receive is AICL from @a, "
-               "possibly preceded by the transport's `; now` clock line. Reply with exactly one AICL "
-               "message, nothing else.\n\n" + to_send(m))
+    st = {"party": {"a": args.a, "b": args.b}, "pub": {"a": pub_a, "b": pub_b},
+          "priv": {"a": priv_a, "b": priv_b}, "history": {"a": [], "b": []}, "briefed": {"a": False, "b": False},
+          "messages": [], "wire": [], "notes": [], "started": now_line()[6:]}
     DIR.mkdir(parents=True, exist_ok=True)
-    (DIR / "first_message.txt").write_text(first, encoding="utf-8", newline="\n")
+    for stale in DIR.glob("first_message*.txt"):
+        stale.unlink()
+    if is_api(st, "a"):
+        m = api_turn(st, "a", now_line() + "\n; conversation start: send your first AICL message")
+        advance(st, "a", m)
+    else:
+        deliver(st, "a", None)
     save(st)
-    print(f"\n=== paste {DIR / 'first_message.txt'} as the first chat message of @{args.b} ===")
-    print(f"(it ends with)\n{to_send(m)}")
     return 0
 
 
 def cmd_step(args) -> int:
     st = load()
+    side = args.from_side
+    if is_api(st, side):
+        sys.exit(f"@{side} is driven through the API; `step` takes a browser party's reply")
     raw = Path(args.file).read_text(encoding="utf-8") if args.file else sys.stdin.read()
     try:
-        mb = accept(raw, "b", st)
+        m = accept(raw, side, st)
     except AICLError as e:
         save(st)
-        print(f"\n=== @b's message is not valid AICL ({e}); paste this to @b ===")
+        print(f"\n=== @{side}'s message is not valid AICL ({e}); paste this to @{side} ===")
         print(f"; harness: your message was not valid AICL ({e}); resend one valid AICL message")
         return 1
-    if mb.act == "end":
-        save(st)
-        print("\n=== @b ended the conversation: run `finish` ===")
-        return 0
-    ma = a_turn(st, now_line() + "\n" + to_text(mb.to_form()))
+    advance(st, side, m)
     save(st)
-    if ma.act == "end":
-        print(f"\n=== @a ended the conversation; paste this to @b for the record, then run `finish` ===")
-    else:
-        print(f"\n=== paste this to @{st['b_name']} ===")
-    print(to_send(ma))
     return 0
 
 
@@ -159,8 +198,9 @@ def cmd_finish(args) -> int:
     keys = st["pub"]
     (DIR / "transcript.aicl").write_text("\n".join(st["messages"]) + "\n", encoding="utf-8", newline="\n")
     (DIR / "keys.json").write_text(json.dumps(keys, indent=2), encoding="utf-8")
-    print(f"--- {len(msgs)} messages, relay started {st['started']}, @a = {vendors.describe(st['a_vendor'])}, "
-          f"@b = {st['b_name']} via browser ---")
+    who = ", ".join(f"@{s} = {vendors.describe(p) if p in vendors.VENDORS else p + ' via browser'}"
+                    for s, p in st["party"].items())
+    print(f"--- {len(msgs)} messages, relay started {st['started']}, {who} ---")
     for i in validate_conversation(msgs, KNOWN):
         print(f"  {i}")
     for n in st["notes"]:
@@ -190,9 +230,12 @@ def cmd_finish(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("init"); p.add_argument("--a", default="claude", choices=vendors.VENDORS)
-    p.add_argument("--b", default="muse", help="name of the chat-window party (default muse)")
-    p = sub.add_parser("step"); p.add_argument("--file", default=None, help="file holding @b's reply (default: stdin)")
+    p = sub.add_parser("init")
+    p.add_argument("--a", default="claude", help="party speaking as @a: claude/gemini/muse (API) or a browser name")
+    p.add_argument("--b", default="muse", help="party speaking as @b: claude/gemini/muse (API) or a browser name")
+    p = sub.add_parser("step")
+    p.add_argument("--from", dest="from_side", default="b", choices=("a", "b"), help="which browser party replied")
+    p.add_argument("--file", default=None, help="file holding the reply (default: stdin)")
     sub.add_parser("finish")
     args = ap.parse_args(argv)
     return {"init": cmd_init, "step": cmd_step, "finish": cmd_finish}[args.cmd](args)
