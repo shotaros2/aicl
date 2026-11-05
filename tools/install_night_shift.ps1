@@ -11,10 +11,13 @@
 #   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Remove     # undo both
 #   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Preset local
 #       chief, writer and scout on this PC's model (Ollama), the checker, coder and artist on Gemini
+#   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Preset home -LocalModel qwen3:14b
+#       as local, but the checker and the coder on Claude (paid); the home PC's setting
 #   -Python C:\path\python.exe   use this interpreter (default: the first real one found; the
 #       Microsoft Store stub on PATH, which runs nothing, is skipped)
 param([string]$At = "02:00", [switch]$NoInbox, [switch]$Remove,
-      [ValidateSet("cloud", "local")][string]$Preset = "cloud", [string]$Python = "")
+      [ValidateSet("cloud", "local", "home")][string]$Preset = "cloud", [string]$Python = "",
+      [string]$LocalModel = "")
 $night = "AICL night shift"
 $inbox = "AICL inbox check"
 if ($Remove) {
@@ -41,7 +44,8 @@ if (-not $python -or -not (Test-Path $python)) {
     Write-Error "no real Python found (the Microsoft Store stub does not count); pass -Python C:\path\python.exe"
     exit 1
 }
-$extra = if ($Preset -eq "local") { " --preset local" } else { "" }
+$extra = if ($Preset -ne "cloud") { " --preset $Preset" } else { "" }
+if ($LocalModel) { $extra += " --local-model $LocalModel" }
 $limit = New-TimeSpan -Hours 3
 
 $a1 = New-ScheduledTaskAction -Execute $python -Argument "-X utf8 examples\night_shift.py --mode night$extra" -WorkingDirectory $root
@@ -63,6 +67,6 @@ if (-not $NoInbox) {
     Write-Output "registered: $inbox, every 30 minutes while the PC is awake"
 }
 Write-Output "folder: $root"
-Write-Output "python: $python   preset: $Preset"
+Write-Output "python: $python   preset: $Preset   arguments:$extra"
 Write-Output "check:  Get-ScheduledTask -TaskName 'AICL*' | Get-ScheduledTaskInfo"
 Write-Output "undo:   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Remove"

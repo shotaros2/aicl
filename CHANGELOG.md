@@ -27,6 +27,14 @@
   dense - 3 bounces, 5 calls, 553 s, one call timed out and one ask ran out of attempts, so 1
   answered. The runners turn it on for local roles only; `local_acceptance.py` asks in readable
   form by default (`--dense-input` for the old way).
+- `aicl/claude.py`: server-side refusal fallbacks are sent only to the models that accept them
+  (Claude Haiku 5.5 has none, so a Haiku call is a plain `messages.create`); `max_tokens` raised
+  from 2000 to 16000 (it covers thinking too, and an app runs to thousands of tokens); a
+  `max_tokens` stop is an error rather than a silently truncated answer.
+- `night_shift.py --preset home` (the owner's choice for the home PC: chief, writer, scout on
+  the local model; critic and coder on Claude; artist on Gemini), `--claude-model` (default
+  `claude-haiku-5-5`, about 1/40 of Opus 5.5's price per token), `--local-model`;
+  `install_night_shift.ps1 -Preset home -LocalModel qwen3:14b`.
 
 - Apps: model agents can attach files (a fenced ```html block, referred to as `(file 1)`); the
   network stores the bytes and substitutes a `(blob sha256:…)` (`Network(files_dir=…)`). @coder

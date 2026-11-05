@@ -117,6 +117,10 @@ PRESETS = {
     "cloud": {r: "gemini" for r in ROLES},
     "local": {"chief": "local", "writer": "local", "scout": "local",
               "critic": "gemini", "coder": "gemini", "artist": "gemini"},
+    # The owner's choice for the home PC (2026-11-06): the busy roles on the local model, the final
+    # check and the apps on Claude (paid, called only a few times per task), illustrations on Gemini.
+    "home": {"chief": "local", "writer": "local", "scout": "local",
+             "critic": "claude", "coder": "claude", "artist": "gemini"},
 }
 
 
@@ -125,10 +129,16 @@ def main(argv=None) -> int:
     ap.add_argument("--mode", default="night", choices=("night", "inbox"))
     for role in ("chief", "writer", "critic", "scout", "artist", "coder"):
         ap.add_argument(f"--{role}", default=None, choices=vendors.VENDORS)
-    ap.add_argument("--preset", default="cloud", choices=("cloud", "local"),
+    ap.add_argument("--preset", default="cloud", choices=tuple(PRESETS),
                     help="cloud: every role on Gemini's free tier (default). local: the busy roles (chief, writer, "
                          "scout) on this PC's model, the checker, coder and artist on Gemini - a different company "
-                         "checks what the local model wrote. --<role> overrides either.")
+                         "checks what the local model wrote. home: like local, but the checker and the coder on "
+                         "Claude (paid). --<role> overrides any of them.")
+    ap.add_argument("--local-model", default=None,
+                    help="the local model for this run, e.g. qwen3:14b (default: AICL_LOCAL_MODEL or qwen3:8b)")
+    ap.add_argument("--claude-model", default="claude-haiku-5-5",
+                    help="model for roles on Claude (default claude-haiku-5-5, the cheapest; claude-opus-5-5 "
+                         "for the strongest)")
     ap.add_argument("--escalate-to", default="gemini", choices=vendors.VENDORS + ("none",),
                     help="where a local role goes when the local model is in trouble (default gemini)")
     ap.add_argument("--local-fallback", action="store_true",
@@ -146,6 +156,9 @@ def main(argv=None) -> int:
     for role in preset:
         if getattr(args, role) is None:
             setattr(args, role, preset[role])
+    if args.local_model:
+        import os
+        os.environ["AICL_LOCAL_MODEL"] = args.local_model
 
     NIGHT.mkdir(parents=True, exist_ok=True)
     stop = NIGHT / "STOP"
@@ -165,7 +178,8 @@ def main(argv=None) -> int:
             up = None if args.escalate_to in ("none", "local") else args.escalate_to
             return vendors.text_ask(v, escalate_to=up, note=echo)
         fb = "local" if args.local_fallback else args.web_fallback
-        return vendors.text_ask(v, sleep=pause(v), fallback=fb, note=echo)
+        model = args.claude_model if v == "claude" else None
+        return vendors.text_ask(v, model=model, sleep=pause(v), fallback=fb, note=echo)
     memory = Memory(NIGHT / "memory.jsonl")
 
     def model(name, role, blurb, vendor, offers=()):
@@ -204,7 +218,10 @@ def main(argv=None) -> int:
             f = m.to_form()
             link.mirror(m.sender, to_dense(Form(f.head, f.args, {k: v for k, v in f.kw.items() if k != "sig"}, f.conf)))
     echo(f"--- night shift {datetime.now(JST).isoformat(timespec='minutes')} ({args.mode}): chief = "
-         f"{vendors.describe(args.chief)}, writer = {args.writer}, critic = {args.critic}, scout = {args.scout} ---")
+         f"{vendors.describe(args.chief)}, writer = {args.writer}, critic = {args.critic}, scout = {args.scout}, "
+         f"coder = {args.coder}, artist = {args.artist}"
+         + (f"; claude = {args.claude_model}" if "claude" in (args.chief, args.writer, args.critic, args.scout,
+                                                               args.coder, args.artist) else "") + " ---")
     try:
         report = night_shift(NIGHT / "inbox", NIGHT, make_nodes,
                              Limits(args.max_messages, args.max_calls, args.max_seconds, stop),
