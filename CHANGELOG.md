@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The night shift's agents answer in JSON by default (`--structured` on; `--no-structured` has
+  them write AICL text). The JSON rules now spell out how to finish a task: done, reply_to the
+  task, copy_of the desk's done.
+
 - `aicl/actions.py`: `StructuredModelNode`, an agent that answers in schema-checked JSON
   (Claude's `output_config.format`, Ollama's `format`) while the network writes, validates, signs
   and records the AICL. Long text travels in JSON strings; content is passed on by message id

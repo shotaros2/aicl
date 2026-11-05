@@ -157,9 +157,11 @@ def main(argv=None) -> int:
     ap.add_argument("--web-fallback", action="store_true",
                     help="switch a role to the vendor's chat website when its API is unavailable (needs a sign-in)")
     ap.add_argument("--no-discord", action="store_true", help="do not use Discord even when it is configured")
-    ap.add_argument("--structured", action="store_true",
+    # The default since 2026-11-06 (the owner's decision after a 5-and-5 comparison, HANDOFF section 0).
+    ap.add_argument("--structured", action=argparse.BooleanOptionalAction, default=True,
                     help="Claude and local roles (not the coder) answer in schema-checked JSON and the network "
-                         "writes the AICL: no hand-written parentheses, content passed on by message id")
+                         "writes the AICL: no hand-written parentheses, content passed on by message id "
+                         "(default; --no-structured has them write AICL text themselves)")
     ap.add_argument("--no-retro", action="store_true",
                     help="skip the retrospective after each task (the agents' advice to each other)")
     ap.add_argument("--max-tasks", type=int, default=5, help="inbox tasks per run")

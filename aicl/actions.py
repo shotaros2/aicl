@@ -84,6 +84,10 @@ Each action:
 - why: the reason, in plain text; required for no, fail and rej
 - code: for fail only - one of the codes listed (e.g. not-found, unsupported)
 Every field is present; unused ones are null.
+
+To finish a task you were given with do: act done, reply_to the task's id, copy_of the id of the
+DESK's done message (the one carrying the published file's blob) - not the writer's page and not
+the task itself. If it cannot be done: act fail, reply_to the task's id, with why and code.
 """
 
 NETWORK_RULES = """\
