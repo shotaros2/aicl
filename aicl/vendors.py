@@ -118,7 +118,12 @@ def with_escalation(vendor: str, primary_factory: Callable[[], Ask], cloud: str,
                 out = state["primary"](system, history)
                 took = time.monotonic() - started
                 if took > slow_seconds:            # this answer is kept; the next ones go to the cloud
-                    escalate(f"too slow ({took:.0f}s for one answer)")
+                    escalate(f"too slow ({took:.0f}s for one answer)"
+                             + (", and it was empty" if not out.strip() else ""))
+                    if not out.strip():
+                        # Seen with qwen3.5:9b as chief: 201 s of thinking, then nothing, and the
+                        # network fell quiet. The cloud answers this same event instead.
+                        return state["cloud"](system, history)
                 return out
             except Exception as e:
                 if not (is_unavailable(e) or is_timeout(e)):

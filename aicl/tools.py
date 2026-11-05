@@ -23,6 +23,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, List
 
+from . import tls
 from .build import form
 from .model import Form, KList, KMap, Message, Str, Symbol, Var
 from .network import SkillNode
@@ -43,7 +44,7 @@ def _src(uri: str, kind: str) -> Form:
 
 
 def _get(url: str) -> str:
-    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=20) as r:
+    with tls.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=20) as r:
         return r.read().decode("utf-8", "replace")
 
 

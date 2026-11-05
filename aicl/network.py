@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import Callable, Deque, Dict, Iterable, List, Optional
 
 from .build import msg as build_msg, nl
-from .dense import expand as dense_expand, to_dense
-from .model import AICLError, Form, Message, ParseError, Symbol
+from .dense import ACT_CODE, expand as dense_expand, to_dense
+from .model import ACTS, AICLError, Form, Message, ParseError, Symbol
 from .parser import parse
 from .printer import to_text
 from .validate import Issue, validate_conversation, validate_message
@@ -183,6 +183,14 @@ class ModelNode(Node):
                 raise ParseError(f"message claims to be from @{m.sender}; you are @{self.name}")
             if m.receiver != "*" and m.receiver not in net.nodes:
                 raise ParseError(f"@{m.receiver} is not in the directory")
+            inner = m.body[0] if m.body and isinstance(m.body[0], Form) else None
+            if m.act in ("ask", "do") and inner is not None and inner.head in ACTS:
+                # Valid AICL, wrong meaning: a small model wraps every act in an ask, e.g.
+                # (A chief.6>owner (fail …)), which nobody can read as the fail it meant.
+                raise ParseError(
+                    f"{inner.head} is an act: write ({ACT_CODE[inner.head]} {m.id}>{m.receiver} …), "
+                    f"with ^ and the id it answers where it is a reply, not an {m.act} whose body is "
+                    f"({inner.head} …)")
             out.append(m)
         return out
 
@@ -230,6 +238,10 @@ class ModelNode(Node):
             self.history.append({"role": "assistant", "content": raw})
             try:
                 msgs = self._parse(raw, net)
+                if attempt > 0 and not msgs:
+                    # Silence is a fine answer to news, never to "resend": seen with qwen3.5:9b, whose
+                    # empty retry of a broken publish left a finished, accepted page unpublished.
+                    raise ParseError("empty answer; resend the corrected message")
                 self._observe(net, "valid")
                 break
             except AICLError as e:

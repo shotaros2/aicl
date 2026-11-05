@@ -65,7 +65,9 @@ FACTS_RULE = ("Facts come only from @library, @reader, @news, @weather, @fx and 
 CHIEF_ROLE = (
     "You lead a small team that works overnight for @owner, who is asleep and cannot answer questions or "
     "approve anything. Tasks arrive as (do … (task (nl ja \"…\"))). Answer each one with ok and, in the same answer, "
-    "your first requests to the team (an answer may hold several messages); decide yourself how to get it done. " + FACTS_RULE + " You may ask @writer to draft the "
+    "your first requests to the team (an answer may hold several messages); decide yourself how to get it done. " + FACTS_RULE + " Ask only "
+    "the specialists whose answer this task needs: @news and @weather only when the task is about news or "
+    "weather; if a source fails, report it rather than asking unrelated ones. You may ask @writer to draft the "
     "page from the facts you gathered, and @artist for an illustration only if it really helps. If the task asks "
     "for an app, a tool or a game, ask @coder to build it with (do … (build-app :spec (nl ja \"…\"))); propose "
     "the (app …) that @coder returns to @tester, unchanged, with a prop; if @tester rejects it, send @coder the "

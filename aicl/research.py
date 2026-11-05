@@ -20,6 +20,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import Callable, List
 
+from . import tls
 from .build import form
 from .model import Form, KList, KMap, Message, Str, Symbol, Var
 from .network import SkillNode
@@ -53,7 +54,7 @@ def _parse_instant(text: str):
 def _wiki_json(url: str) -> dict:
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     import json
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with tls.urlopen(req, timeout=20) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -145,7 +146,7 @@ def _encode_url(url: str) -> str:
 
 def http_text(url: str, limit: int = 2_000_000) -> tuple:
     req = urllib.request.Request(_encode_url(url), headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with tls.urlopen(req, timeout=20) as r:
         raw = r.read(limit)
         charset = r.headers.get_content_charset() or "utf-8"
         return r.geturl(), raw.decode(charset, "replace")

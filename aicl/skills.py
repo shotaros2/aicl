@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, List, Optional
 
+from . import tls
 from .build import form, nl
 from .model import Form, KMap, Message, Str, Symbol, Var
 from .network import Ask, SkillNode
@@ -35,7 +36,7 @@ WMO = {0: "clear", 1: "mainly-clear", 2: "partly-cloudy", 3: "overcast", 45: "fo
 
 def http_json(url: str, timeout: float = 20.0) -> dict:
     req = urllib.request.Request(url, headers={"User-Agent": "aicl-network/0.3"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with tls.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
 

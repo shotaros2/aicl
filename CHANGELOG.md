@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- `aicl/tls.py`: the specialists (library, reader, weather, fx, news), the Discord link and the
+  Muse client verify HTTPS against the system's trust store plus certifi's when certifi is
+  installed (optional; no new dependency). On the home PC Windows lacked the root for
+  ja.wikipedia.org's Let's Encrypt chain, so Python reported "certificate has expired" and the
+  library and reader were blind for a whole field test.
+- `OwnerNode` (night shift): each refusal now says how to finish the task (answer the task with
+  done or fail), and after three refusals the owner stops answering, so the network goes quiet.
+  Seen in the first field test: a local chief reported failure as an ask to @owner nine times,
+  until its 24 calls were gone.
+- The network bounces an `ask`/`do` whose body is an act (`(A chief.6>owner (fail …))`,
+  `(A chief.3>critic (prop …))`) as invalid, naming the right form; an empty answer to "resend"
+  counts as invalid; a local answer that is both slower than the limit and empty is answered by
+  the cloud at once. Each was a way a qwen3.5:9b chief left a task silently unfinished, and each
+  now feeds the escalation to the cloud instead.
+- The night shift accepts a done whose blob sits one level inside its body
+  (`(doc :blob (blob …) …)`), still only when the file has exactly that hash and size.
+- `night_shift.py`: the chief asks only the specialists a task needs (news and weather only for
+  news or weather), after a chief whose library failed fetched unrelated headlines.
+
 - `aicl/local.py` calls Ollama through its native `/api/chat` with `options.num_ctx` (default
   12288, `AICL_LOCAL_CTX`): Ollama's default context is 4096 tokens, the dense rulebook alone is
   about 2,200, and its OpenAI-compatible endpoint ignores `num_ctx`, so a long night-shift

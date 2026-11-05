@@ -135,6 +135,25 @@ class EscalationTests(unittest.TestCase):
                                       note=lambda s: None)
         self.assertEqual(ask("S", []), "(T a.1>b true)")
 
+    def test_a_slow_empty_answer_is_answered_by_the_cloud_at_once(self):
+        log = []
+        ticks = iter([0.0, 500.0])
+        with mock.patch.object(vendors.time, "monotonic", lambda: next(ticks)):
+            ask = vendors.with_escalation("local", lambda: scripted("local", [""], log), "gemini",
+                                          lambda: scripted("cloud", ["(K a.1>b ^b.1)"], log), note=lambda s: None)
+            self.assertEqual(ask("S", []), "(K a.1>b ^b.1)")
+        self.assertEqual(log, ["local", "cloud"])
+        self.assertIn("and it was empty", ask.state["escalations"][0])
+
+    def test_a_slow_answer_with_content_is_kept(self):
+        log = []
+        ticks = iter([0.0, 500.0])
+        with mock.patch.object(vendors.time, "monotonic", lambda: next(ticks)):
+            ask = vendors.with_escalation("local", lambda: scripted("local", ["(K a.1>b ^b.1)"], log), "gemini",
+                                          lambda: scripted("cloud", ["x"], log), note=lambda s: None)
+            self.assertEqual(ask("S", []), "(K a.1>b ^b.1)")
+        self.assertEqual(log, ["local"])
+
     def test_a_bad_answer_is_not_a_reason_to_switch(self):
         def broken():
             def ask(system, history):
@@ -196,6 +215,23 @@ class ReadableInputTests(unittest.TestCase):
     def test_default_stays_dense(self):
         shown, _ = self.run_one(False)
         self.assertIn("(A user.1>local (x $v))", shown)
+
+
+class EmptyRetryTests(unittest.TestCase):
+    def test_an_empty_resend_counts_as_invalid_and_the_cloud_finishes(self):
+        log = []
+        ask = vendors.with_escalation("local", lambda: scripted("local", ["(T chief.1>owner ^owner.1 {$x 1", ""], log),
+                                      "gemini", lambda: scripted("cloud", ["(T chief.1>owner ^owner.1 {$x 1})"], log),
+                                      note=lambda s: None)
+        from aicl.network import Node
+        owner = Node("owner", "the person")
+        chief = ModelNode("chief", "lead", ask, "rulebook for me")
+        net = Network([owner, chief], Limits(max_messages=10, max_calls_per_agent=5), sign=False, echo=None)
+        net.post(owner.msg("ask", "chief", __import__("aicl").parse_one("(x $x)")))
+        res = net.run(wake=[])
+        self.assertEqual(log, ["local", "local", "cloud"])
+        self.assertEqual([m.act for m in res.messages], ["ask", "tell"])
+        self.assertTrue(any("empty answer" in n for n in res.notes))
 
 
 class NetworkEscalationTests(unittest.TestCase):

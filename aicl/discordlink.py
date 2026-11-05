@@ -35,6 +35,7 @@ import uuid
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from . import tls
 from .env import load_dotenv
 
 API = "https://discord.com/api/v10"
@@ -66,7 +67,7 @@ def http(method: str, url: str, token: Optional[str] = None, payload=None, files
     elif payload is not None:
         data = json.dumps(payload).encode("utf-8")
         headers["Content-Type"] = "application/json"
-    opener = opener or urllib.request.urlopen
+    opener = opener or tls.urlopen
     for attempt in range(4):
         req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:

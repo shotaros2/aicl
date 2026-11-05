@@ -21,6 +21,7 @@ import urllib.error
 import urllib.request
 from typing import Callable, List, Optional
 
+from . import tls
 from .env import load_dotenv
 
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
@@ -38,7 +39,7 @@ def _post(url: str, key: str, body: dict, timeout: float, opener=None) -> dict:
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                  "User-Agent": "aicl/0.3"},
     )
-    opener = opener or urllib.request.urlopen
+    opener = opener or tls.urlopen
     try:
         with opener(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))

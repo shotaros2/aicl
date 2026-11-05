@@ -90,6 +90,22 @@ class NightShiftTests(unittest.TestCase):
             transcript = (report.parent / "b_lunch" / "transcript.aicl").read_text(encoding="utf-8")
             self.assertIn("(no #owner.2 @owner>@chief ^chief.1", transcript)   # the sleeping owner refused
 
+    def test_a_blob_wrapped_in_a_doc_is_still_checked_against_the_file(self):
+        import hashlib
+        from aicl.night import _blob_path, deliverable_ok
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "page.md"
+            p.write_bytes("東京タワー".encode("utf-8"))
+            digest = hashlib.sha256(p.read_bytes()).hexdigest()
+
+            def done(h):
+                return aicl.Message.from_form(aicl.parse_one(
+                    f'(done #chief.9 @chief>@owner ^owner.1 (doc :blob (blob sha256:{h} :bytes {p.stat().st_size} '
+                    f':media "text/markdown" :uri "{p.resolve().as_uri()}") :title (nl ja "t")))'))
+            self.assertTrue(deliverable_ok(done(digest)))
+            self.assertEqual(_blob_path(done(digest)), p.resolve())
+            self.assertFalse(deliverable_ok(done("0" * 64)))
+
     def test_empty_inbox_does_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(night_shift(Path(tmp) / "inbox", Path(tmp), self.nodes, echo=lambda s: None))

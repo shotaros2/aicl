@@ -26,13 +26,34 @@ ASLEEP = "the owner is asleep and cannot answer; decide within your role"
 
 
 class OwnerNode(Node):
-    """Sends the task, then answers nothing but refusals; records how the task ended."""
+    """Sends the task, then answers nothing but refusals; records how the task ended.
 
-    def __init__(self, name: str = "owner"):
+    Each refusal says how to end the task (done or fail in reply to it), and after `max_refusals`
+    the owner stops answering, so the network goes quiet. Seen on the home PC (2026-11-05): a
+    local chief reported failure as an ask to @owner, got the refusal, and asked again until its
+    24 calls were gone.
+    """
+
+    def __init__(self, name: str = "owner", max_refusals: int = 3):
         super().__init__(name, "the person the team works for; asleep, cannot answer questions or approve anything")
         self.outcome: Optional[Message] = None
         self.task_id: Optional[str] = None
         self.forged: List[str] = []
+        self.max_refusals = max_refusals
+        self.refusals = 0
+
+    def _why(self):
+        end = (f"; to finish, answer #{self.task_id} with done (carrying the blob) or with fail and a :why"
+               if self.task_id else "")
+        return nl("en", ASLEEP + end)
+
+    def _refuse(self, net, act: str, incoming: Message):
+        self.refusals += 1
+        if self.refusals > self.max_refusals:
+            if self.refusals == self.max_refusals + 1:
+                net.note(f"@{self.name} stopped answering after {self.max_refusals} refusals")
+            return []
+        return [self.msg(act, incoming.sender, reply=incoming.id, kw={"why": self._why()})]
 
     def task(self, text: str, to: str = "chief") -> Form:
         f = self.msg("do", to, Form("task", [nl("ja", text)]))
@@ -52,9 +73,9 @@ class OwnerNode(Node):
             self.outcome = incoming
             return []
         if incoming.act == "prop":
-            return [self.msg("rej", incoming.sender, reply=incoming.id, kw={"why": nl("en", ASLEEP)})]
+            return self._refuse(net, "rej", incoming)
         if incoming.act in ("ask", "do", "def", "sub"):
-            return [self.msg("no", incoming.sender, reply=incoming.id, kw={"why": nl("en", ASLEEP)})]
+            return self._refuse(net, "no", incoming)
         return []
 
 
@@ -106,8 +127,8 @@ def deliverable_ok(m: Message) -> bool:
     """True when the done's blob names a local file whose bytes have exactly the stated hash and size."""
     import hashlib
     path = _blob_path(m)
-    b = m.body[0] if m.body else None
-    if path is None or not path.is_file() or not isinstance(b, Form):
+    b = _find_blob(m)
+    if path is None or not path.is_file() or b is None:
         return False
     data = path.read_bytes()
     stated = b.args[0].name if b.args and isinstance(b.args[0], Symbol) else str(b.args[0]) if b.args else ""
@@ -115,10 +136,24 @@ def deliverable_ok(m: Message) -> bool:
     return stated == "sha256:" + hashlib.sha256(data).hexdigest() and (size is None or str(size) == str(len(data)))
 
 
+def _find_blob(m: Message) -> Optional[Form]:
+    """The done's blob: its body, or one level inside it - seen live, a chief wrapped the right
+    blob as (doc :blob (blob …) :title …) and a finished task was reported unfinished."""
+    b = m.body[0] if m.body else None
+    if not isinstance(b, Form):
+        return None
+    if b.head == "blob":
+        return b
+    for v in list(b.args) + list(b.kw.values()):
+        if isinstance(v, Form) and v.head == "blob":
+            return v
+    return None
+
+
 def _blob_path(m: Message) -> Optional[Path]:
     from urllib.parse import unquote, urlparse
-    b = m.body[0] if m.body else None
-    if isinstance(b, Form) and b.head == "blob" and "uri" in b.kw:
+    b = _find_blob(m)
+    if b is not None and "uri" in b.kw:
         u = urlparse(b.kw["uri"].text)
         if u.scheme == "file":
             p = unquote(u.path)

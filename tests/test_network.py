@@ -168,6 +168,46 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual([m.act for m in res.messages], ["do", "ok", "ask", "tell", "fail"])
         self.assertEqual(owner.outcome.act, "fail")
 
+    def test_the_owner_says_how_to_finish_then_stops_answering(self):
+        # Seen on the home PC: a local chief reported failure as an ask to @owner, again and again,
+        # until its call budget was gone.
+        from aicl.night import OwnerNode
+        calls = []
+
+        def stubborn(system, history):
+            calls.append(1)
+            n = len(calls)
+            return f'(A chief.{n}>owner (task :status failed))'
+        owner = OwnerNode()
+        net = Network([owner, ModelNode("chief", "lead", stubborn, RULEBOOK)],
+                      Limits(max_messages=40, max_calls_per_agent=20), sign=False, clock=CLOCK, echo=None)
+        net.post(owner.task("東京タワー"))
+        res = net.run(wake=[])
+        refusals = [m for m in res.messages if m.sender == "owner" and m.act == "no"]
+        self.assertEqual(len(refusals), 3)
+        self.assertIn("answer #owner.1 with done", aicl.to_text(refusals[0].to_form()))
+        self.assertEqual(len(calls), 4)                     # the task, then one call per refusal
+        self.assertTrue(any("stopped answering after 3 refusals" in n for n in res.notes))
+        self.assertTrue(res.stopped.startswith("quiet"))
+
+    def test_an_act_wrapped_in_an_ask_is_bounced_with_the_right_form(self):
+        # Seen on the home PC: qwen3.5:9b wrote (A chief.6>owner (fail …)) and (A chief.3>critic (prop …)).
+        from aicl.night import OwnerNode
+        shown = []
+
+        def wrapper(system, history):
+            shown.append(history[-1]["content"])
+            if len(shown) == 1:
+                return '(A chief.1>owner (fail :e unsupported :w "no sources"))'
+            return '(F chief.1>owner ^owner.1 :e unsupported :w (nl en "no sources"))'
+        owner = OwnerNode()
+        net = Network([owner, ModelNode("chief", "lead", wrapper, RULEBOOK)], sign=False, clock=CLOCK, echo=None)
+        net.post(owner.task("東京タワー"))
+        res = net.run(wake=[])
+        self.assertIn("fail is an act: write (F chief.1>owner", shown[1])
+        self.assertEqual(owner.outcome.act, "fail")
+        self.assertTrue(any("invalid (attempt 1)" in n for n in res.notes))
+
     def test_weather_answers_only_what_it_has(self):
         w = weather_node(fetch=fake_fetch)
         ask = lambda s: aicl.Message.from_form(aicl.parse_one(s))
