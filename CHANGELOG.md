@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Meta Muse Spark connector: `aicl/muse.py` talks to the OpenAI-compatible Meta Model API
+  (`https://api.meta.ai/v1`, `muse-spark-1.1`, key `MODEL_API_KEY`) with the standard library
+  only, and to any other OpenAI-compatible endpoint via `base_url`. `aicl/vendors.py` picks
+  `claude` / `gemini` / `muse` by name; `examples/contract_dialogue.py --a X --b Y` uses it.
+  Not yet recorded live: the API preview is open to US developers only.
 - Agreements (SPEC §4.6): `aicl/agreement.py` and `aicl agreement FILE --keys` extract
   every `prop` closed by an `acc` from a transcript and report parties, terms, the
   proposal's digest and whether both signatures verify, no protocol error touches the

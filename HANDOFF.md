@@ -17,6 +17,7 @@
 | リリース | GitHub Releases v0.1.0〜v0.3.0 | wheel と sdist を添付 |
 | Gemini API | Google AI Studio のキー | 無料枠。画像モデルは課金なしでは使えない |
 | PyPI トークン | PyPI アカウント `Shotaros2` | 公開時のみ使用 |
+| Meta Model API（Muse Spark） | dev.meta.ai/api-keys のキー → `.env` の `MODEL_API_KEY` | 2026-11 時点で**米国の開発者限定**の公開プレビュー。従量課金（$1.25/$4.25 per 1M tokens）。日本からは未取得 |
 
 **秘密情報はリポジトリに入っていません。** キーは各 PC の `.env`（git 管理外）に置きます。
 新しい PC では `.env.example` をコピーして `.env` を作り、`GEMINI_API_KEY=`（必要なら `PYPI_TOKEN=`）を書き込んでください。
@@ -68,6 +69,9 @@ python examples/cooperation_demo.py
   （2026-11-05 に v0.3 へ貼り替え済み。置換済みテキストの生成は `out/gem_instructions_v0.3.md` を作った手順参照。
   Google アカウントに紐づくので新 PC からは同じアカウントでログイン）
 - Dola のスキル「aicl」: ZIP をアップロード済み（2026-11-05 に v0.3 の ZIP へ上げ直し済み。Dola のアカウントに紐づく）
+- Meta AI（meta.ai / Meta AI アプリ、Muse Spark の Thinking モード、無料）: Gem と同じ手順。最初のメッセージに
+  `rulebook/aicl-rulebook-dense.md` の `---` 以降（`me` を `muse` に置換）を貼り、以降は AICL だけを往復する。
+  カスタム指示欄やスキル機能は未確認なので、会話の冒頭に貼る方式で試す。
 
 ## 6. ここまでで分かっていること（要点）
 
@@ -114,6 +118,13 @@ python examples/cooperation_demo.py
   当事者・条件・ダイジェストを自然言語を読まずに取り出し `:verified true`。時刻を 30 分ずらすと
   `sig-invalid`、密形式/JSON に変換しても検証が通る（正規形に署名しているため）。SPEC §4.6。
 
+- **Meta Muse との接続**（2026-11-05 着手）: `aicl/muse.py` は Meta Model API（OpenAI 互換、`https://api.meta.ai/v1`、
+  既定モデル `muse-spark-1.1`）を標準ライブラリだけで叩くコネクタ。`aicl/vendors.py` で `claude / gemini / muse` を名前で選べ、
+  `python examples/contract_dialogue.py --b muse` で Claude と Muse が署名付き合意を結ぶ。**未実走**: API プレビューが
+  米国限定でキーを取れていない。鍵が取れたら `.env` に `MODEL_API_KEY=` を書いて 1 コマンドで再現できる。
+  それまでは meta.ai に密ルールブックを貼る手動実験（5 節）で、Muse が作法を守れるかを Gem と同じ形で確かめる。
+  同じコネクタは `base_url` を変えれば OpenAI 互換の他社・ローカル（Ollama など）にも使える。
+
 ## 7. 次にやる候補
 
 1. **記事（最優先）**: 下書き済み（`docs/articles/zenn-aicl.ja.md`、`docs/articles/show-hn.md`、2026-11-05）。本人が読んで投稿する。材料は揃っている——実記録15例、実測値（ワイヤ370 vs 可読480）、
@@ -126,6 +137,8 @@ python examples/cooperation_demo.py
 5. `examples/cooperation_gemini.py` を `aicl/gemini.py` と `aicl.dialogue` を使う形に整理（コード二重の解消）。
 6. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
 7. 告知: X に投稿済み。
+8. **Muse Spark の実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`、
+   通れば `examples/18` として収録。先に meta.ai への手貼り実験で作法の遵守を記録しておく（Gem の実験 16 と同じ採点）。
 
 ## 8. Claude Code と作業するときの約束
 

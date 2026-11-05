@@ -332,6 +332,11 @@ Move the agreed time by one minute in the transcript and `:signed {@a false …}
 transcript to dense text or JSON and it still verifies, because the signature is over the
 canonical form, not the bytes. Runner: `python examples/contract_dialogue.py`.
 
+The runner takes `--a` / `--b` to choose the vendors: `claude`, `gemini`, or `muse`
+(Meta's Muse Spark over the OpenAI-compatible Meta Model API, key `MODEL_API_KEY`;
+the preview is open to US developers only, so that pairing is wired but not yet recorded live).
+`aicl/muse.py` is a dependency-free client for any OpenAI-compatible endpoint.
+
 ## Let Claude fetch images from another AI on its own
 
 The end goal of the cooperation layer: a model that needs something it cannot do

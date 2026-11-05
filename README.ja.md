@@ -217,6 +217,8 @@ $ aicl agreement examples/17_signed_agreement.aicl --keys examples/17_keys.json 
 
 記録の合意時刻を 1 分ずらすと `:signed {@a false …}` になり、記録を密形式や JSON に変換しても検証は通ります。署名はバイト列ではなく正規形に対して付いているからです。ランナーは `python examples/contract_dialogue.py`。
 
+ランナーは `--a` / `--b` で相手を選べます: `claude`、`gemini`、`muse`（Meta の Muse Spark。OpenAI 互換の Meta Model API、キーは `MODEL_API_KEY`。プレビューは米国の開発者限定のため、この組み合わせは配線済みですが実走記録はまだありません）。`aicl/muse.py` は OpenAI 互換ならどの endpoint にも使える依存なしのクライアントです。
+
 ## Claude が自分で他の AI から画像を取ってくる
 
 協調レイヤーの最終目標はこれです。自分にできないこと（たとえば画像生成）が必要になったモデルが、専門エージェントと AICL で話し、成果物を受け取り、人を介さずにユーザーへ見せる。`aicl/mcp_server.py` はゲートウェイを [MCP](https://modelcontextprotocol.io) サーバーとして公開し、5 つのツールを持ちます。`aicl_rulebook`（言語を学ぶ）、`aicl_capabilities`、`aicl_send`（AICL を送り、AICL の返答と画像成果物を受け取る）、`aicl_transcript`、`aicl_check`。

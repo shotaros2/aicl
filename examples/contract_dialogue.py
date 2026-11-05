@@ -8,7 +8,10 @@ tampers with the agreed time (verification must fail) and re-encodes the transcr
 dense text and JSON (verification must still pass): this is what a canonical form buys.
 
 Requires: pip install anthropic google-genai cryptography; ANTHROPIC_API_KEY and GEMINI_API_KEY in .env
-Run:      python examples/contract_dialogue.py [--save]
+Run:      python examples/contract_dialogue.py
+          python examples/contract_dialogue.py --b muse      # Claude vs Meta Muse Spark (MODEL_API_KEY in .env)
+          python examples/contract_dialogue.py --a muse --b gemini
+Vendors:  claude, gemini, muse (see aicl/vendors.py); --model-a / --model-b override the model id.
 """
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import aicl
-from aicl import claude, gemini
+from aicl import vendors
 from aicl.agreement import describe, extract_agreements
 from aicl.dialogue import AiclAgent, Clock, run_dialogue
 from aicl.env import load_dotenv
@@ -48,7 +51,14 @@ GOAL_B = (
 
 
 def main(argv=None) -> int:
-    argv = sys.argv[1:] if argv is None else argv
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    ap.add_argument("--a", default="claude", choices=vendors.VENDORS, help="vendor speaking as @a (default claude)")
+    ap.add_argument("--b", default="gemini", choices=vendors.VENDORS, help="vendor speaking as @b (default gemini)")
+    ap.add_argument("--model-a", default=None, help="model id for @a (default: the vendor's default)")
+    ap.add_argument("--model-b", default=None, help="model id for @b (default: the vendor's default)")
+    ap.add_argument("--sleep", type=float, default=6.0, help="pause after each gemini/muse call, for free tiers (s)")
+    args = ap.parse_args(sys.argv[1:] if argv is None else argv)
     out = ROOT / "out"
     out.mkdir(exist_ok=True)
 
@@ -57,11 +67,15 @@ def main(argv=None) -> int:
     keys = {"a": pub_a, "b": pub_b}
     (out / "contract_keys.json").write_text(json.dumps(keys, indent=2), encoding="utf-8")
 
+    def ask_for(vendor, model):
+        return vendors.text_ask(vendor, model, sleep=0 if vendor == "claude" else args.sleep)
+
     agents = {
-        "a": AiclAgent("a", claude.text_ask(), AICL_PROMPT.replace("@me", "@a") + "\n\n" + GOAL_A),
-        "b": AiclAgent("b", gemini.text_ask(sleep=6.0), AICL_PROMPT.replace("@me", "@b") + "\n\n" + GOAL_B),
+        "a": AiclAgent("a", ask_for(args.a, args.model_a), AICL_PROMPT.replace("@me", "@a") + "\n\n" + GOAL_A),
+        "b": AiclAgent("b", ask_for(args.b, args.model_b), AICL_PROMPT.replace("@me", "@b") + "\n\n" + GOAL_B),
     }
-    print("--- negotiation (signed by the harness) ---")
+    print(f"--- negotiation: @a = {vendors.describe(args.a, args.model_a)}, "
+          f"@b = {vendors.describe(args.b, args.model_b)} (signed by the harness) ---")
     clock = Clock(datetime(2026, 11, 5, 10, 0, tzinfo=timezone(timedelta(hours=9))), timedelta(minutes=1))
     res = run_dialogue(agents, first="a", known_terms=KNOWN, clock=clock, signers={"a": priv_a, "b": priv_b})
     res.save(out / "contract.aicl")
