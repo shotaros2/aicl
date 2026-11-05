@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `AICL_LOCAL_THINK` also takes `low`, `medium`, `high` (passed to Ollama as is, for gpt-oss).
+  Measured with the JSON chief prompt on gpt-oss:20b (RTX 3070, 57% on the CPU): low answered in
+  5 s but not in the schema; medium answered in 50 s in the schema with a wrong first step. Not
+  used for any role.
+
 - The night shift's agents answer in JSON by default (`--structured` on; `--no-structured` has
   them write AICL text). The JSON rules now spell out how to finish a task: done, reply_to the
   task, copy_of the desk's done.

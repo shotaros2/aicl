@@ -15,7 +15,8 @@ Configuration (.env or the environment):
     AICL_LOCAL_MODEL  default qwen3:8b
     AICL_LOCAL_CTX    default 12288   (Ollama only)
     AICL_LOCAL_API    ollama (default) | openai
-    AICL_LOCAL_THINK  unset (Ollama's default) | false | true   (Ollama only: a reasoning model's thinking)
+    AICL_LOCAL_THINK  unset (Ollama's default) | false | true | low | medium | high
+                      (Ollama only: a reasoning model's thinking; gpt-oss takes the levels)
 
 Reasoning models may put their thinking in <think>…</think>; it is removed, because the
 network expects AICL and nothing else.
@@ -49,13 +50,17 @@ def strip_think(text: str) -> str:
     return _THINK.sub("", text).strip()
 
 
-def _think_setting(think) -> Optional[bool]:
-    """None leaves Ollama's default; AICL_LOCAL_THINK=false/true turns a reasoning model's thinking off/on."""
+def _think_setting(think):
+    """None leaves Ollama's default; AICL_LOCAL_THINK=false/true turns a reasoning model's thinking
+    off/on, and low/medium/high set its level (gpt-oss takes levels, not on/off)."""
     if think is None:
         think = os.environ.get("AICL_LOCAL_THINK") or None
     if isinstance(think, str):
+        t = think.strip().lower()
+        if t in ("low", "medium", "high"):
+            return t
         think = {"false": False, "0": False, "off": False, "no": False,
-                 "true": True, "1": True, "on": True, "yes": True}.get(think.strip().lower())
+                 "true": True, "1": True, "on": True, "yes": True}.get(t)
     return think
 
 

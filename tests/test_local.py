@@ -62,8 +62,11 @@ class LocalTests(unittest.TestCase):
             local.text_ask(opener=fake_opener(seen=seen))("S", [])
         with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_THINK="on")):
             local.text_ask(opener=fake_opener(seen=seen))("S", [])
+        with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_THINK="Low")):
+            local.text_ask(opener=fake_opener(seen=seen))("S", [], schema={"type": "object"})
         self.assertNotIn("think", seen[0][1])
-        self.assertEqual([s[1].get("think") for s in seen[1:]], [False, False, True])
+        self.assertEqual([s[1].get("think") for s in seen[1:]], [False, False, True, "low"])
+        self.assertEqual(seen[-1][1]["format"], {"type": "object"})        # JSON agents (aicl.actions)
 
     def test_openai_compatible_servers(self):
         seen = []
