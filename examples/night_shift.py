@@ -9,7 +9,9 @@ checks every claim against sources it fetches itself) and @desk (publishes the p
 is published that the critic did not accept. In the morning read out/night/<date>/REPORT.md.
 
 Every model role runs on Gemini's free tier by default; --chief claude / --critic claude move a
-role to Claude's paid API. Requires GEMINI_API_KEY in .env and the cryptography package.
+role to Claude's paid API. If a role's API is unavailable (no key, quota used up, no network to
+the API host), that role switches to the vendor's chat website in your Chrome (aicl/webchat.py;
+sign in once with `python -m aicl.webchat login gemini`); --no-web-fallback turns this off. Requires GEMINI_API_KEY in .env and the cryptography package.
 Run now:        python examples/night_shift.py          (or double-click run_night_shift.cmd)
 Every night:    powershell -ExecutionPolicy Bypass -File tools/install_night_shift.ps1
 Stop a run:     create the file out/night/STOP
@@ -63,6 +65,8 @@ def main(argv=None) -> int:
     ap.add_argument("--chief", default="gemini", choices=vendors.VENDORS)
     ap.add_argument("--critic", default="gemini", choices=vendors.VENDORS)
     ap.add_argument("--artist", default="gemini", choices=vendors.VENDORS)
+    ap.add_argument("--no-web-fallback", action="store_true",
+                    help="do not switch a role to the vendor's chat website when its API is unavailable")
     ap.add_argument("--max-tasks", type=int, default=5)
     ap.add_argument("--max-messages", type=int, default=60, help="per task")
     ap.add_argument("--max-calls", type=int, default=16, help="model calls per model agent, per task")
@@ -81,13 +85,14 @@ def main(argv=None) -> int:
         print(line if len(line) < 300 else line[:300] + " …", flush=True)
 
     pause = lambda v: 0.0 if v == "claude" else 4.0
+    ask = lambda v: vendors.text_ask(v, sleep=pause(v), fallback=not args.no_web_fallback, note=echo)
 
     def make_nodes(out_dir: Path):
         return [
-            ModelNode("chief", CHIEF_ROLE, vendors.text_ask(args.chief, sleep=pause(args.chief)), DENSE),
-            ModelNode("critic", CRITIC_ROLE, vendors.text_ask(args.critic, sleep=pause(args.critic)), DENSE),
+            ModelNode("chief", CHIEF_ROLE, ask(args.chief), DENSE),
+            ModelNode("critic", CRITIC_ROLE, ask(args.critic), DENSE),
             library_node(), reader_node(), weather_node(),
-            artist_node(vendors.text_ask(args.artist, sleep=pause(args.artist)), out_dir),
+            artist_node(ask(args.artist), out_dir),
             desk_node(out_dir),
         ]
 

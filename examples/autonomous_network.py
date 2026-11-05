@@ -58,6 +58,8 @@ def main(argv=None) -> int:
     ap.add_argument("--editor", default="gemini", choices=vendors.VENDORS)
     ap.add_argument("--critic", default="gemini", choices=vendors.VENDORS)
     ap.add_argument("--artist", default="gemini", choices=vendors.VENDORS, help="text model that draws the SVG")
+    ap.add_argument("--no-web-fallback", action="store_true",
+                    help="do not switch a role to the vendor's chat website when its API is unavailable")
     ap.add_argument("--max-messages", type=int, default=60)
     ap.add_argument("--max-calls", type=int, default=10, help="model calls per model agent")
     ap.add_argument("--max-seconds", type=float, default=900)
@@ -68,11 +70,12 @@ def main(argv=None) -> int:
     if stop.exists():
         stop.unlink()
     pause = lambda v: 0.0 if v == "claude" else 4.0
+    ask = lambda v: vendors.text_ask(v, sleep=pause(v), fallback=not args.no_web_fallback)
     nodes = [
-        ModelNode("editor", EDITOR_ROLE, vendors.text_ask(args.editor, sleep=pause(args.editor)), DENSE),
-        ModelNode("critic", CRITIC_ROLE, vendors.text_ask(args.critic, sleep=pause(args.critic)), DENSE),
+        ModelNode("editor", EDITOR_ROLE, ask(args.editor), DENSE),
+        ModelNode("critic", CRITIC_ROLE, ask(args.critic), DENSE),
         weather_node(),
-        artist_node(vendors.text_ask(args.artist, sleep=pause(args.artist)), OUT),
+        artist_node(ask(args.artist), OUT),
         desk_node(OUT),
     ]
     net = Network(nodes, Limits(args.max_messages, args.max_calls, args.max_seconds, stop), known_terms=KNOWN)

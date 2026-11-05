@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Browser fallback (`aicl/webchat.py`, `vendors.text_ask(…, fallback=True)`, on by default in the
+  night shift and the autonomous network, `--no-web-fallback` to disable): a Gemini or Muse role
+  whose API is unavailable switches to the vendor's chat website in the installed Chrome via
+  Playwright (optional extra `web`). Not working live yet: Google refused sign-in from the
+  automation-controlled Chrome, and the code does not try to evade that check.
 - Night shift (`aicl/night.py`, `examples/night_shift.py`, `run_night_shift.cmd`,
   `tools/install_night_shift.ps1`): the network works through `out/night/inbox/*.txt` while the
   owner sleeps and writes `REPORT.md`; @owner refuses every question and accepts a `done` only if

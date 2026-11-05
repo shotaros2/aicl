@@ -161,6 +161,12 @@ python examples/cooperation_demo.py
   時刻の書式違反、**デスクになりすました偽の done（偽の blob つき）**、ID のない ask。どれも記録に入らず、本人に差し戻された。
   同一性をモデルに任せずネットワークが持つ理由の実例。ページの「曇り空」は天気の `partly-cloudy`（一部曇り）の言い換えで、チェッカーは通した。
   Claude を使う構成は `--editor claude` など。ダブルクリック用 `run_autonomous_network.cmd`。
+- **API が使えないときのブラウザ切り替え**（2026-11-05、`aicl/webchat.py` + `vendors.text_ask(…, fallback=True)`）:
+  Gemini/Muse の API が使えない（キーなし、無料枠切れ、DNS 失敗、キー拒否）と、その役だけ gemini.google.com / meta.ai を
+  Playwright 経由で PC の Chrome（専用プロファイル `out/web-profile`）で操作する方式に切り替える。答えの不備では切り替えない。
+  テスト済み（オフライン 7 件）。**ただし実地では未稼働**: 自動操作中の Chrome から Google にログインできなかった。
+  Google の自動ログイン対策を回避する細工はしない方針。規約上のリスク（一般向けチャットの自動操作）もユーザーに説明済み。
+  代わりの候補: meta.ai をブラウザ側の相手にする、または手元で動く AI（Ollama、OpenAI 互換で `aicl/muse.py` の base_url を使う）。
 - **夜間作業**（2026-11-05 13:12/13:16 JST、`aicl/night.py` + `aicl/research.py`、ランナー `examples/night_shift.py`、
   `run_night_shift.cmd`、毎晩の登録 `tools/install_night_shift.ps1`）: ユーザーの要望「寝ている間にも他の AI と協力してタスクをこなして」から。
   受付箱 `out/night/inbox/*.txt` → 1 件ずつネットワーク実行 → `out/night/<日時>/REPORT.md`。@owner は寝ていて質問を全部断る。

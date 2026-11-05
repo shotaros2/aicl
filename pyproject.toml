@@ -26,6 +26,7 @@ tokens = ["tiktoken>=0.7"]
 crypto = ["cryptography>=42"]
 llm = ["anthropic>=1.0", "google-genai>=1.0"]
 mcp = ["mcp>=2.0", "google-genai>=1.0"]
+web = ["playwright>=1.40"]
 dev = ["pytest"]
 
 [project.scripts]
