@@ -10,6 +10,10 @@
 - `examples/18`: Meta AI (meta.ai, Thinking mode) passes the v0.3 acceptance test from the
   dense rulebook alone, relayed by hand: 0 errors, 2 warnings; no invented data, `clar` on an
   unknown term, `:src (none)` when challenged; the accepted `do` was delivered only on `end`.
+- `examples/browser_relay.py`: the dialogue harness as `init` / `step` / `finish`, so a chat
+  window with no API can be one party; the relay signs both sides and stamps the real clock.
+  `examples/19` is Claude (API) and Meta AI (meta.ai) reaching a verified signed agreement
+  this way, with the tamper and re-encoding checks passing.
 - Agreements (SPEC §4.6): `aicl/agreement.py` and `aicl agreement FILE --keys` extract
   every `prop` closed by an `acc` from a transcript and report parties, terms, the
   proposal's digest and whether both signatures verify, no protocol error touches the

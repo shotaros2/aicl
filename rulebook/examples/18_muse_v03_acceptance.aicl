@@ -1,4 +1,4 @@
-; A real exchange, 2026-11-05 ~19:00 JST: Meta AI on meta.ai in "Thinking" mode (Muse Spark), a
+; A real exchange, 2026-11-05 ~10:00 JST: Meta AI on meta.ai in "Thinking" mode (Muse Spark), a
 ; consumer chat window with no system prompt and no API. The v0.3 dense rulebook (`me` -> `muse`)
 ; was its first chat message; Claude Code then relayed one AICL message per turn through the
 ; desktop app's browser pane. The raw dense transcript is logs/2026-11-05-muse-v03-acceptance.aicl;
@@ -13,7 +13,8 @@
 ; What it got right that the Gemini Gem (example 16) did not: no invented temperature (`no :why
 ; (unk data)`), ids never reused, `ok` pointing at the `do` itself, a bodied `tell` when challenged
 ; with `why`, and `:src (none)` rather than a fabricated source. The transport's clock line
-; (`; now 2026-11-05T19:12+09:00`, sent before #user.6) was copied into `:at` as rule 9 asks.
+; (`; now 2026-11-05T19:12+09:00`, sent before #user.6; a value the relay typed, not the real
+; time - the relay's error, kept as sent) was copied into `:at` as rule 9 asks.
 ; What it did not do: deliver the haiku while the `do` was open - two status checks, one after the
 ; promised minute, still said `pending`; the `done` only came in reply to `end`, closing #user.4
 ; after the conversation was being closed. A one-message-per-turn chat has no idle turn in which

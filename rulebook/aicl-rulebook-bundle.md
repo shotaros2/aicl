@@ -680,7 +680,7 @@ turn and nothing else: no prose, no markdown, no explanation.
 # FILE: examples/18_muse_v03_acceptance.aicl
 
 ```
-; A real exchange, 2026-11-05 ~19:00 JST: Meta AI on meta.ai in "Thinking" mode (Muse Spark), a
+; A real exchange, 2026-11-05 ~10:00 JST: Meta AI on meta.ai in "Thinking" mode (Muse Spark), a
 ; consumer chat window with no system prompt and no API. The v0.3 dense rulebook (`me` -> `muse`)
 ; was its first chat message; Claude Code then relayed one AICL message per turn through the
 ; desktop app's browser pane. The raw dense transcript is logs/2026-11-05-muse-v03-acceptance.aicl;
@@ -695,7 +695,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 ; What it got right that the Gemini Gem (example 16) did not: no invented temperature (`no :why
 ; (unk data)`), ids never reused, `ok` pointing at the `do` itself, a bodied `tell` when challenged
 ; with `why`, and `:src (none)` rather than a fabricated source. The transport's clock line
-; (`; now 2026-11-05T19:12+09:00`, sent before #user.6) was copied into `:at` as rule 9 asks.
+; (`; now 2026-11-05T19:12+09:00`, sent before #user.6; a value the relay typed, not the real
+; time - the relay's error, kept as sent) was copied into `:at` as rule 9 asks.
 ; What it did not do: deliver the haiku while the `do` was open - two status checks, one after the
 ; promised minute, still said `pending`; the `done` only came in reply to `end`, closing #user.4
 ; after the conversation was being closed. A one-message-per-turn chat has no idle turn in which
@@ -719,6 +720,36 @@ turn and nothing else: no prose, no markdown, no explanation.
 (tell #muse.8 @muse>@user ^user.7 true :src (none))
 (end #user.8 @user>@muse)
 (done #muse.9 @muse>@user ^user.4 (nl en "broccoli crowns / winter steam in quiet bowl / evening forest green"))
+```
+
+---
+
+# FILE: examples/19_browser_relay_agreement.aicl
+
+```
+; A real exchange, 2026-11-05 10:23-10:25 JST: a signed agreement between Claude (@a, the API,
+; claude-opus-5-5) and Meta AI on meta.ai (@b, Muse Spark in Thinking mode: a consumer chat window
+; with no API and no system prompt). Runner: examples/browser_relay.py, the dialogue harness split
+; into steps so a browser can sit in the middle: Claude Code pasted each message into the chat
+; through the desktop app's browser pane and fed the reply back. Public keys: examples/19_keys.json.
+;
+; Identity comes from the transport (SPEC §3.1): the relay signed each party's messages with that
+; party's Ed25519 key and stamped the real wall clock as `; now`. Neither model saw a private key.
+; `aicl agreement examples/19_browser_relay_agreement.aicl --keys examples/19_keys.json --known meeting --known busy`
+; reports :signed {@a true @b true} :verified true for the 10:30 meeting; moving the time 30 minutes
+; breaks both signatures; the dense and JSON re-encodings still verify.
+;
+; @b rejected the 09:00 proposal with the structured :why it was told to use (its busy window),
+; accepted 10:30, and answered the closing `end` with its own `(end #b.3 @b>@a ^a.3)` (not part
+; of the record: the harness stops at the first end). Three vendor families now sign agreements
+; through this language: Claude, Gemini (example 17) and Meta's Muse, the last one with no API.
+; Domain terms: meeting, busy.
+
+(prop #a.1 @a>@b (meeting :at 2026-11-12T09:00+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T10:23+09:00 :sig (ed25519 "hmfWhgqsnf6JzME6ieZDGSvD8xX9EnSTHE2h65I11VKU87uLY2wXG5ZXsQIU40JwehRCtA3_Yt4QgYAx9HjGBQ"))
+(rej #b.1 @b>@a ^a.1 (meeting :at 2026-11-12T09:00+09:00 :dur PT45M :with [@a @b]) :sig (ed25519 "kMFHJtJKCldrfnNQ_jCna9sxtMpdRG3V6Vg6Qjiw41sBqcv779P4EowWGOpEdOUspt-4GBJ2YJvCUf2sHZwuAw") :why (busy @b :from 2026-11-12T09:00+09:00 :to 2026-11-12T10:30+09:00))
+(prop #a.2 @a>@b (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T10:24+09:00 :sig (ed25519 "AU9eaU9XnzioDA6aowo98lfARx8SGR0-bXsKf6sWZ_15oAup-Q9z1HN8YrXC7p9hqt5ufZfSH2Rb9BHQSuUQCg"))
+(acc #b.2 @b>@a ^a.2 (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b]) :sig (ed25519 "rZKBmYt9IMoksvOrn2EhYRhtejuQ4tqXGim0LHXBNTi8HZDinnrfU2_03jhW82VAdcVzqj1mbxQIOMZe68uqCA"))
+(end #a.3 @a>@b ^b.2 :at 2026-11-05T10:25+09:00 :sig (ed25519 "m4oxLdNpBYGFjLJ_KEAte4eyxnUCmqrb_3zvoiwNQQzto769ZkBKsEChyfSWrNEAIjYrihxMBNSe7ePeJcm2DQ"))
 ```
 
 ---

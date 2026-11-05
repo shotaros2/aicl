@@ -74,6 +74,15 @@ class AgreementTests(unittest.TestCase):
         self.assertEqual(ag.signed, {"a": False, "b": True})   # a has a key but did not sign: not verified
         self.assertFalse(ag.verified)
 
+    def test_example_19_browser_relay_verifies(self):
+        keys = {k: v for k, v in json.loads((ROOT / "examples" / "19_keys.json").read_text(encoding="utf-8")).items()
+                if not k.startswith("_")}
+        msgs = aicl.parse_messages((ROOT / "examples" / "19_browser_relay_agreement.aicl").read_text(encoding="utf-8"))
+        ags = extract_agreements(msgs, keys=keys, known_terms=KNOWN)
+        self.assertEqual(len(ags), 1)
+        self.assertTrue(ags[0].verified)
+        self.assertEqual((ags[0].proposal.id, ags[0].acceptance.id), ("a.2", "b.2"))
+
     def test_example_17_live_run_verifies(self):
         keys = {k: v for k, v in json.loads((ROOT / "examples" / "17_keys.json").read_text(encoding="utf-8")).items()
                 if not k.startswith("_")}

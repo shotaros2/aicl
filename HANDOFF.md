@@ -123,13 +123,19 @@ python examples/cooperation_demo.py
   `python examples/contract_dialogue.py --b muse` で Claude と Muse が署名付き合意を結ぶ。**未実走**: API プレビューが
   米国限定でキーを取れていない。鍵が取れたら `.env` に `MODEL_API_KEY=` を書いて 1 コマンドで再現できる。
   同じコネクタは `base_url` を変えれば OpenAI 互換の他社・ローカル（Ollama など）にも使える。
-- **Muse の手貼り受け入れテストは合格**（2026-11-05 19:00 JST、meta.ai 思考モード、Claude Code がブラウザペインで中継）:
+- **Muse の手貼り受け入れテストは合格**（2026-11-05 10:00 JST ごろ、meta.ai 思考モード、Claude Code がブラウザペインで中継。送った時計行 `19:12` は中継者が打った値で実時刻ではない）:
   17 メッセージ、エラー 0、警告 2（`eta-unanchored` は時計行なしで `:a` を省いた規則 9 どおりの挙動、`unresolved-term` は
   わざと未定義にした語）。気温を捏造せず `N :w (unk data)`、未知語に `Q (unk …)`、型付き def に `K`、`do` に `K :t PT1M`、
   時計行 `; now …` を `:a` に転記、`W` には本文つきで `:s (none)`。Gem（例 16）が落とした点を全部通した。
   唯一の弱点: `do` を受理しても status 照会 2 回（約束の 1 分経過後も）`pending` のままで、`X` を送った返事として
   ようやく `Z`（俳句）を納品。1 ターン 1 メッセージのチャットには「納品のための手番」がないのが原因で、ハーネスなら解ける。
   全文は `examples/18`、生ログは `logs/2026-11-05-muse-v03-acceptance.aicl`。
+- **ブラウザ窓だけで署名付き合意が結べた**（2026-11-05 10:23–10:25 JST、`examples/19`、ランナー `examples/browser_relay.py`）:
+  ユーザーの指摘「ブラウザ版なら API 使わずできる」から。ハーネスを `init / step / finish` の 3 コマンドに分け、
+  Claude（API、@a）の発話を Claude Code が meta.ai に貼り、Muse（@b）の返事をファイル経由で戻す。中継役が両者の鍵で署名し
+  実時計を `; now` に刻む。Muse は 09:00 の提案を `(R … :w (busy @b :from … :to …))` で断り、10:30 を `C` で受諾、`X` に `X` で応答。
+  `aicl agreement` は `:signed {@a true @b true} :verified true`、改ざんで両署名が壊れ、密/JSON 再エンコードでも検証が通る。
+  つまり API のない相手（消費者向けチャット）とも、第三者が検証できる合意が結べる。
   手貼りの実務メモ: meta.ai のコンポーザーは Lexical 製で、`form_input` や `insertText` は改行を潰す。合成 paste イベント
   （`DataTransfer` に text/plain を載せて `dispatchEvent(new ClipboardEvent('paste', …))`）なら改行が残る。
 
@@ -145,8 +151,9 @@ python examples/cooperation_demo.py
 5. `examples/cooperation_gemini.py` を `aicl/gemini.py` と `aicl.dialogue` を使う形に整理（コード二重の解消）。
 6. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
 7. 告知: X に投稿済み。
-8. **Muse Spark の API 実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`、
-   通れば署名付き合意の例として収録（手貼りの受け入れテストは済、`examples/18`）。
+8. **Muse Spark の API 実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`。
+   ブラウザ経由の合意は済（`examples/19`）なので、API 版は「無人で回る」ことの確認が目的。
+9. `examples/browser_relay.py` を他のチャット窓（Gemini アプリの Gem、ChatGPT、Dola）でも回し、同じ鍵付き記録を並べる。
 
 ## 8. Claude Code と作業するときの約束
 

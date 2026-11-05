@@ -344,6 +344,14 @@ refused to invent a temperature (`no :why (unk data)`), answered an undefined te
 `clar (unk …)`, kept its ids, and admitted `:src (none)` when challenged; the one thing it did
 not do was deliver the accepted `do` until the conversation was being ended.
 
+And the agreement itself does not need the API either. [examples/19](examples/19_browser_relay_agreement.aicl)
+is Claude (API) and Meta AI (the meta.ai chat window) negotiating the same meeting with
+`examples/browser_relay.py`: the dialogue harness split into `init` / `step` / `finish` so that
+whoever holds the browser pastes each message and feeds the reply back. The relay signs each
+party's messages with that party's key and stamps the real clock; the models never see a key.
+`aicl agreement examples/19_browser_relay_agreement.aicl --keys examples/19_keys.json` verifies
+it; the tamper and re-encoding checks behave exactly as in example 17.
+
 ## Let Claude fetch images from another AI on its own
 
 The end goal of the cooperation layer: a model that needs something it cannot do

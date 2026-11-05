@@ -221,6 +221,8 @@ $ aicl agreement examples/17_signed_agreement.aicl --keys examples/17_keys.json 
 
 Muse は逆向きには試験済みです。[examples/18](examples/18_muse_v03_acceptance.aicl) は meta.ai の Meta AI（思考モード、API なし、システムプロンプトなし）に密ルールブックを最初のメッセージとして渡し、1 ターン 1 メッセージで中継した記録です。`aicl check` はエラー 0、警告 2。気温を捏造せず `no :why (unk data)`、未定義語には `clar (unk …)`、ID は乱れず、根拠を問われて `:src (none)` と認めました。できなかったのは、受理した `do` を会話が閉じられるまで納品しなかったことだけです。
 
+合意そのものにも API は要りません。[examples/19](examples/19_browser_relay_agreement.aicl) は Claude（API）と Meta AI（meta.ai のチャット窓）が同じ会議を `examples/browser_relay.py` で交渉した記録です。対話ハーネスを `init` / `step` / `finish` に分け、ブラウザを持つ側がメッセージを貼って返事を戻します。中継役が各当事者の鍵で署名し実時刻を刻むので、モデルは鍵を一切見ません。`aicl agreement examples/19_browser_relay_agreement.aicl --keys examples/19_keys.json` で検証でき、改ざん検査と再エンコード検査は例 17 と同じ結果になります。
+
 ## Claude が自分で他の AI から画像を取ってくる
 
 協調レイヤーの最終目標はこれです。自分にできないこと（たとえば画像生成）が必要になったモデルが、専門エージェントと AICL で話し、成果物を受け取り、人を介さずにユーザーへ見せる。`aicl/mcp_server.py` はゲートウェイを [MCP](https://modelcontextprotocol.io) サーバーとして公開し、5 つのツールを持ちます。`aicl_rulebook`（言語を学ぶ）、`aicl_capabilities`、`aicl_send`（AICL を送り、AICL の返答と画像成果物を受け取る）、`aicl_transcript`、`aicl_check`。
