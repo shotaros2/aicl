@@ -445,9 +445,11 @@ artifacts back), `aicl_transcript` and `aicl_check`.
 pip install "aicl-lang[mcp]"        # mcp SDK + google-genai; GEMINI_API_KEY in .env
 ```
 
-Claude Code picks the server up from the repository's `.mcp.json`; for Claude Desktop add
-`{"mcpServers": {"aicl": {"command": "python", "args": ["-m", "aicl.mcp_server"], "cwd": "<repo>"}}}`
-to its config. Then ask Claude for a picture: it calls `aicl_rulebook`, composes
+Claude Code picks the server up from the repository's `.mcp.json`, which starts it with the
+Windows `py -3` launcher (a bare `python` on Windows can be the Microsoft Store stub, which runs
+nothing); on macOS or Linux change the command to `python3`. For Claude Desktop add
+`{"mcpServers": {"aicl": {"command": "py", "args": ["-3", "-m", "aicl.mcp_server"], "cwd": "<repo>"}}}`
+to its config (`python3` and `["-m", "aicl.mcp_server"]` on macOS or Linux). Then ask Claude for a picture: it calls `aicl_rulebook`, composes
 `(D claude.1>img (coop:task t1 image-gen :in {prompt "…"}))`, receives `(K …)` and
 `(Z … (coop:artifact …))` from the image agent, and the image comes back as tool output.
 `AICL_IMAGE_MODEL=svg` (default) draws with the text model on the free tier;

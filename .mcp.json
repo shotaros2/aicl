@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "aicl": {
-      "command": "python",
-      "args": ["-m", "aicl.mcp_server"],
+      "command": "py",
+      "args": ["-3", "-m", "aicl.mcp_server"],
       "cwd": "."
     }
   }

@@ -253,7 +253,7 @@ Muse は逆向きには試験済みです。[examples/18](examples/18_muse_v03_a
 pip install "aicl-lang[mcp]"        # mcp SDK と google-genai。GEMINI_API_KEY は .env に
 ```
 
-Claude Code はリポジトリの `.mcp.json` からサーバーを読み込みます。Claude Desktop なら設定に `{"mcpServers": {"aicl": {"command": "python", "args": ["-m", "aicl.mcp_server"], "cwd": "<リポジトリ>"}}}` を足します。あとは Claude に絵を頼むだけです。Claude は `aicl_rulebook` を呼んで言語を学び、`(D claude.1>img (coop:task t1 image-gen :in {prompt "…"}))` を組み立て、画像エージェントから `(K …)` と `(Z … (coop:artifact …))` を受け取り、画像がツールの出力として戻ってきます。`AICL_IMAGE_MODEL=svg`（既定）は無料枠で文章モデルが描き、`AICL_IMAGE_MODEL=gemini-nano-banana-2.1` は API の課金を有効にした後に本物の画像モデルを使います。
+Claude Code はリポジトリの `.mcp.json` からサーバーを読み込みます。`.mcp.json` は Windows の `py -3` ランチャーで起動します（Windows でただ `python` と書くと、何も実行しない Microsoft Store のダミーが呼ばれることがあるため）。macOS や Linux では、コマンドを `python3` に変えてください。Claude Desktop なら設定に `{"mcpServers": {"aicl": {"command": "py", "args": ["-3", "-m", "aicl.mcp_server"], "cwd": "<リポジトリ>"}}}` を足します（macOS や Linux では `python3` と `["-m", "aicl.mcp_server"]`）。あとは Claude に絵を頼むだけです。Claude は `aicl_rulebook` を呼んで言語を学び、`(D claude.1>img (coop:task t1 image-gen :in {prompt "…"}))` を組み立て、画像エージェントから `(K …)` と `(Z … (coop:artifact …))` を受け取り、画像がツールの出力として戻ってきます。`AICL_IMAGE_MODEL=svg`（既定）は無料枠で文章モデルが描き、`AICL_IMAGE_MODEL=gemini-nano-banana-2.1` は API の課金を有効にした後に本物の画像モデルを使います。
 
 ## LLM に AICL を話させる
 
