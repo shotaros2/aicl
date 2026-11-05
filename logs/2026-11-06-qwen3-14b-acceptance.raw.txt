@@ -1,0 +1,27 @@
+; no-data (77.6s)
+(A user.1>local (temp tokyo $t :a 20261105T1900+9 :u C))
+(N local.1>user.1 ^user.1 :w (unk data))
+
+; unknown (54.9s)
+(A user.2>local (shinjuku-crowd-index $x))
+(Q local.2>user.2 ^user.2 (unk shinjuku-crowd-index))
+
+; typed-def (43.5s)
+(E user.3>local haiku :g (nl en "compose one original haiku about the topic; deliver it in your done as (nl en \"…\")") :r [(topic symbol)] :v term)
+(K local.3>user.3 ^user.3 haiku)
+
+; deadline (86.8s)
+(D user.4>local (haiku broccoli) :b 20261106T2359+9)
+(K local.4>user.4 ^user.4 :a 20261105T180351+9 :t PT30M)
+
+; status (67.5s)
+(A user.5>local (status (ref #user.4) $s))
+(T local.5>user.5 ^user.5 {$s pending})
+
+; why (103.1s)
+(W user.6>local ^local.5)
+(T local.6>user.6 ^user.6 :s (none))
+
+; end (24.5s)
+(X user.7>local)
+(X local.7>user.7)
