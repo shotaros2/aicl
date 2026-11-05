@@ -1,6 +1,18 @@
 # 引き継ぎメモ（別の PC で作業を続けるために）
 
-最終更新: 2026-11-05。このファイルは人間と AI エージェント（Claude Code など）の両方が読む前提で書いています。
+最終更新: 2026-11-05 夕方。このファイルは人間と AI エージェント（Claude Code など）の両方が読む前提で書いています。
+
+## 0. いまの状態（まずここを読む）
+
+- **動いているもの**: ノートパソコン（`C:\Users\showk\OneDrive\AI言語`）で、夜間作業（`examples/night_shift.py`）が
+  Windows のタスク スケジューラに登録済み。毎晩 2:00 に `--mode night`（受付箱 → スカウトの自主提案）、30 分ごとに `--mode inbox`。
+  考える AI は 4 体（チーフ、ライター、チェッカー、スカウト）で、標準はすべて Gemini の無料枠（gemini-3.5-flash-lite）。
+- **Discord につながっている**: サーバー「AICL」、ボット「AICL」。`#タスク` に持ち主（shotaros2_87277）が書くと仕事になり、
+  AI の会話は `#aicl-会話`（ウェブフックで各自の名前）、報告書とページは `#報告` に届く。2026-11-05 15:51 に通し試験済み。
+- **次にやること**: 家のパソコン（RTX 3060 Ti 8 GB、メモリ 16 GB）へ移し、手元の AI（Ollama）を組み込む。
+  手順は **`docs/home-pc-setup.ja.md`**、組み込みの仕様は §7 の 1 番。移したらノートのスケジュールは解除する（2 台で動かさない）。
+- **ユーザーについて**: AICL は打ち込めないので、指示も結果も日本語。push・スケジュール登録・各種アカウント作成はユーザー本人が行う
+  （Claude の環境では止められる）。秘密（`.env`）はチャットに出さない。
 
 ## 1. これは何か
 
@@ -209,7 +221,17 @@ python examples/cooperation_demo.py
 
 ## 7. 次にやる候補
 
-1. **記事（最優先）**: 下書き済み（`docs/articles/zenn-aicl.ja.md`、`docs/articles/show-hn.md`、2026-11-05）。本人が読んで投稿する。材料は揃っている——実記録15例、実測値（ワイヤ370 vs 可読480）、
+1. **手元の AI（Ollama）の組み込み（最優先、家のパソコンで）**。移行手順は `docs/home-pc-setup.ja.md`。コードの仕様:
+   - `aicl/vendors.py` に `local` を加える。中身は `aicl/muse.py` の `text_ask`（OpenAI 互換）を
+     `base_url=$AICL_LOCAL_URL`（既定 `http://localhost:11434/v1`）、`model=$AICL_LOCAL_MODEL`（既定 `qwen3:8b`）、
+     `api_key="ollama"`（Ollama はキー不要）、`system_role="system"` で呼ぶ。返答の `<think>…</think>` は取り除く。
+   - 切り替え: `vendors.text_ask(…, fallback="local")` で、Gemini が使えないとき（`is_unavailable`）に手元の AI へ移る。
+     ブラウザへの切り替え（`--web-fallback`）は Google にログインを拒まれたので、手元の AI を標準の代役にする。
+   - ランナー（`examples/night_shift.py`、`examples/autonomous_network.py`）で `--chief local` などを選べるようにし、
+     おすすめ構成「チーフ・ライター・スカウト＝local、チェッカー＝gemini」（書き手と確かめ役を別の会社にする）を試す。
+   - 実測して README/HANDOFF に記録: 受け入れテスト（例 18 と同じ採点）、夜間作業 1 件の時間・検証器エラー・なりすまし回数。
+     オフラインのテストは偽の HTTP で（`tests/test_muse.py` と同じ作り）。
+2. **記事**: 下書き済み（`docs/articles/zenn-aicl.ja.md`、`docs/articles/show-hn.md`、2026-11-05）。本人が読んで投稿する。材料は揃っている——実記録15例、実測値（ワイヤ370 vs 可読480）、
    v0.3 公開、無人ネットワーク実走、そして「検証器が嘘と捏造を現行犯で捕まえ続けた2日間」という物語。
 2. （済 2026-11-05）検証器の二重 ok 検査と example 16 の収録。
 3. SPEC §13 の新しい残課題（鍵ローテーション、:part のマージ規則、コードブック/鍵のレジストリ）。
@@ -221,9 +243,11 @@ python examples/cooperation_demo.py
 7. 告知: X に投稿済み。
 8. **Muse Spark の API 実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`。
    ブラウザ経由の合意は済（`examples/19`）なので、API 版は「無人で回る」ことの確認が目的。
-10. 自律ネットワークの拡張: 常駐化（中継サーバー `aicl/relay.py` 経由で別プロセス化）、時刻や出来事のトリガー、
-    能力の自己申告と相手探し、コードブック圧縮の通信、長時間の予算管理。
 9. `examples/browser_relay.py` を ChatGPT の窓でも回し、同じ鍵付き記録を並べる（Gemini web は `examples/20`、Dola は `examples/21` で済）。
+10. 自律ネットワークの拡張: 他の人の AI も Discord で同じ部屋に入れる（今の Discord は表示と受付で、会話そのものは PC 内）、
+    能力の自己申告と相手探し、コードブック圧縮の通信、長時間の予算管理。
+11. 朝の報告書に「AI たちが何を話し合ったか」の日本語の要約を加える（ユーザーは AICL を読まないため）。
+12. v0.4.0 として PyPI と GitHub Releases に公開（CHANGELOG の Unreleased が溜まっている）。
 
 ## 8. Claude Code と作業するときの約束
 
