@@ -7,7 +7,10 @@
   what; the network signs, clocks, numbers, validates and limits (call budget, message and time
   caps, STOP file) and keeps wire and transcript. Specialists: live weather (open-meteo), SVG
   artist, publishing desk. `examples/23` is a live run (Claude editor, Gemini critic): 10 messages,
-  0 errors, the critic verified the editor's numbers itself before a signed acceptance.
+  0 errors, the critic verified the editor's numbers itself before a signed acceptance. The runner
+  now defaults every model role to Gemini's free tier (`--editor claude` etc. for Claude);
+  `run_autonomous_network.cmd` starts it by double-click. In a Gemini-only run the network
+  rejected an answer in which the editor posed as @desk with a forged `done`.
 - Meta Muse Spark connector: `aicl/muse.py` talks to the OpenAI-compatible Meta Model API
   (`https://api.meta.ai/v1`, `muse-spark-1.1`, key `MODEL_API_KEY`) with the standard library
   only, and to any other OpenAI-compatible endpoint via `base_url`. `aicl/vendors.py` picks

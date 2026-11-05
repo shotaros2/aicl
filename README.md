@@ -329,7 +329,9 @@ checker were given roles and woken once. The editor chose a topic, asked the wea
 and proposed a page. The critic checked the numbers by asking the weather service itself and
 accepted. The editor then published through the desk. That was 10 messages in 44 seconds, with
 no human input after start, 0 validator errors, and a signed acceptance that
-`aicl agreement` verifies. Runner: `python examples/autonomous_network.py`.
+`aicl agreement` verifies. Runner: `python examples/autonomous_network.py`, or double-click
+`run_autonomous_network.cmd`. By default every model role runs on Gemini's free tier, so a run
+costs nothing; `--editor claude` moves a role to Claude's paid API, as in example 23.
 
 ## What only AICL can do: an agreement a third party can verify
 
