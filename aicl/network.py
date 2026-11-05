@@ -182,12 +182,29 @@ class ModelNode(Node):
             out.append(m)
         return out
 
+    def _observe(self, net: "Network", kind: str, detail: str = "") -> bool:
+        """Tell an escalating ask (vendors.with_escalation) how its answers fared, and record
+        any escalation it reports. Returns True if the role moved to the cloud just now."""
+        observe = getattr(self.ask, "observe", None)
+        moved = bool(observe(kind, detail)) if observe is not None else False
+        self._drain_notes(net)
+        return moved
+
+    def _drain_notes(self, net: "Network") -> None:
+        for n in getattr(self.ask, "pending_notes", lambda: [])():
+            net.note(f"@{self.name} {n}")
+
     def react(self, net, event, incoming):
         nxt = f"{self.name}.{self.seq + 1}"
         content = event + (("\n" + to_dense(incoming.to_form())) if incoming is not None else "") + f"\n; next-id {nxt}"
+        if incoming is not None and incoming.act == "rej":
+            why = incoming.kw.get("why")
+            self._observe(net, "rejected", f"#{incoming.id} from @{incoming.sender}"
+                          + (f": {to_text(why)}" if why is not None else ""))
         msgs: List[Message] = []
         error = ""
-        for attempt in range(self.attempts):
+        attempt, tries = 0, self.attempts
+        while attempt < tries:
             if self.calls >= net.limits.max_calls_per_agent:
                 net.note(f"@{self.name} reached its budget of {net.limits.max_calls_per_agent} model calls")
                 return []
@@ -198,18 +215,24 @@ class ModelNode(Node):
                 raw = self.ask(self._system(net), self.history).strip()
             except Exception as e:  # provider outage or quota: reported, never guessed around
                 self.history.append({"role": "assistant", "content": ""})
+                self._drain_notes(net)
                 net.note(f"@{self.name} model call failed: {str(e)[:160]}")
                 if incoming is not None and incoming.act in ("ask", "do", "prop", "def"):
                     return [self.msg("fail", incoming.sender, reply=incoming.id,
                                      kw={"code": Symbol("internal"), "why": nl("en", "model unavailable")})]
                 return []
+            self._drain_notes(net)
             self.history.append({"role": "assistant", "content": raw})
             try:
                 msgs = self._parse(raw, net)
+                self._observe(net, "valid")
                 break
             except AICLError as e:
                 error = str(e)[:200]
                 net.note(f"@{self.name} invalid (attempt {attempt + 1}): {error} | {raw[:160]}")
+                if self._observe(net, "invalid", error):
+                    tries += 1      # the role just moved to the cloud: give the new model one try at this event
+            attempt += 1
         else:
             return []
         # The network owns numbering: a reused or out-of-order id is renumbered, and the agent's

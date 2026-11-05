@@ -60,6 +60,8 @@ def main(argv=None) -> int:
     ap.add_argument("--artist", default="gemini", choices=vendors.VENDORS, help="text model that draws the SVG")
     ap.add_argument("--no-web-fallback", action="store_true",
                     help="do not switch a role to the vendor's chat website when its API is unavailable")
+    ap.add_argument("--escalate-to", default="gemini", choices=vendors.VENDORS + ("none",),
+                    help="where a local role goes when the local model is in trouble (default gemini)")
     ap.add_argument("--max-messages", type=int, default=60)
     ap.add_argument("--max-calls", type=int, default=10, help="model calls per model agent")
     ap.add_argument("--max-seconds", type=float, default=900)
@@ -69,8 +71,13 @@ def main(argv=None) -> int:
     stop = OUT / "STOP"
     if stop.exists():
         stop.unlink()
-    pause = lambda v: 0.0 if v == "claude" else 4.0
-    ask = lambda v: vendors.text_ask(v, sleep=pause(v), fallback=not args.no_web_fallback)
+    pause = lambda v: 0.0 if v in ("claude", "local") else 4.0
+
+    def ask(v):
+        if v == "local":
+            up = None if args.escalate_to in ("none", "local") else args.escalate_to
+            return vendors.text_ask(v, escalate_to=up)
+        return vendors.text_ask(v, sleep=pause(v), fallback=not args.no_web_fallback)
     nodes = [
         ModelNode("editor", EDITOR_ROLE, ask(args.editor), DENSE),
         ModelNode("critic", CRITIC_ROLE, ask(args.critic), DENSE),

@@ -17,7 +17,11 @@ out/night/<date>/REPORT.md; the team's memory is out/night/memory.jsonl.
 Modes: --mode night (inbox, then the scout's own proposals; for the nightly schedule) and
 --mode inbox (only the inbox, quiet when empty; for the 30-minute check, so a task you drop in from
 your phone through OneDrive starts soon). Every model role runs on Gemini's free tier by default;
---chief claude etc. move a role to Claude's paid API. --web-fallback switches a role whose API is
+--preset local puts the busy roles (chief, writer, scout) on this PC's model (Ollama, aicl/local.py)
+and keeps the checker, coder and artist on Gemini; a local role that is in trouble moves to
+--escalate-to (default gemini) and the report says when and why. --local-fallback sends a cloud role
+whose API is unavailable to the local model. --chief claude etc. move a role to Claude's paid API.
+--web-fallback switches a role whose API is
 unavailable to the vendor's chat website (aicl/webchat.py) - off by default, because Google refuses
 sign-in from an automated Chrome. Requires GEMINI_API_KEY in .env and the cryptography package.
 Run now:        python examples/night_shift.py --mode night   (or double-click run_night_shift.cmd)
@@ -108,11 +112,27 @@ SCOUT_ROLE = (
     "doing, send nothing. " + DATA_RULE)
 
 
+ROLES = ("chief", "writer", "critic", "scout", "artist", "coder")
+PRESETS = {
+    "cloud": {r: "gemini" for r in ROLES},
+    "local": {"chief": "local", "writer": "local", "scout": "local",
+              "critic": "gemini", "coder": "gemini", "artist": "gemini"},
+}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("--mode", default="night", choices=("night", "inbox"))
     for role in ("chief", "writer", "critic", "scout", "artist", "coder"):
-        ap.add_argument(f"--{role}", default="gemini", choices=vendors.VENDORS)
+        ap.add_argument(f"--{role}", default=None, choices=vendors.VENDORS)
+    ap.add_argument("--preset", default="cloud", choices=("cloud", "local"),
+                    help="cloud: every role on Gemini's free tier (default). local: the busy roles (chief, writer, "
+                         "scout) on this PC's model, the checker, coder and artist on Gemini - a different company "
+                         "checks what the local model wrote. --<role> overrides either.")
+    ap.add_argument("--escalate-to", default="gemini", choices=vendors.VENDORS + ("none",),
+                    help="where a local role goes when the local model is in trouble (default gemini)")
+    ap.add_argument("--local-fallback", action="store_true",
+                    help="a cloud role whose API is unavailable (quota, network) switches to the local model")
     ap.add_argument("--web-fallback", action="store_true",
                     help="switch a role to the vendor's chat website when its API is unavailable (needs a sign-in)")
     ap.add_argument("--no-discord", action="store_true", help="do not use Discord even when it is configured")
@@ -122,6 +142,10 @@ def main(argv=None) -> int:
     ap.add_argument("--max-calls", type=int, default=24, help="model calls per model agent, per task")
     ap.add_argument("--max-seconds", type=float, default=1500, help="per task")
     args = ap.parse_args(argv)
+    preset = PRESETS[args.preset]
+    for role in preset:
+        if getattr(args, role) is None:
+            setattr(args, role, preset[role])
 
     NIGHT.mkdir(parents=True, exist_ok=True)
     stop = NIGHT / "STOP"
@@ -134,8 +158,14 @@ def main(argv=None) -> int:
         log.flush()
         print(line if len(line) < 300 else line[:300] + " …", flush=True)
 
-    pause = lambda v: 0.0 if v == "claude" else 4.0
-    ask = lambda v: vendors.text_ask(v, sleep=pause(v), fallback=args.web_fallback, note=echo)
+    pause = lambda v: 0.0 if v in ("claude", "local") else 4.0
+
+    def ask(v):
+        if v == "local":
+            up = None if args.escalate_to in ("none", "local") else args.escalate_to
+            return vendors.text_ask(v, escalate_to=up, note=echo)
+        fb = "local" if args.local_fallback else args.web_fallback
+        return vendors.text_ask(v, sleep=pause(v), fallback=fb, note=echo)
     memory = Memory(NIGHT / "memory.jsonl")
 
     def model(name, role, blurb, vendor, offers=()):

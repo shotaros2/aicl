@@ -163,7 +163,8 @@ def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime,
                   + ("。" if proposals else "（提案に値する仕事はないと判断）。"), ""]
     for o in outcomes:
         errors = [i for i in o.run.issues if i.level == "error"]
-        rejected = [n for n in o.run.notes if "invalid" in n]
+        escalated = [n for n in o.run.notes if "escalated to" in n]
+        rejected = [n for n in o.run.notes if "invalid" in n and n not in escalated]
         who = "スカウトの提案" if o.by == "scout" else "あなたの依頼"
         lines += [f"## {o.name}: {mark[o.status]}（{who}）", "", f"> {o.text.strip()}", ""]
         if o.result is not None:
@@ -175,10 +176,13 @@ def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime,
                   f"- チェッカーの受諾（署名付き合意）: {'検証できた' if o.verified else 'なし'}",
                   f"- 検証器: エラー {len(errors)} 件、警告 {len(o.run.issues) - len(errors)} 件",
                   f"- ネットワークが差し戻した不正な返答: {len(rejected)} 件"]
+        if escalated:
+            lines.append(f"- 手元の AI からクラウドに上げた回数: {len(escalated)} 件（料金がかかった目安）")
+            lines += [f"  - {n}" for n in escalated]
         if o.forged:
             lines.append(f"- 中身と一致しない「納品」を無視: {len(o.forged)} 件（{', '.join('#' + f for f in o.forged)}）")
         for n in o.run.notes:
-            if "invalid" not in n and "ignored #" not in n:
+            if "invalid" not in n and "ignored #" not in n and n not in escalated:
                 lines.append(f"- メモ: {n}")
         lines += [f"- 記録: {o.name}/transcript.aicl（署名の公開鍵は {o.name}/keys.json）", ""]
     path = day_dir / "REPORT.md"

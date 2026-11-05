@@ -54,7 +54,7 @@ class MuseTests(unittest.TestCase):
         self.assertIn("MODEL_API_KEY_TEST_UNSET", str(cm.exception))
 
     def test_vendor_registry(self):
-        self.assertEqual(vendors.VENDORS, ("claude", "gemini", "muse"))
+        self.assertEqual(vendors.VENDORS, ("claude", "gemini", "muse", "local"))
         self.assertEqual(vendors.describe("muse"), "muse (muse-spark-1.1)")
         with self.assertRaises(ValueError):
             vendors.text_ask("llama")

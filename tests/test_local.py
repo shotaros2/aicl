@@ -1,0 +1,168 @@
+import io
+import json
+import os
+import socket
+import unittest
+import urllib.error
+from contextlib import contextmanager
+from unittest import mock
+
+from aicl import local, vendors
+from aicl.network import Limits, ModelNode, Network
+from aicl.night import TaskOutcome, write_report
+
+
+def fake_opener(reply="(T b.1>a ^a.1 {$t 18.5C})", seen=None, fail=None):
+    @contextmanager
+    def opener(req, timeout=0):
+        if seen is not None:
+            seen.append((req.full_url, json.loads(req.data.decode("utf-8")), timeout))
+        if fail is not None:
+            raise fail
+        yield io.BytesIO(json.dumps({"choices": [{"message": {"role": "assistant", "content": reply}}]}).encode())
+    return opener
+
+
+class LocalTests(unittest.TestCase):
+    def test_defaults_point_at_ollama(self):
+        seen = []
+        with mock.patch.dict(os.environ, {"AICL_LOCAL_URL": "", "AICL_LOCAL_MODEL": ""}):
+            ask = local.text_ask(opener=fake_opener(seen=seen))
+            ask("SYS", [{"role": "user", "content": "hi"}])
+        url, body, timeout = seen[0]
+        self.assertEqual(url, "http://localhost:11434/v1/chat/completions")
+        self.assertEqual(body["model"], "qwen3:8b")
+        self.assertEqual(body["messages"][0], {"role": "system", "content": "SYS"})
+        self.assertEqual(timeout, 300.0)
+
+    def test_env_overrides_url_and_model(self):
+        seen = []
+        with mock.patch.dict(os.environ, {"AICL_LOCAL_URL": "http://localhost:1234/v1",
+                                          "AICL_LOCAL_MODEL": "gemma3:12b"}):
+            local.text_ask(opener=fake_opener(seen=seen))("S", [])
+            self.assertEqual(vendors.describe("local"), "local (gemma3:12b)")
+        self.assertEqual(seen[0][0], "http://localhost:1234/v1/chat/completions")
+        self.assertEqual(seen[0][1]["model"], "gemma3:12b")
+
+    def test_thinking_is_removed(self):
+        reply = "<think>the user wants a tell, so…</think>\n(T b.1>a ^a.1 {$t 18.5C})"
+        out = local.text_ask(opener=fake_opener(reply=reply))("S", [])
+        self.assertEqual(out, "(T b.1>a ^a.1 {$t 18.5C})")
+        self.assertEqual(local.strip_think("<think>never closed"), "")
+
+    def test_server_down_counts_as_unavailable(self):
+        refused = urllib.error.URLError(ConnectionRefusedError(10061, "refused"))
+        ask = local.text_ask(opener=fake_opener(fail=refused))
+        with self.assertRaises(Exception) as cm:
+            ask("S", [])
+        self.assertTrue(vendors.is_unavailable(cm.exception))
+
+
+def scripted(name, replies, log):
+    it = iter(replies)
+
+    def ask(system, history):
+        log.append(name)
+        return next(it)
+    return ask
+
+
+class EscalationTests(unittest.TestCase):
+    def make(self, local_replies, cloud_replies=("(T x.9>y true)",) * 5):
+        log, notes = [], []
+        ask = vendors.with_escalation("local", lambda: scripted("local", local_replies, log), "gemini",
+                                      lambda: scripted("cloud", cloud_replies, log), note=notes.append)
+        return ask, log, notes
+
+    def test_two_invalid_in_a_row_escalates(self):
+        ask, log, _ = self.make(["junk", "junk"])
+        ask("S", []); self.assertFalse(ask.observe("invalid", "e1"))
+        ask("S", []); self.assertTrue(ask.observe("invalid", "e2"))
+        ask("S", [])
+        self.assertEqual(log, ["local", "local", "cloud"])
+        self.assertIn("2 invalid AICL answers in a row", ask.pending_notes()[0])
+        self.assertEqual(ask.pending_notes(), [])          # drained once
+
+    def test_a_valid_answer_resets_the_streak(self):
+        ask, log, _ = self.make(["junk", "(T a.1>b true)", "junk", "(T a.2>b true)"])
+        for kind in ("invalid", "valid", "invalid", "valid"):
+            ask("S", []); ask.observe(kind)
+        self.assertEqual(log, ["local"] * 4)
+        self.assertEqual(ask.state["escalations"], [])
+
+    def test_two_rejections_escalate(self):
+        ask, log, _ = self.make(["(P a.1>c x)"] * 3)
+        ask.observe("rejected", "#critic.1"); ask("S", [])
+        ask.observe("rejected", "#critic.2"); ask("S", [])
+        self.assertEqual(log, ["local", "cloud"])
+
+    def test_server_down_escalates_and_the_turn_is_answered(self):
+        def down():
+            def ask(system, history):
+                raise urllib.error.URLError(ConnectionRefusedError(10061, "refused"))
+            return ask
+        log, notes = [], []
+        ask = vendors.with_escalation("local", down, "gemini", lambda: scripted("cloud", ["(T a.1>b true)"], log),
+                                      note=notes.append)
+        self.assertEqual(ask("S", []), "(T a.1>b true)")
+        self.assertIn("unavailable or stalled", ask.state["escalations"][0])
+
+    def test_timeout_escalates(self):
+        def slow():
+            def ask(system, history):
+                raise socket.timeout("timed out")
+            return ask
+        ask = vendors.with_escalation("local", slow, "gemini", lambda: (lambda s, h: "(T a.1>b true)"),
+                                      note=lambda s: None)
+        self.assertEqual(ask("S", []), "(T a.1>b true)")
+
+    def test_a_bad_answer_is_not_a_reason_to_switch(self):
+        def broken():
+            def ask(system, history):
+                raise ValueError("model produced garbage")
+            return ask
+        ask = vendors.with_escalation("local", broken, "gemini", lambda: (lambda s, h: ""), note=lambda s: None)
+        with self.assertRaises(ValueError):
+            ask("S", [])
+
+    def test_text_ask_wiring(self):
+        with self.assertRaises(ValueError):
+            vendors.text_ask("local", escalate_to="local")
+        ask = vendors.text_ask("local", escalate_to="gemini", note=lambda s: None)
+        self.assertTrue(hasattr(ask, "observe"))
+
+
+class NetworkEscalationTests(unittest.TestCase):
+    """End to end inside the network: the local chief answers junk twice, the role moves to the
+    cloud, the cloud gets a fresh try at the same event, and the report says so."""
+
+    def test_network_escalates_and_report_shows_it(self):
+        log = []
+        local_replies = ["not aicl", "still not aicl"]
+        cloud_replies = ["(T chief.1>owner ^owner.1 {$x 1})"]
+        ask = vendors.with_escalation("local", lambda: scripted("local", local_replies, log), "gemini",
+                                      lambda: scripted("cloud", cloud_replies, log), note=lambda s: None)
+        from aicl.network import Node
+        owner = Node("owner", "the person")
+        chief = ModelNode("chief", "lead", ask, "rulebook for me")
+        net = Network([owner, chief], Limits(max_messages=10, max_calls_per_agent=5), sign=False, echo=None)
+        net.post(owner.msg("ask", "chief", __import__("aicl").parse_one("(x $x)")))
+        res = net.run(wake=[])
+        self.assertEqual(log, ["local", "local", "cloud"])
+        self.assertEqual([m.act for m in res.messages], ["ask", "tell"])
+        ups = [n for n in res.notes if "escalated to gemini" in n]
+        self.assertEqual(len(ups), 1)
+        self.assertTrue(ups[0].startswith("@chief "))
+
+        import tempfile
+        from datetime import datetime
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            out = TaskOutcome("t1", "テスト", "done", None, res, False, "", [])
+            text = write_report(Path(d), [out], datetime.now()).read_text(encoding="utf-8")
+        self.assertIn("手元の AI からクラウドに上げた回数: 1 件", text)
+        self.assertIn("不正な返答: 2 件", text)          # the two junk answers, not the escalation note
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Local models (`aicl/local.py`): vendor `local` talks to Ollama's OpenAI-compatible endpoint
+  through the standard-library client of `aicl/muse.py` (`AICL_LOCAL_URL`, default
+  `http://localhost:11434/v1`; `AICL_LOCAL_MODEL`, default `qwen3:8b`; LM Studio and other
+  OpenAI-compatible servers work by URL). `<think>…</think>` is stripped.
+- `vendors.text_ask(…, fallback="local")`: a cloud role whose API is unavailable moves to the
+  local model. `vendors.with_escalation` / `text_ask(…, escalate_to="gemini")`: a local role
+  in trouble - two invalid AICL answers in a row, two rejections, an answer slower than 180 s,
+  the server down or stalled - moves to the cloud for the rest of the task, and the cloud
+  model gets a fresh try at the event that broke the local one. `ModelNode` reports each
+  answer's fate to the ask (`observe`) and records the escalations it returns; the night
+  report gets a "moved to the cloud" line with count and reasons (a cost gauge).
+- Runners: `night_shift.py --preset local` (chief, writer, scout local; critic, coder, artist
+  on Gemini, so a different company checks the local model's work), `--escalate-to`,
+  `--local-fallback`; `autonomous_network.py` takes `local` and `--escalate-to`.
+  `examples/local_acceptance.py` scores a local model with the probes of examples/16 and 18.
+
 - Apps: model agents can attach files (a fenced ```html block, referred to as `(file 1)`); the
   network stores the bytes and substitutes a `(blob sha256:…)` (`Network(files_dir=…)`). @coder
   builds single-file web apps; @tester (`aicl/apps.py`) accepts or rejects them mechanically (hash,

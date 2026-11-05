@@ -11,8 +11,12 @@
   AI の会話は `#aicl-会話`（ウェブフックで各自の名前）、報告書とページは `#報告` に届く。2026-11-05 15:51 に通し試験済み。
 - **アプリも作れる**: `#タスク` に「〇〇のアプリを作って」と書くと、`@coder` が 1 ファイルの HTML アプリを書き、`@tester`
   （AI ではない検査）が合格させたものだけを `#報告` に届ける。2026-11-05 にスマホ用シューティングゲームで実走・動作確認済み。
-- **次にやること**: 家のパソコン（RTX 3060 Ti 8 GB、メモリ 16 GB）へ移し、手元の AI（Ollama）を組み込む。
-  手順は **`docs/home-pc-setup.ja.md`**、組み込みの仕様は §7 の 1 番。移したらノートのスケジュールは解除する（2 台で動かさない）。
+- **次にやること**: 家のパソコンへ移し、手元の AI（Ollama）で夜間作業を回す。手順は **`docs/home-pc-setup.ja.md`**。
+  移したらノートのスケジュールは解除する（2 台で動かさない）。**組み込みのコードは作成済み**（2026-11-06、§7 の 1 番）。
+- **家のパソコン = デスクトップ（i7-13700KF、RTX 3070 8 GB、メモリ 16 GB、ホスト名 SHOTARO）**。以前「RTX 3060 Ti」と
+  書いていたのは勘違い（2026-11-06 訂正）。この PC に 2026-11-06 に Ollama 0.40.14 と `qwen3:8b` を入れ、手元の AI の組み込みを
+  作って試した。リポジトリはまだ OneDrive のフォルダのまま（`C:\dev\aicl` への移設は `docs/home-pc-setup.ja.md` §2）、
+  夜間作業の予定は未登録（ノートが稼働中）。Python は PATH に無く `%LOCALAPPDATA%\Programs\Python\Python312\python.exe` で呼ぶ。
 - **ユーザーについて**: AICL は打ち込めないので、指示も結果も日本語。push・スケジュール登録・各種アカウント作成はユーザー本人が行う
   （Claude の環境では止められる）。秘密（`.env`）はチャットに出さない。
 
@@ -233,7 +237,11 @@ python examples/cooperation_demo.py
 
 ## 7. 次にやる候補
 
-1. **手元の AI（Ollama）の組み込み（最優先、家のパソコンで）**。移行手順は `docs/home-pc-setup.ja.md`。コードの仕様:
+1. **手元の AI（Ollama）の組み込み** — **コードは作成済み（2026-11-06）**: `aicl/local.py`、`vendors.text_ask("local")`、
+   `fallback="local"`、`with_escalation`（`ModelNode` が `observe` で答えの成否を伝え、上げた理由は報告書の専用行に出る）、
+   `night_shift.py --preset local --escalate-to gemini --local-fallback`、`autonomous_network.py` も対応、
+   受け入れテスト `examples/local_acceptance.py`。テストは偽の HTTP で `tests/test_local.py`。残りは家のパソコンでの実測。
+   以下は元の仕様（記録として残す）:
    - `aicl/vendors.py` に `local` を加える。中身は `aicl/muse.py` の `text_ask`（OpenAI 互換）を
      `base_url=$AICL_LOCAL_URL`（既定 `http://localhost:11434/v1`）、`model=$AICL_LOCAL_MODEL`（既定 `qwen3:8b`）、
      `api_key="ollama"`（Ollama はキー不要）、`system_role="system"` で呼ぶ。返答の `<think>…</think>` は取り除く。
