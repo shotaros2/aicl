@@ -73,6 +73,13 @@ python examples/cooperation_demo.py
   `rulebook/aicl-rulebook-dense.md` の `---` 以降（`me` を `muse` に置換）を貼り、以降は AICL だけを往復する。
   カスタム指示欄やスキル機能は未確認なので、会話の冒頭に貼る方式で試す。
 
+- **どの Claude Code のタブでも AICL を使う**（2026-11-05 にこの PC で設定済み）:
+  1. スキル: `rulebook/skill/aicl/` を `%USERPROFILE%\.claude\skillsicl\` にコピー（解除はフォルダ削除）。
+  2. パッケージ: リポジトリで `python -m pip install -e .`（どのフォルダからも `import aicl` がこのリポジトリを指す。解除は `pip uninstall aicl-lang`）。
+  3. MCP サーバーを全プロジェクト共通で登録: `claude mcp add --scope user aicl -- <python.exe のフルパス> -m aicl.mcp_server`
+     （`claude` コマンドが PATH にないときはアプリ同梱の `%LOCALAPPDATA%\Claude-Data\…\claude-code\<版>\…\claude.exe`。解除は `claude mcp remove aicl -s user`）。
+  チャット画面（claude.ai）は別で、設定 → 機能 → スキル に `rulebook/aicl-skill.zip` をアップロードする（本人の操作）。
+
 ## 6. ここまでで分かっていること（要点）
 
 - 可読形式は英語より約 3 割トークンが多い。密形式で同等、コードブックで同等〜わずかに下。数字は README の表。
