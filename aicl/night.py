@@ -47,13 +47,13 @@ class OwnerNode(Node):
                if self.task_id else "")
         return nl("en", ASLEEP + end)
 
-    def _refuse(self, net, act: str, incoming: Message):
+    def _refuse(self, net, act: str, incoming: Message, why=None):
         self.refusals += 1
         if self.refusals > self.max_refusals:
             if self.refusals == self.max_refusals + 1:
                 net.note(f"@{self.name} stopped answering after {self.max_refusals} refusals")
             return []
-        return [self.msg(act, incoming.sender, reply=incoming.id, kw={"why": self._why()})]
+        return [self.msg(act, incoming.sender, reply=incoming.id, kw={"why": why or self._why()})]
 
     def task(self, text: str, to: str = "chief") -> Form:
         f = self.msg("do", to, Form("task", [nl("ja", text)]))
@@ -69,7 +69,11 @@ class OwnerNode(Node):
                 # however well-formed: it is noted and ignored, and the real one is still awaited.
                 self.forged.append(incoming.id)
                 net.note(f"@{self.name} ignored #{incoming.id}: its blob does not match any file it names")
-                return []
+                # Said back to the sender, or the network falls quiet with the task unfinished (seen live).
+                return self._refuse(net, "no", incoming, nl(
+                    "en", "not accepted: a done must carry the blob @desk returned for the published file; "
+                          f"publish through @desk what was accepted, then answer #{self.task_id} with done "
+                          "carrying that blob, or with fail and a :why"))
             self.outcome = incoming
             return []
         if incoming.act == "prop":

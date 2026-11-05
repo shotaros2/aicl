@@ -16,6 +16,9 @@
   counts as invalid; a local answer that is both slower than the limit and empty is answered by
   the cloud at once. Each was a way a qwen3.5:9b chief left a task silently unfinished, and each
   now feeds the escalation to the cloud instead.
+- An agent that answers an `ask` with ok alone also gets a turn to continue (it was only for
+  `do`); the night shift's owner answers a done it ignores with a `no` saying how to finish,
+  instead of falling silent.
 - The night shift accepts a done whose blob sits one level inside its body
   (`(doc :blob (blob …) …)`), still only when the file has exactly that hash and size.
 - `night_shift.py`: the chief asks only the specialists a task needs (news and weather only for

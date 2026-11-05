@@ -402,7 +402,10 @@ class Network:
                     self.post(f)
                 # A model that only acknowledged (ok) has no event left to act on: nothing will be sent
                 # to it until it acts. Give it one turn to take its next step, as a human would.
-                accepted_do = m.act == "do" and any(f.head == "ok" and Message.from_form(f).reply == m.id for f in out)
+                # An ask counts too: seen live, a chief sent (ask … (draft …)), the writer answered ok
+                # and never drafted.
+                accepted_do = m.act in ("do", "ask") and any(f.head == "ok" and Message.from_form(f).reply == m.id
+                                                             for f in out)
                 if isinstance(t, ModelNode) and out and all(f.head == "ok" for f in out) and accepted_do:
                     for f in t.react(self, now_line(self.clock()) + "\n; continue: you only acknowledged; "
                                      "take your next step now, or send nothing if there is none", None):

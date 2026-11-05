@@ -190,6 +190,37 @@ class NetworkTests(unittest.TestCase):
         self.assertTrue(any("stopped answering after 3 refusals" in n for n in res.notes))
         self.assertTrue(res.stopped.startswith("quiet"))
 
+    def test_an_ok_to_an_ask_also_gets_a_turn_to_continue(self):
+        # Seen live: a chief sent (ask … (draft …)), the writer answered ok and never drafted.
+        from aicl.network import Node
+        def writer(system, history):
+            e = history[-1]["content"]
+            if "; continue" in e:
+                return '(T writer.2>chief ^chief.1 {$d (doc :title (nl ja "t"))})'
+            return "(K writer.1>chief ^chief.1)"
+        chief = Node("chief", "lead")
+        net = Network([chief, ModelNode("writer", "writes", writer, RULEBOOK)], sign=False, clock=CLOCK, echo=None)
+        net.post(chief.msg("ask", "writer", aicl.parse_one("(draft :about (nl ja \"x\") $d)")))
+        res = net.run(wake=[])
+        self.assertEqual([m.act for m in res.messages], ["ask", "ok", "tell"])
+
+    def test_a_forged_done_is_answered_so_the_chief_can_fix_it(self):
+        from aicl.night import OwnerNode
+        def chief(system, history):
+            e = history[-1]["content"]
+            if "(task " in e:
+                return '(Z chief.1>owner ^owner.1 (task (nl ja "x")))'          # a done with no blob, as seen live
+            if "not accepted" in e:
+                return '(F chief.2>owner ^owner.1 :e not-found :w (nl en "nothing was published"))'
+            return ""
+        owner = OwnerNode()
+        net = Network([owner, ModelNode("chief", "lead", chief, RULEBOOK)], sign=False, clock=CLOCK, echo=None)
+        net.post(owner.task("東京タワー"))
+        res = net.run(wake=[])
+        self.assertEqual([m.act for m in res.messages], ["do", "done", "no", "fail"])
+        self.assertEqual(owner.outcome.act, "fail")
+        self.assertEqual(owner.forged, ["chief.1"])
+
     def test_an_act_wrapped_in_an_ask_is_bounced_with_the_right_form(self):
         # Seen on the home PC: qwen3.5:9b wrote (A chief.6>owner (fail …)) and (A chief.3>critic (prop …)).
         from aicl.night import OwnerNode
