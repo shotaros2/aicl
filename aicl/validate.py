@@ -275,6 +275,8 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
     status_asks: Dict[str, Optional[str]] = {}          # status-ask id -> id of the request it queries
     status_claim: Dict[str, str] = {}                   # request id -> tell that claimed it done/failed
     parts: Dict[str, tuple] = {}                        # request id -> (n, {i received}) of :part slices
+    acked: Dict[str, str] = {}                          # do/def/sub id -> the ok that acknowledged it
+    closed_do: Set[str] = set()                         # do ids closed by done/fail/no/clar or retracted
 
     for m in msgs:
         issues.extend(validate_message(m.to_form()))
@@ -412,6 +414,17 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
             if r in open_asks:
                 issues.append(_err("ok-for-ask", "'ok' acknowledges a do/def/sub; an 'ask' is answered "
                                    "with tell/no/fail/clar", m.id))
+            elif r in closed_do:
+                issues.append(_err("ack-closed", f"^{r} is already closed; an 'ok' after done/fail/no/clar "
+                                   "or after a retract acknowledges nothing (SPEC §4.4)", m.id))
+            elif r in acked:
+                issues.append(_err("ack-twice", f"^{r} was already acknowledged by #{acked[r]}; a second "
+                                   "'ok' is not a new promise (SPEC §4.4: use status to report progress, "
+                                   "retract to withdraw)", m.id))
+            elif target is not None and target.act not in ("do", "def", "sub", "unsub"):
+                issues.append(_warn("ok-misplaced", f"'ok' acknowledges a do/def/sub/unsub, not a '{target.act}'", m.id))
+            if target is not None and target.act in ("do", "def", "sub", "unsub") and r not in acked and r not in closed_do:
+                acked[r] = m.id
             if r in pending_do:
                 pending_do[r] = "accepted"
                 if "eta" in m.kw:
@@ -429,11 +442,13 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     sigs[(def_pair, term)] = sig_val
         elif act == "no":
             open_asks.pop(r, None)
-            pending_do.pop(r, None)
+            if pending_do.pop(r, None) is not None:
+                closed_do.add(r)
             pending_def.pop(r, None)
         elif act == "clar":
             open_asks.pop(r, None)
-            pending_do.pop(r, None)
+            if pending_do.pop(r, None) is not None:
+                closed_do.add(r)
         elif act in ("done", "fail"):
             if r in pending_do:
                 if act == "done" and pending_do[r] != "accepted":
@@ -450,6 +465,7 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     complete = len(got[1]) >= got[0]
                 if complete:
                     del pending_do[r]
+                    closed_do.add(r)
             elif r in open_asks:
                 if act == "fail":
                     del open_asks[r]
@@ -472,8 +488,11 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                     pending_prop[tr] = seen[tr]
             elif t in ("done", "fail") and tr in seen and seen[tr].act == "do":
                 pending_do[tr] = "accepted"
-            elif t == "ok" and tr in seen and seen[tr].act == "do":
-                pending_do[tr] = "sent"
+                closed_do.discard(tr)
+            elif t == "ok" and tr in seen and seen[tr].act in ("do", "def", "sub"):
+                acked.pop(tr, None)                      # the acknowledgement is withdrawn: a new ok may follow
+                if seen[tr].act == "do":
+                    pending_do[tr] = "sent"
             elif t == "tell" and tr in seen and seen[tr].act == "ask":
                 open_asks[tr] = seen[tr]
             elif t in ("prop",):
@@ -481,7 +500,8 @@ def validate_conversation(messages: Iterable[Message], known_terms: Iterable[str
                 closed_prop.pop(target.id, None)
             elif t in ("ask", "do"):
                 open_asks.pop(target.id, None)
-                pending_do.pop(target.id, None)
+                if pending_do.pop(target.id, None) is not None:
+                    closed_do.add(target.id)
 
     for req, (n, got) in parts.items():
         if req in open_asks or req in pending_do:

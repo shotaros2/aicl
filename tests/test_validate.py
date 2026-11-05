@@ -23,6 +23,7 @@ KNOWN = {
     "13_dola_research_task.aicl": [],
     "14_signed_identity.aicl": ["temp"],
     "15_blob_and_part.aicl": ["top-terms", "term"],
+    "16_gem_v03_acceptance.aicl": ["fx-rate"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
@@ -34,6 +35,7 @@ EXPECTED_WARNINGS = {
     "10_deadline_negotiation.aicl": ["eta-overrun", "stale-reply", "unresolved-term", "unresolved-term"],
     "11_standard_codebook.aicl": ["open-ask", "open-do", "status-unclosed"],
     "13_dola_research_task.aicl": ["open-ask", "unresolved-term", "unresolved-term", "unresolved-term"],
+    "16_gem_v03_acceptance.aicl": ["open-do", "status-unclosed"],
 }
 
 # Errors an example keeps on purpose, as a specimen its header explains (11: a live run where
@@ -41,6 +43,7 @@ EXPECTED_WARNINGS = {
 EXPECTED_ERRORS = {
     "11_standard_codebook.aicl": ["done-for-ask"],
     "13_dola_research_task.aicl": ["ok-for-ask"],
+    "16_gem_v03_acceptance.aicl": ["ack-twice", "body-required", "dup-id"],
 }
 
 

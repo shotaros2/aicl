@@ -12,3 +12,4 @@ venv/
 Thumbs.db
 out/
 .env
+*-shotaros2*

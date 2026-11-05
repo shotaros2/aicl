@@ -198,6 +198,12 @@ Binding maps are the only place a `$var` may appear in a `tell`.
 - An agent MUST NOT act on a `do` before sending `ok`.
 - `ok` acknowledges a `do`/`def`/`sub`; it does not answer an `ask` (`ok-for-ask`).
   An `ask` is answered with `tell`/`no`/`fail`/`clar`, never acknowledged.
+- One acknowledgement per request: a second `ok` to a `do`/`def`/`sub` already acknowledged
+  is an error (`ack-twice`), and so is an `ok` to a `do` already closed by `done`/`fail`/`no`/
+  `clar` or withdrawn by `retract` (`ack-closed`). Progress is reported with `status`, a
+  change of mind with `retract`; an `ok` to anything else (`tell`, `prop`, …) is `ok-misplaced`.
+  (Observed: a Gem answered a `do` with `ok` pointing at the already-acknowledged `def`
+  instead, leaving the `do` unaccepted while claiming it `done`.)
 - `tell` MUST NOT contain `$vars` except as keys of a binding map (§4.2).
 - An agent MUST NOT abbreviate, translate or otherwise vary a term except through an agreed codebook (§8.1).
 - A decision is final until retracted: a second `acc`/`rej` on a proposal already closed is an error.

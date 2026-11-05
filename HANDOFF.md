@@ -98,7 +98,12 @@ python examples/cooperation_demo.py
     `{$s done}`（status-unclosed 検出）、ID 再使用（dup-id）、本文なし tell（body-required）。ただし根拠を
     問うと捏造せず `:s (none)` と自白し、為替の答えは検索グラウンディング由来の本物らしい出典つき。
     全文は `logs/2026-11-05-gem-v03-acceptance.aicl`。
-  - 検証器の未実装候補が1つ判明: 「承認済み def / 閉じた do への二重 ok」は現状スルー（ack-closed 的な検査）。
+  - 検証器の未実装だった「承認済み def / 閉じた do への二重 ok」は 2026-11-05 に実装済み
+    （`ack-twice` / `ack-closed` / `ok-misplaced`、SPEC §4.4）。このテストの全文は `examples/16` に収録。
+- **MCP 経由の無人実演は成功**（2026-11-05、元の PC の Claude Code で）: `.mcp.json` のサーバーが読み込まれた
+  セッションで、Claude が `aicl_rulebook` を読み、`(D claude.1>img (coop:task t1 image-gen …))` を自分で書いて送り、
+  `ok`/`done` と `coop:artifact`（無料枠なので SVG）を受け取ってユーザーに表示、`aicl_check` は 0 件。
+  つまり「Claude が自分で他の AI から画像を取ってくる」は、Gemini 経由では達成済み。
 - 検索グラウンディングつき Gemini API 呼び出しの書き方はスクラッチの実験で確認済み
   （`tools=[types.Tool(google_search=types.GoogleSearch())]`。無料枠の検索クォータは少なく、尽きると 429。
   素の生成とクォータは別枠）。クォータ切れの Gemini は天気を聞かれて `(no … :why (unk data))` と
@@ -108,8 +113,7 @@ python examples/cooperation_demo.py
 
 1. **記事（最優先）**: Zenn / Show HN。材料は揃っている——実記録15例、実測値（ワイヤ370 vs 可読480）、
    v0.3 公開、無人ネットワーク実走、そして「検証器が嘘と捏造を現行犯で捕まえ続けた2日間」という物語。
-2. 検証器: 「承認済み def / 閉じた do への二重 ok」の検査（Gem テストで判明した未実装、§6 参照）。
-   Gem テストの一部始終を example 16 として収録するのも候補。
+2. （済 2026-11-05）検証器の二重 ok 検査と example 16 の収録。
 3. SPEC §13 の新しい残課題（鍵ローテーション、:part のマージ規則、コードブック/鍵のレジストリ）。
    当初の課題は全部解決済み（2026-11-04〜05）。
 4. API 課金を有効にして、本物の画像（`AICL_IMAGE_MODEL=gemini-nano-banana-2.1`）と検索グラウンディングを

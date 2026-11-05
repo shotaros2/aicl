@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- One acknowledgement per request (SPEC §4.4): a second `ok` to an already-acknowledged
+  `do`/`def`/`sub` is `ack-twice`, an `ok` to a `do` already closed or retracted is
+  `ack-closed`, and an `ok` to anything else is the warning `ok-misplaced`. Retracting an
+  `ok` re-allows a new one. (Observed in the Gem v0.3 acceptance test: asked to do
+  something, the Gem acknowledged the already-acknowledged def instead, then claimed the
+  do done.) `examples/16` keeps that run as a specimen with its three errors and two warnings.
+- First unattended end-to-end run of the stated goal: inside Claude Code with the
+  `.mcp.json` server loaded, Claude read `aicl_rulebook`, composed
+  `(D claude.1>img (coop:task t1 image-gen …))`, received `ok`/`done` with a
+  `coop:artifact`, showed the image to the user; `aicl_check` reported 0 issues.
+
 - The relay is now the conversation's **clock**: every poll returns `now`, `attend()`
   prefixes `; now <instant>` to each input (prompts rule 9: copy the transport's clock
   into `:at`; without one, omit `:at` rather than guess), `/check` runs with the relay's

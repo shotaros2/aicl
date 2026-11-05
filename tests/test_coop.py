@@ -126,7 +126,14 @@ class CoopTests(unittest.TestCase):
             "wrong-sender": "(K hub.9>code ^hub.1)",
         }
         state = {"mode": "ok+done"}
-        agent = LLMAgent("code", lambda system, history: replies[state["mode"]], "rulebook @me", "role", ["code-gen"])
+
+        def stub(system, history):
+            # reply to the id of the incoming do, like a real agent would
+            import re
+            incoming = next(m for h in reversed(history) for m in [re.search(r"#(hub\.\d+)", h["content"])] if m)
+            return replies[state["mode"]].replace("^hub.1", "^" + incoming.group(1))
+
+        agent = LLMAgent("code", stub, "rulebook @me", "role", ["code-gen"])
         bus = Bus()
         hub = Agent("hub")
         bus.add(agent, hub)
