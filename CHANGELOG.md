@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `aicl/local.py` calls Ollama through its native `/api/chat` with `options.num_ctx` (default
+  12288, `AICL_LOCAL_CTX`): Ollama's default context is 4096 tokens, the dense rulebook alone is
+  about 2,200, and its OpenAI-compatible endpoint ignores `num_ctx`, so a long night-shift
+  history would push the rulebook out. `AICL_LOCAL_API=openai` keeps the OpenAI-compatible path
+  for LM Studio and other servers. Measured on an RTX 3070 with qwen3.5:9b: 4096 runs fully on
+  the GPU, 8192/12288/16384 put 12/14/16 % on the CPU.
+
 - Local models (`aicl/local.py`): vendor `local` talks to Ollama's OpenAI-compatible endpoint
   through the standard-library client of `aicl/muse.py` (`AICL_LOCAL_URL`, default
   `http://localhost:11434/v1`; `AICL_LOCAL_MODEL`, default `qwen3:8b`; LM Studio and other

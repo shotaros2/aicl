@@ -13,49 +13,68 @@ from aicl.night import TaskOutcome, write_report
 
 
 def fake_opener(reply="(T b.1>a ^a.1 {$t 18.5C})", seen=None, fail=None):
+    """Answers in Ollama's native /api/chat shape, or the OpenAI shape for /chat/completions."""
     @contextmanager
     def opener(req, timeout=0):
         if seen is not None:
             seen.append((req.full_url, json.loads(req.data.decode("utf-8")), timeout))
         if fail is not None:
             raise fail
-        yield io.BytesIO(json.dumps({"choices": [{"message": {"role": "assistant", "content": reply}}]}).encode())
+        if req.full_url.endswith("/api/chat"):
+            yield io.BytesIO(json.dumps({"message": {"role": "assistant", "content": reply}}).encode())
+        else:
+            yield io.BytesIO(json.dumps({"choices": [{"message": {"role": "assistant", "content": reply}}]}).encode())
     return opener
 
 
+ENV_CLEAR = {"AICL_LOCAL_URL": "", "AICL_LOCAL_MODEL": "", "AICL_LOCAL_CTX": "", "AICL_LOCAL_API": ""}
+
+
 class LocalTests(unittest.TestCase):
-    def test_defaults_point_at_ollama(self):
+    def test_defaults_point_at_ollama_native_with_a_larger_context(self):
         seen = []
-        with mock.patch.dict(os.environ, {"AICL_LOCAL_URL": "", "AICL_LOCAL_MODEL": ""}):
+        with mock.patch.dict(os.environ, ENV_CLEAR):
             ask = local.text_ask(opener=fake_opener(seen=seen))
             ask("SYS", [{"role": "user", "content": "hi"}])
         url, body, timeout = seen[0]
-        self.assertEqual(url, "http://localhost:11434/v1/chat/completions")
+        self.assertEqual(url, "http://localhost:11434/api/chat")
         self.assertEqual(body["model"], "qwen3:8b")
+        self.assertEqual(body["options"]["num_ctx"], 12288)   # Ollama's 4096 default cuts the rulebook off
+        self.assertFalse(body["stream"])
         self.assertEqual(body["messages"][0], {"role": "system", "content": "SYS"})
         self.assertEqual(timeout, 300.0)
 
-    def test_env_overrides_url_and_model(self):
+    def test_context_and_model_from_env(self):
         seen = []
-        with mock.patch.dict(os.environ, {"AICL_LOCAL_URL": "http://localhost:1234/v1",
-                                          "AICL_LOCAL_MODEL": "gemma3:12b"}):
+        with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_CTX="8192", AICL_LOCAL_MODEL="qwen3.5:9b")):
             local.text_ask(opener=fake_opener(seen=seen))("S", [])
-            self.assertEqual(vendors.describe("local"), "local (gemma3:12b)")
+            self.assertEqual(vendors.describe("local"), "local (qwen3.5:9b)")
+        self.assertEqual(seen[0][1]["options"]["num_ctx"], 8192)
+        self.assertEqual(seen[0][1]["model"], "qwen3.5:9b")
+
+    def test_openai_compatible_servers(self):
+        seen = []
+        with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_URL="http://localhost:1234/v1",
+                                              AICL_LOCAL_API="openai", AICL_LOCAL_MODEL="gemma3:12b")):
+            local.text_ask(opener=fake_opener(seen=seen))("S", [])
         self.assertEqual(seen[0][0], "http://localhost:1234/v1/chat/completions")
         self.assertEqual(seen[0][1]["model"], "gemma3:12b")
 
     def test_thinking_is_removed(self):
         reply = "<think>the user wants a tell, so…</think>\n(T b.1>a ^a.1 {$t 18.5C})"
-        out = local.text_ask(opener=fake_opener(reply=reply))("S", [])
+        with mock.patch.dict(os.environ, ENV_CLEAR):
+            out = local.text_ask(opener=fake_opener(reply=reply))("S", [])
         self.assertEqual(out, "(T b.1>a ^a.1 {$t 18.5C})")
         self.assertEqual(local.strip_think("<think>never closed"), "")
 
     def test_server_down_counts_as_unavailable(self):
         refused = urllib.error.URLError(ConnectionRefusedError(10061, "refused"))
-        ask = local.text_ask(opener=fake_opener(fail=refused))
-        with self.assertRaises(Exception) as cm:
-            ask("S", [])
-        self.assertTrue(vendors.is_unavailable(cm.exception))
+        for api in ("ollama", "openai"):
+            with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_API=api)):
+                ask = local.text_ask(opener=fake_opener(fail=refused))
+                with self.assertRaises(Exception) as cm:
+                    ask("S", [])
+            self.assertTrue(vendors.is_unavailable(cm.exception), api)
 
 
 def scripted(name, replies, log):
