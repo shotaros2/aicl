@@ -353,6 +353,15 @@ blocked the first, and the owner ignored the second because the hash matched no 
 now with `run_night_shift.cmd`. To run it every night, register it with
 `powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1`; `-Remove` undoes this.
 
+The team now has four thinking agents: the chief, a writer that drafts only from facts it is
+given, the critic, and a scout. The scout wakes once a night, reads current headlines
+(`@news`, Google News), tomorrow's weather and the team's memory (`@memory`, what was done
+before), and proposes up to two tasks nobody asked for. More specialists are available:
+`@calc` does exact arithmetic and dates, and refuses anything that is not arithmetic. `@fx`
+gives the European Central Bank's exchange rates. `tools/install_night_shift.ps1` registers
+two jobs: the full night shift at 02:00, and an inbox check every 30 minutes. With the inbox
+check, a task dropped into the inbox from a phone through OneDrive starts soon.
+
 ## What only AICL can do: an agreement a third party can verify
 
 Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those

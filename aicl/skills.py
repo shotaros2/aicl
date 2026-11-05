@@ -155,9 +155,22 @@ def artist_node(ask: Ask, out_dir: Path, name: str = "artist") -> SkillNode:
 
 # --------------------------------------------------------------------- desk
 
-def desk_node(out_dir: Path, name: str = "desk") -> SkillNode:
+def accepted_by(log: List[Message], reviewer: str, doc: Form) -> bool:
+    """True when `reviewer` sent an acc for a prop whose body is exactly `doc` (canonical form)."""
+    target = to_text(doc)
+    props = {m.id: m for m in log if m.act == "prop" and m.body and to_text(m.body[0]) == target}
+    retracted = {m.reply for m in log if m.act == "retract"}
+    return any(m.act == "acc" and m.sender == reviewer and m.reply in props and m.id not in retracted
+               for m in log)
+
+
+def desk_node(out_dir: Path, name: str = "desk", require_acceptance_from: Optional[str] = None) -> SkillNode:
     """Answers (do … (publish (doc :title … :body … [:sources […]] [:image (blob …)]))) by
-    writing a Markdown file, with ok, then done carrying the file's blob."""
+    writing a Markdown file, with ok, then done carrying the file's blob.
+
+    With `require_acceptance_from="critic"` the desk enforces the review rule in code: it publishes
+    only a doc that the reviewer accepted, word for word, earlier in this run - a role text alone is
+    not enough, because a model can ignore it (seen live: a chief published before the critic agreed)."""
 
     def handler(node: SkillNode, m: Message) -> List[Form]:
         if m.act != "do":
@@ -167,6 +180,11 @@ def desk_node(out_dir: Path, name: str = "desk") -> SkillNode:
         if doc is None or "title" not in doc.kw or "body" not in doc.kw:
             return [node.msg("no", m.sender, reply=m.id,
                              kw={"why": nl("en", "expected (publish (doc :title … :body …))")})]
+        if require_acceptance_from and not accepted_by(getattr(getattr(node, "net", None), "log", []),
+                                                       require_acceptance_from, doc):
+            return [node.msg("no", m.sender, reply=m.id, kw={"why": nl(
+                "en", f"@{require_acceptance_from} has not accepted this exact page: propose it to "
+                      f"@{require_acceptance_from} first and publish exactly what was accepted")})]
         out = [node.msg("ok", m.sender, reply=m.id)]
         lines = [f"# {_text_of(doc.kw['title'])}", "", _text_of(doc.kw["body"]), ""]
         image = doc.kw.get("image")

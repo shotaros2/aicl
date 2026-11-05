@@ -76,7 +76,7 @@ def main(argv=None) -> int:
         ModelNode("critic", CRITIC_ROLE, ask(args.critic), DENSE),
         weather_node(),
         artist_node(ask(args.artist), OUT),
-        desk_node(OUT),
+        desk_node(OUT, require_acceptance_from="critic"),
     ]
     net = Network(nodes, Limits(args.max_messages, args.max_calls, args.max_seconds, stop), known_terms=KNOWN)
     print(f"--- network online: @editor = {vendors.describe(args.editor)}, @critic = {vendors.describe(args.critic)}; "

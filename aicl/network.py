@@ -98,6 +98,7 @@ class SkillNode(Node):
     def react(self, net, event, incoming):
         if incoming is None or incoming.act in ("ok", "no", "done", "fail", "end", "tell", "acc", "rej", "clar"):
             return []
+        self.net = net          # lets a specialist check the record, e.g. the desk's acceptance gate
         try:
             return self.handler(self, incoming)
         except Exception as e:  # the specialist's own failure, reported, never hidden
@@ -261,7 +262,7 @@ class Network:
             if n.name == viewer:
                 continue
             offers = "".join(f"\n    e.g. {o}" for o in n.offers)
-            rows.append(f"- @{n.name}: {n.role}{offers}")
+            rows.append(f"- @{n.name}: {getattr(n, 'blurb', None) or n.role}{offers}")
         return "\n".join(rows)
 
     def note(self, text: str) -> None:
@@ -312,8 +313,16 @@ class Network:
                 self.note(f"#{m.id} is addressed to unknown @{m.receiver}; not delivered")
                 continue
             for t in targets:
-                for f in t.react(self, now_line(self.clock()), m):
+                out = t.react(self, now_line(self.clock()), m)
+                for f in out:
                     self.post(f)
+                # A model that only acknowledged (ok) has no event left to act on: nothing will be sent
+                # to it until it acts. Give it one turn to take its next step, as a human would.
+                accepted_do = m.act == "do" and any(f.head == "ok" and Message.from_form(f).reply == m.id for f in out)
+                if isinstance(t, ModelNode) and out and all(f.head == "ok" for f in out) and accepted_do:
+                    for f in t.react(self, now_line(self.clock()) + "\n; continue: you only acknowledged; "
+                                     "take your next step now, or send nothing if there is none", None):
+                        self.post(f)
         stopped = stopped or "quiet: no agent had anything left to say"
         issues = validate_conversation(self.log, self.known_terms, keys=self.keys or None)
         calls = {n.name: n.calls for n in self.nodes.values() if isinstance(n, ModelNode)}

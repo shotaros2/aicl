@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Bigger night team: @writer (drafts only from given facts) and @scout (wakes once a night, looks at
+  news, weather and the team's memory, proposes up to two tasks itself) join @chief and @critic.
+  New specialists in `aicl/tools.py`: @calc (safe arithmetic and dates), @fx (ECB rates via
+  frankfurter), @news (Google News RSS with publication times - NHK's feeds turned out to be
+  stale since August), @memory (`out/night/memory.jsonl`, written by the shift). Modes
+  `--mode night|inbox`, a lock against overlapping runs, and an installer that registers the
+  02:00 night shift plus a 30-minute inbox check. The browser fallback is now opt-in
+  (`--web-fallback`) because Google refuses sign-in from an automated Chrome.
 - Browser fallback (`aicl/webchat.py`, `vendors.text_ask(…, fallback=True)`, on by default in the
   night shift and the autonomous network, `--no-web-fallback` to disable): a Gemini or Muse role
   whose API is unavailable switches to the vendor's chat website in the installed Chrome via

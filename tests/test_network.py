@@ -129,6 +129,45 @@ class NetworkTests(unittest.TestCase):
             res = Network(nodes, sign=False, clock=CLOCK, echo=None).run()
             self.assertEqual([m.act for m in res.messages], ["ask", "tell"])
 
+    def test_the_desk_publishes_only_what_the_critic_accepted(self):
+        # Seen live: a chief sent the page to the desk before the critic had accepted it.
+        def hasty(system, history):
+            if "; wake" in history[-1]["content"]:
+                return '(D editor.1>desk (publish (doc :title (nl ja "速報") :body (nl ja "未確認"))))'
+            return ""
+        with tempfile.TemporaryDirectory() as tmp:
+            nodes = [ModelNode("editor", "e", hasty, RULEBOOK), ModelNode("critic", "c", lambda s, h: "", RULEBOOK),
+                     desk_node(Path(tmp), require_acceptance_from="critic")]
+            res = Network(nodes, sign=False, clock=CLOCK, echo=None).run(wake=["editor"])
+            self.assertEqual([m.act for m in res.messages], ["do", "no"])
+            self.assertIn("has not accepted this exact page", aicl.to_text(res.messages[1].to_form()))
+            self.assertEqual(list(Path(tmp).glob("*.md")), [])
+        with tempfile.TemporaryDirectory() as tmp:                      # the reviewed path still publishes
+            nodes = [ModelNode("editor", "e", editor_ask, RULEBOOK), ModelNode("critic", "c", critic_ask, RULEBOOK),
+                     weather_node(fetch=fake_fetch), desk_node(Path(tmp), require_acceptance_from="critic")]
+            res = Network(nodes, sign=False, clock=CLOCK, echo=None).run()
+            self.assertEqual(res.messages[-1].act, "done")
+
+    def test_a_model_that_only_acknowledges_gets_a_turn_to_continue(self):
+        # Seen live: the chief answered a task with ok alone and the network fell quiet.
+        from aicl.night import OwnerNode
+        def lazy(system, history):
+            e = history[-1]["content"]
+            if "(task " in e:
+                return "(K chief.1>owner ^owner.1)"
+            if "; continue" in e:
+                return "(A chief.2>weather (weather-now tokyo $w))"
+            if "T weather." in e:
+                return '(F chief.3>owner ^owner.1 :e not-found :w (nl en "stop here"))'
+            return ""
+        owner = OwnerNode()
+        net = Network([owner, ModelNode("chief", "lead", lazy, RULEBOOK), weather_node(fetch=fake_fetch)],
+                      sign=False, clock=CLOCK, echo=None)
+        net.post(owner.task("天気"))
+        res = net.run(wake=[])
+        self.assertEqual([m.act for m in res.messages], ["do", "ok", "ask", "tell", "fail"])
+        self.assertEqual(owner.outcome.act, "fail")
+
     def test_weather_answers_only_what_it_has(self):
         w = weather_node(fetch=fake_fetch)
         ask = lambda s: aicl.Message.from_form(aicl.parse_one(s))

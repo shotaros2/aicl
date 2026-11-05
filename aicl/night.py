@@ -58,6 +58,37 @@ class OwnerNode(Node):
         return []
 
 
+class ProposalBox(Node):
+    """Stands in for @chief while the scout looks around: records the tasks the scout proposes."""
+
+    def __init__(self, limit: int = 2, name: str = "chief"):
+        super().__init__(name, "the team lead; takes task proposals as (do … (task (nl ja \"…\")))")
+        self.limit = limit
+        self.tasks: List[str] = []
+
+    def react(self, net, event, incoming):
+        if incoming is None or incoming.act != "do":
+            return []
+        t = incoming.body[0] if incoming.body else None
+        text = t.args[0].args[1].text if (isinstance(t, Form) and t.head == "task" and t.args and isinstance(t.args[0], Form)
+                                          and t.args[0].head == "nl" and len(t.args[0].args) > 1) else None
+        if text is None:
+            return [self.msg("no", incoming.sender, reply=incoming.id, kw={"why": nl("en", 'expected (task (nl ja "…"))')})]
+        if len(self.tasks) >= self.limit:
+            return [self.msg("no", incoming.sender, reply=incoming.id, kw={"why": nl("en", f"at most {self.limit} proposals a night")})]
+        self.tasks.append(text.strip())
+        return [self.msg("ok", incoming.sender, reply=incoming.id)]
+
+
+def scout_session(make_scout_nodes: Callable[[], List[Node]], limits: Limits, max_tasks: int = 2,
+                  known_terms=(), echo=print):
+    """Wake the scout among the read-only specialists; return (proposed task texts, run)."""
+    box = ProposalBox(max_tasks)
+    net = Network([box] + make_scout_nodes(), limits, known_terms=known_terms, echo=echo)
+    res = net.run(wake=["scout"])
+    return box.tasks, res
+
+
 @dataclass
 class TaskOutcome:
     name: str
@@ -68,6 +99,7 @@ class TaskOutcome:
     verified: bool
     why: str = ""
     forged: List[str] = None
+    by: str = "owner"                # who asked: the owner (inbox) or the scout (its own idea)
 
 
 def deliverable_ok(m: Message) -> bool:
@@ -117,15 +149,22 @@ def run_task(name: str, text: str, out_dir: Path, make_nodes: Callable[[Path], L
     return TaskOutcome(name, text, "done", _blob_path(o), res, verified, "", owner.forged)
 
 
-def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime) -> Path:
+def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime,
+                 scout: Optional[NetworkResult] = None, proposals: int = 0) -> Path:
     mark = {"done": "完了", "fail": "できなかった", "unfinished": "未完了"}
+    own = sum(o.by == "scout" for o in outcomes)
     lines = [f"# 夜間作業の報告 {started.strftime('%Y-%m-%d')}", "",
              f"開始 {started.strftime('%H:%M')}、終了 {datetime.now(JST).strftime('%H:%M')}。"
-             f"タスク {len(outcomes)} 件。起動後に人の入力はありません。", ""]
+             f"タスク {len(outcomes)} 件（うち AI が自分で始めたもの {own} 件）。起動後に人の入力はありません。", ""]
+    if scout is not None:
+        asked = [m for m in scout.messages if m.sender == "scout" and m.act == "ask"]
+        lines += [f"スカウトは {len(asked)} 回調べ、仕事を {proposals} 件提案しました"
+                  + ("。" if proposals else "（提案に値する仕事はないと判断）。"), ""]
     for o in outcomes:
         errors = [i for i in o.run.issues if i.level == "error"]
         rejected = [n for n in o.run.notes if "invalid" in n]
-        lines += [f"## {o.name}: {mark[o.status]}", "", f"> {o.text.strip()}", ""]
+        who = "スカウトの提案" if o.by == "scout" else "あなたの依頼"
+        lines += [f"## {o.name}: {mark[o.status]}（{who}）", "", f"> {o.text.strip()}", ""]
         if o.result is not None:
             rel = o.result.relative_to(day_dir) if o.result.is_relative_to(day_dir) else o.result
             lines += [f"- 結果: [{rel.as_posix()}]({rel.as_posix()})"]
@@ -146,27 +185,76 @@ def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime) 
     return path
 
 
-def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[Node]],
-                limits: Limits = None, max_tasks: int = 5, known_terms=(), echo=print) -> Optional[Path]:
-    """Run every task file in `inbox` (oldest first, at most `max_tasks`); return the report path."""
-    inbox.mkdir(parents=True, exist_ok=True)
-    tasks = sorted(inbox.glob("*.txt"), key=lambda p: p.stat().st_mtime)[:max_tasks]
-    if not tasks:
-        echo("no tasks in the inbox")
-        return None
-    started = datetime.now(JST)
-    day_dir = out_root / started.strftime("%Y-%m-%d_%H%M")
-    done_dir = inbox.parent / "done"
-    done_dir.mkdir(parents=True, exist_ok=True)
-    outcomes = []
-    for t in tasks:
-        text = t.read_text(encoding="utf-8").strip()
-        echo(f"=== task {t.stem}: {text[:80]}")
+def _title_of(path: Optional[Path]) -> str:
+    try:
+        first = path.read_text(encoding="utf-8").splitlines()[0] if path else ""
+        return first.lstrip("# ").strip()
+    except (OSError, IndexError):
+        return ""
+
+
+class Lock:
+    """One shift at a time: a lock file younger than `stale` hours means another run is in progress."""
+
+    def __init__(self, path: Path, stale_hours: float = 4.0):
+        self.path, self.stale = Path(path), stale_hours * 3600
+
+    def __enter__(self):
+        import time
+        if self.path.exists() and time.time() - self.path.stat().st_mtime < self.stale:
+            raise RuntimeError(f"another shift is running ({self.path} exists)")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(datetime.now(JST).isoformat(), encoding="utf-8")
+        return self
+
+    def __exit__(self, *exc):
         try:
-            o = run_task(t.stem, text, day_dir / t.stem, make_nodes, limits or Limits(), known_terms, echo)
-        except Exception as e:  # one broken task must not cost the rest of the night
-            echo(f"!! task {t.stem} crashed: {e}")
-            continue
-        outcomes.append(o)
-        shutil.move(str(t), str(done_dir / f"{started.strftime('%Y%m%d')}-{t.name}"))
-    return write_report(day_dir, outcomes, started)
+            self.path.unlink()
+        except OSError:
+            pass
+
+
+def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[Node]],
+                limits: Limits = None, max_tasks: int = 5, known_terms=(), echo=print,
+                scout: Optional[Callable[[], List[Node]]] = None, max_scout_tasks: int = 2,
+                memory=None) -> Optional[Path]:
+    """Run the inbox (oldest first, at most `max_tasks`), then, with `scout`, the tasks the scout proposes
+    itself. Returns the report path, or None when there was nothing to do and no scout."""
+    inbox.mkdir(parents=True, exist_ok=True)
+    with Lock(out_root / "RUNNING"):
+        files = sorted(inbox.glob("*.txt"), key=lambda p: p.stat().st_mtime)[:max_tasks]
+        if not files and scout is None:
+            echo("no tasks in the inbox")
+            return None
+        started = datetime.now(JST)
+        day_dir = out_root / started.strftime("%Y-%m-%d_%H%M")
+        done_dir = inbox.parent / "done"
+        done_dir.mkdir(parents=True, exist_ok=True)
+        limits = limits or Limits()
+        jobs = [(t.stem, t.read_text(encoding="utf-8").strip(), "owner", t) for t in files]
+        scout_run, proposals = None, []
+        if scout is not None:
+            echo("=== scout: looking for work nobody asked for")
+            try:
+                proposals, scout_run = scout_session(scout, limits, max_scout_tasks, known_terms, echo)
+                scout_run.save(day_dir / "scout")
+            except Exception as e:
+                echo(f"!! scout crashed: {e}")
+            jobs += [(f"scout-{i + 1}", text, "scout", None) for i, text in enumerate(proposals)]
+        outcomes = []
+        for name, text, by, path in jobs:
+            echo(f"=== task {name} ({by}): {text[:80]}")
+            try:
+                o = run_task(name, text, day_dir / name, make_nodes, limits, known_terms, echo)
+            except Exception as e:  # one broken task must not cost the rest of the night
+                echo(f"!! task {name} crashed: {e}")
+                continue
+            o.by = by
+            outcomes.append(o)
+            if memory is not None:
+                memory.add(task=text, status=o.status, by=by, title=_title_of(o.result),
+                           result=str(o.result) if o.result else "")
+            if path is not None:
+                shutil.move(str(path), str(done_dir / f"{started.strftime('%Y%m%d')}-{path.name}"))
+        day_dir.mkdir(parents=True, exist_ok=True)
+        return write_report(day_dir, outcomes, started, scout_run, len(proposals))

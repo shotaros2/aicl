@@ -161,6 +161,16 @@ python examples/cooperation_demo.py
   時刻の書式違反、**デスクになりすました偽の done（偽の blob つき）**、ID のない ask。どれも記録に入らず、本人に差し戻された。
   同一性をモデルに任せずネットワークが持つ理由の実例。ページの「曇り空」は天気の `partly-cloudy`（一部曇り）の言い換えで、チェッカーは通した。
   Claude を使う構成は `--editor claude` など。ダブルクリック用 `run_autonomous_network.cmd`。
+- **チーム拡大と自分から始める仕組み**（2026-11-05 14:40 ごろ、`aicl/tools.py`、`examples/night_shift.py --mode night|inbox`）:
+  考える AI を 4 体に（チーフ、ライター、チェッカー、スカウト）。専門家に計算・為替・ニュース・記憶を追加。スカウトは毎晩、ニュースと
+  天気と記憶を自分で調べて最大 2 件の仕事を提案する（提案なしも可。実走 1 回目は 1 件、2 回目は 0 件）。実走で分かったこと:
+  - NHK の RSS は 8 月から更新が止まっていた。見出しに日時を付けたので発覚。Google ニュースの RSS に切り替えた。
+  - 役割文に「まず ok」と書いたら、チーフが ok だけ返して黙り、ネットワークが静止した（Muse の受け入れテストと同じ癖）。
+    ネットワーク側で「ok だけの返答には続きの手番を 1 回与える」ようにし、役割文も「ok と最初の依頼を同じ返答で」に直した。
+  - 無料枠の flash-lite のチーフは、他のエージェント（@fx, @calc, @desk）の返答を自分で書く癖がある。ネットワークが全部拒否した。
+  - チーフがチェッカーの受諾前に公開した。**大事な規則は役割文でなくコードで守らせる**: デスクは、チェッカーが一字一句同じ
+    ページを受諾していなければ公開を断る（`desk_node(require_acceptance_from="critic")`）。
+  - 毎晩 2 時の夜間作業と 30 分ごとの受付箱確認を `tools/install_night_shift.ps1` で登録する。
 - **API が使えないときのブラウザ切り替え**（2026-11-05、`aicl/webchat.py` + `vendors.text_ask(…, fallback=True)`）:
   Gemini/Muse の API が使えない（キーなし、無料枠切れ、DNS 失敗、キー拒否）と、その役だけ gemini.google.com / meta.ai を
   Playwright 経由で PC の Chrome（専用プロファイル `out/web-profile`）で操作する方式に切り替える。答えの不備では切り替えない。
