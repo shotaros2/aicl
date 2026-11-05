@@ -27,6 +27,7 @@ FILES = {
 FILES.update({f"codebooks/{p.name}": f"codebooks/{p.name}" for p in sorted((ROOT / "codebooks").glob("*.json"))})
 FILES.update({f"examples/{p.name}": f"examples/{p.name}" for p in sorted((ROOT / "examples").glob("*.aicl"))})
 FILES["examples/demo_keys.json"] = "examples/demo_keys.json"   # referenced by example 14
+FILES["examples/17_keys.json"] = "examples/17_keys.json"       # public keys of the live run in example 17
 
 README = """# AICL rulebook / AICL ルールブック
 
@@ -123,7 +124,7 @@ generate the media, attach it, and report
 result you did not produce. The cooperation vocabulary is in `schemas/cooperation.md`.
 
 The complete language reference follows; `aicl-rulebook.md` is the same in readable form
-and `examples/` holds sixteen complete conversations, most recorded live.
+and `examples/` holds seventeen complete conversations, most recorded live.
 
 ---
 

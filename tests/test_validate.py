@@ -24,6 +24,7 @@ KNOWN = {
     "14_signed_identity.aicl": ["temp"],
     "15_blob_and_part.aicl": ["top-terms", "term"],
     "16_gem_v03_acceptance.aicl": ["fx-rate"],
+    "17_signed_agreement.aicl": ["meeting", "busy"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Agreements (SPEC §4.6): `aicl/agreement.py` and `aicl agreement FILE --keys` extract
+  every `prop` closed by an `acc` from a transcript and report parties, terms, the
+  proposal's digest and whether both signatures verify, no protocol error touches the
+  pair, and nothing was retracted. This is the thing natural language cannot give and
+  JSON does not define: a record of who agreed to what that a third party verifies
+  without reading prose. `examples/17` is a live unattended Claude–Gemini negotiation
+  (runner `examples/contract_dialogue.py`): the agreement verifies, moving the agreed
+  time 30 minutes breaks @a's signature, and the dense and JSON re-encodings still verify.
+
 - One acknowledgement per request (SPEC §4.4): a second `ok` to an already-acknowledged
   `do`/`def`/`sub` is `ack-twice`, an `ok` to a `do` already closed or retracted is
   `ack-closed`, and an `ok` to anything else is the warning `ok-misplaced`. Retracting an

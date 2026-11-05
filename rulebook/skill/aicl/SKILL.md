@@ -18,7 +18,7 @@ generate the media, attach it, and report
 result you did not produce. The cooperation vocabulary is in `schemas/cooperation.md`.
 
 The complete language reference follows; `aicl-rulebook.md` is the same in readable form
-and `examples/` holds sixteen complete conversations, most recorded live.
+and `examples/` holds seventeen complete conversations, most recorded live.
 
 ---
 

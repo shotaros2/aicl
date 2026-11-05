@@ -651,6 +651,32 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
+# FILE: examples/17_signed_agreement.aicl
+
+```
+; A real exchange, 2026-11-05, with no human in the loop: Claude (@a, claude-opus-5-5) and
+; Gemini (@b, gemini-3.5-flash-lite) negotiating a meeting inside aicl.dialogue under an
+; injected clock, every message signed by the harness with that party's Ed25519 key
+; (SPEC §3.1). Public keys: examples/17_keys.json. Runner: examples/contract_dialogue.py.
+; Domain terms: meeting busy
+;
+; What it shows (SPEC §4.6): an agreement a third party can verify without reading prose.
+;   aicl agreement examples/17_signed_agreement.aicl --keys examples/17_keys.json --known meeting --known busy
+; prints the parties, the terms, the proposal digest and `:signed {@a true @b true} :verified true`.
+; Move the agreed time by one minute and @a's signature fails (sig-invalid, verified false);
+; convert the file with `aicl dense` or `aicl json` and it still verifies: the signature is over
+; the canonical form, not the bytes. Also note @b rejected 09:00 with a structured reason and
+; accepted 10:30, the first free instant under half-open intervals (SPEC §5.1).
+
+(prop #a.1 @a>@b (meeting :at 2026-11-12T09:00+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T10:00+09:00 :sig (ed25519 "E_tBenQwLFWZvPEzpib9LKBBU3MK1dftbT29DL264TQTQ53OsaUPrVWslu0i1PFuXO3y3xhOim2YrQxU9bWnCw"))
+(rej #b.1 @b>@a ^a.1 :sig (ed25519 "xo3XUnkrZf6xkLDRMkCg9PIqVm5wuY8cYEtVk_msXwN5_8jtt-In6NKDSV9N67WzE4f99V_NwopUnGY_eBhICQ") :why (busy @b :from 2026-11-12T09:00+09:00 :to 2026-11-12T10:30+09:00))
+(prop #a.2 @a>@b (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T10:02+09:00 :sig (ed25519 "ynzo0GmD31ShXVVhDVuQDHpVPXREVUlRZlN0EktUxeBqPArtnLy_WZIqZZnp9quZdwyR9aZ4ov2ipRy1NqorBg"))
+(acc #b.2 @b>@a ^a.2 :at 2026-11-05T10:03+09:00 :sig (ed25519 "Kd79E9qCxsROWWNqdbWPkdfCTuis1wcyDxkaKaec9A5w9wrewFnSRUr8i3vmjLdUjtmTCsY0h61KBFP2sa0zBQ"))
+(end #a.3 @a>@b ^b.2 :at 2026-11-05T10:04+09:00 :sig (ed25519 "eH5bkHBVqi8ksFoIddC_rB2xseB0-gSoGnNBzBjzNf6mVgk7BcR7fy-UFP2-f3SXbMwwxAS53T6haEx74-aVBQ"))
+```
+
+---
+
 # FILE: schemas/cooperation.md
 
 # AICL cooperation schema (`coop:` namespace), v0.1
@@ -1112,6 +1138,33 @@ A transport has a message-size limit the language does not see (observed: a five
 - For a result too large even in slices, hand over a `blob` (§5.2) instead.
 
 ---
+
+### 4.6 Agreements
+
+An **agreement** is a `prop` closed by an `acc` and not retracted. It is the one thing in
+this language that natural language cannot provide and JSON does not define: a record of
+*who agreed to what* that a third party can verify without reading any prose.
+
+- Its **parties** are the proposal's route; its **terms** are the proposal's body; its
+  **identity** is `sha256` of the proposal's canonical form with `:sig` removed (§7, §3.1).
+- It is **verified** when both the `prop` and the `acc` carry valid signatures of their
+  senders (§3.1), the protocol check raises no error on either message, and neither has
+  been retracted (§4.4).
+- Because signatures cover the canonical form, an agreement verifies identically from the
+  readable, dense, JSON or CBOR encoding of the transcript, and fails on any semantic
+  change, however small.
+
+The reference implementation reports it as
+
+```
+(agreement :between [@a @b] :terms (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b])
+           :proposed (ref #a.2) :accepted (ref #b.2) :digest "sha256:…"
+           :signed {@a true @b true} :verified true)
+```
+
+(`aicl agreement FILE --keys keys.json`). `examples/17` is a live, unattended Claude–Gemini
+negotiation whose agreement verifies this way; moving its agreed time by one minute turns
+`:signed {@a false …}`.
 
 ## 5. Core Logical Vocabulary
 

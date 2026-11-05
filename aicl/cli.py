@@ -151,6 +151,19 @@ def cmd_keygen(a):
     print(f'keys-file entry: {{"{a.agent}": "{pub}"}}   (keep the private key out of the repository)')
 
 
+def cmd_agreement(a):
+    """What was agreed, by whom, and whether the signatures and the protocol hold (SPEC §4.6)."""
+    from .agreement import describe, extract_agreements
+    from .signing import load_keys
+    keys = load_keys(a.keys) if a.keys else None
+    msgs = [Message.from_form(t) for t in _load(a.file) if is_message(t)]
+    ags = extract_agreements(msgs, keys=keys, known_terms=a.known)
+    print(describe(ags))
+    if not a.keys:
+        print("; (no --keys: signatures not checked, so nothing is verified)")
+    sys.exit(0 if ags and all(g.verified for g in ags) else 1)
+
+
 def cmd_sign(a):
     from .signing import sign_form
     priv = Path(a.key).read_text(encoding="utf-8").strip() if Path(a.key).exists() else a.key
@@ -243,6 +256,7 @@ def main(argv=None):
     s = sub.add_parser("keygen", help="generate an Ed25519 keypair for an agent (SPEC §3.1)"); s.add_argument("agent"); s.set_defaults(fn=cmd_keygen)
     s = sub.add_parser("relay", help="run an HTTP relay where independent agents meet (validates every message at the boundary)"); s.add_argument("--host", default="127.0.0.1"); s.add_argument("--port", type=int, default=8700); s.add_argument("--known", action="append", default=[], metavar="TERM"); s.add_argument("--keys", metavar="JSON", help="agent -> public key; enforce :sig at the door"); s.add_argument("--skew", type=float, default=300.0, metavar="SECONDS", help="reject an :at further than this from the relay clock (0 disables)"); s.set_defaults(fn=cmd_relay)
     s = sub.add_parser("blob", help="print the (blob sha256:… …) form naming a file's content, or verify one (SPEC §5.2)"); s.add_argument("file"); s.add_argument("--uri", help="where a copy can currently be fetched (a hint, not an identity)"); s.add_argument("--media"); s.add_argument("--expect", metavar="HASH", help="verify: compare the file against sha256:<hex>"); s.set_defaults(fn=cmd_blob)
+    s = sub.add_parser("agreement", help="extract and verify the agreements (prop closed by acc) in a transcript (SPEC §4.6)"); s.add_argument("file"); s.add_argument("--keys", metavar="JSON", help="agent -> public key; without it nothing is verified"); s.add_argument("--known", action="append", default=[], metavar="TERM"); s.set_defaults(fn=cmd_agreement)
     s = sub.add_parser("sign", help="add :sig to each message (the whole file, or one sender's)"); s.add_argument("file"); s.add_argument("--key", required=True, metavar="PRIV", help="base64url Ed25519 private key, or a file holding it"); s.add_argument("--agent", help="sign only this sender's messages"); s.add_argument("-o", "--output"); s.set_defaults(fn=cmd_sign)
 
     a = p.parse_args(argv)

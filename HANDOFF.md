@@ -109,6 +109,11 @@ python examples/cooperation_demo.py
   素の生成とクォータは別枠）。クォータ切れの Gemini は天気を聞かれて `(no … :why (unk data))` と
   正直に答え、`/check` は clean だった——規則7が丸腰でも守られた好例。
 
+- **「AICL でなければできないこと」= 署名付き合意**（2026-11-05、`examples/17`、ランナー `examples/contract_dialogue.py`）:
+  Claude と Gemini が無人で交渉し、ハーネスが各自の Ed25519 鍵で署名。`aicl agreement FILE --keys` が
+  当事者・条件・ダイジェストを自然言語を読まずに取り出し `:verified true`。時刻を 30 分ずらすと
+  `sig-invalid`、密形式/JSON に変換しても検証が通る（正規形に署名しているため）。SPEC §4.6。
+
 ## 7. 次にやる候補
 
 1. **記事（最優先）**: 下書き済み（`docs/articles/zenn-aicl.ja.md`、`docs/articles/show-hn.md`、2026-11-05）。本人が読んで投稿する。材料は揃っている——実記録15例、実測値（ワイヤ370 vs 可読480）、

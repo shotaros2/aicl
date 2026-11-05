@@ -205,6 +205,18 @@ AI にはそれぞれ得意分野があります。協調レイヤー（`aicl/co
 
 `python examples/cooperation_gemini.py` はまさにそれを Gemini で行います（`GEMINI_API_KEY` が必要）。ハブの計画は Gemini が AICL で書き、画像の専門エージェントは Gemini の画像モデルを呼んで PNG を成果物として返し、コードの専門エージェントは **密形式の AICL を話す Gemini そのもの**で、タスクに `K` と `Z` のメッセージで答えます。バスはそれを検証してから受け入れます。出力は `out/`（記録、画像、ページ）に保存されます。無料枠では Gemini の画像モデルが使えない（アプリの有料プランに加入しても API の枠は変わらない）ため、既定では文章モデルが SVG で画像を描きます。API の課金を有効にしたら `--image-model gemini-nano-banana-2.1` で本物の画像モデルになります。計画役とコード役を `gemini-3.5-flash-lite` にした実走では、計画、依存する 2 タスク、成果物 2 つが 12 メッセージ、プロトコル違反 0 で依頼者に届きます。そこに至るまでに分かった 3 点はすべてコードに反映済みです。メッセージ ID はモデルではなくハーネスが管理する（次の ID と返信ヘッダを AICL のコメントで伝え、必要なら振り直す）。不正な応答には検証結果を添えて 1 回だけ修正の機会を与え、それでも駄目なら `fail :code parse` にする。小型モデルがよくやる余分な記号の揺れ 2 種（`a.1>@b`、`^#a.1`）は意味が変わらないので入力時に受理し、曖昧なものは従来どおり拒否する。
 
+## AICL でなければできないこと: 第三者が検証できる合意
+
+2 体の AI の協力そのものは、英語でも JSON でも MCP や A2A の上でもできます。どれにも無いのは、「誰が何に合意したか」を他人が文章を読まずに確かめられる記録です。自然言語には署名できる正規形がなく、JSON には「受諾された提案」という概念がありません。AICL には両方あります（SPEC §4.6）。人を介さない実走（[examples/17](examples/17_signed_agreement.aicl)）で、Claude と Gemini は全メッセージにトランスポートの署名を付けて会議を交渉しました。そのあと:
+
+```
+$ aicl agreement examples/17_signed_agreement.aicl --keys examples/17_keys.json --known meeting --known busy
+(agreement :between [@a @b] :terms (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b])
+           :proposed (ref #a.2) :accepted (ref #b.2) :digest "sha256:ab48…" :signed {@a true @b true} :verified true)
+```
+
+記録の合意時刻を 1 分ずらすと `:signed {@a false …}` になり、記録を密形式や JSON に変換しても検証は通ります。署名はバイト列ではなく正規形に対して付いているからです。ランナーは `python examples/contract_dialogue.py`。
+
 ## Claude が自分で他の AI から画像を取ってくる
 
 協調レイヤーの最終目標はこれです。自分にできないこと（たとえば画像生成）が必要になったモデルが、専門エージェントと AICL で話し、成果物を受け取り、人を介さずにユーザーへ見せる。`aicl/mcp_server.py` はゲートウェイを [MCP](https://modelcontextprotocol.io) サーバーとして公開し、5 つのツールを持ちます。`aicl_rulebook`（言語を学ぶ）、`aicl_capabilities`、`aicl_send`（AICL を送り、AICL の返答と画像成果物を受け取る）、`aicl_transcript`、`aicl_check`。

@@ -313,6 +313,25 @@ turn with the validator's verdict before it becomes `fail :code parse`; and two 
 slips a small model makes (`a.1>@b`, `^#a.1`) are accepted on input because they cannot
 change meaning, while anything ambiguous is still rejected.
 
+## What only AICL can do: an agreement a third party can verify
+
+Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those
+gives you is a record of *who agreed to what* that someone else can check without reading
+prose: natural language has no canonical form to sign, and JSON has no notion of "an
+accepted proposal". AICL has both (SPEC §4.6). In a live, unattended run
+([examples/17](examples/17_signed_agreement.aicl)) Claude and Gemini negotiated a meeting
+with every message signed by the transport; then:
+
+```
+$ aicl agreement examples/17_signed_agreement.aicl --keys examples/17_keys.json --known meeting --known busy
+(agreement :between [@a @b] :terms (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b])
+           :proposed (ref #a.2) :accepted (ref #b.2) :digest "sha256:ab48…" :signed {@a true @b true} :verified true)
+```
+
+Move the agreed time by one minute in the transcript and `:signed {@a false …}`; convert the
+transcript to dense text or JSON and it still verifies, because the signature is over the
+canonical form, not the bytes. Runner: `python examples/contract_dialogue.py`.
+
 ## Let Claude fetch images from another AI on its own
 
 The end goal of the cooperation layer: a model that needs something it cannot do
