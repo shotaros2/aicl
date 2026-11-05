@@ -42,6 +42,8 @@ PROBES = [
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("--model", default=None, help="Ollama model (default AICL_LOCAL_MODEL or qwen3:8b)")
+    ap.add_argument("--bare", action="store_true",
+                    help="omit the '; next-id local.N' line the network adds to every input (harsher)")
     args = ap.parse_args(argv)
     model = args.model or local.model_name()
 
@@ -62,7 +64,9 @@ def main(argv=None) -> int:
         sent = aicl.Message.from_form(aicl.parse(dense_expand(probe))[0])
         log.append(sent)
         t0 = time.monotonic()
-        raw = agent.turn(now_line() + "\n" + probe)
+        own = sum(1 for m in log if m.sender == "local")
+        hint = "" if args.bare else f"\n; next-id local.{own + 1}"   # as aicl.network.ModelNode does
+        raw = agent.turn(now_line() + "\n" + probe + hint)
         took = time.monotonic() - t0
         raw_log.append(f"; {label} ({took:.1f}s)\n{probe}\n{raw}")
         print(f"\n[{label}] {took:.1f}s\n  -> {probe}")

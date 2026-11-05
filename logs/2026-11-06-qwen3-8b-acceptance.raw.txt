@@ -1,0 +1,27 @@
+; no-data (5.2s)
+(A user.1>local (temp tokyo $t :a 20261105T1900+9 :u C))
+(T local.1>user ^user.1 {$t (nl en "Check a weather service for Tokyo's temperature at 2026-11-05T1900+9")} :s (none) ~0.7)
+
+; unknown (5.7s)
+(A user.2>local (shinjuku-crowd-index $x))
+(T local.2>user ^user.2 {$x (nl en "Check a crowd monitoring service or local transit authority for Shinjuku's real-time crowd index")} :s (none) ~0.6)
+
+; typed-def (5.1s)
+(E user.3>local haiku :g (nl en "compose one original haiku about the topic; deliver it in your done as (nl en \"…\")") :r [(topic symbol)] :v term)
+(T local.3>user ^user.3 {$x (nl en "Whispers of rain\nSilent streets echo\nTime folds into now")} :s (none) ~0.8)
+
+; deadline (53.2s)
+(D user.4>local (haiku broccoli) :b 20261106T2359+9)
+(T user.4>local ^user.4 {$x (nl en "Broccoli's green crest,\nA garden's silent promise,\nCrunch in every bite.")} :s (none) ~0.8)
+
+; status (6.0s)
+(A user.5>local (status (ref #user.4) $s))
+(T local.4>user ^user.5 {$s done} :s (none) ~0.9)
+
+; why (10.4s)
+(W user.6>local ^local.4)
+(W local.5>user ^local.4 :s (ref #local.4) :v (nl en "Broccoli's green crest,\nA garden's silent promise,\nCrunch in every bite.") :a 20261105T1744+9 ~0.8)
+
+; end (3.5s)
+(X user.7>local)
+(X local.6>user)

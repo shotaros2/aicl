@@ -240,7 +240,17 @@ python examples/cooperation_demo.py
 1. **手元の AI（Ollama）の組み込み** — **コードは作成済み（2026-11-06）**: `aicl/local.py`、`vendors.text_ask("local")`、
    `fallback="local"`、`with_escalation`（`ModelNode` が `observe` で答えの成否を伝え、上げた理由は報告書の専用行に出る）、
    `night_shift.py --preset local --escalate-to gemini --local-fallback`、`autonomous_network.py` も対応、
-   受け入れテスト `examples/local_acceptance.py`。テストは偽の HTTP で `tests/test_local.py`。残りは家のパソコンでの実測。
+   受け入れテスト `examples/local_acceptance.py`。テストは偽の HTTP で `tests/test_local.py`。
+   **実測（2026-11-06、家のパソコン RTX 3070、qwen3:8b）: 不合格。** ネットワークと同じ `; next-id local.N` 注記つきで
+   9 項目中 2 項目（構文は全部正しい、status に tell）、検証器エラー 3。注記なしでは 0 項目・エラー 9。
+   癖: (1) 何にでも `tell` で答え、def に ok、未知語に clar、データなしに no を使い分けない（語彙交渉の行為が出ない）。
+   (2) 注記なしだと届いた見出し `user.1>local` を写して @user になりすます。(3) 注記なしだとルールブックの例文
+   `{$t 18.5C} :src jma` をそのまま答える（値の捏造）。(4) 納品していないのに status に `done`。1 問 5〜55 秒。
+   記録は `logs/2026-11-06-qwen3-8b-acceptance*.aicl`。
+   **分かった設計の穴**: エスカレーションの条件（構文が無効・差し戻し・遅い）は「構文は正しいが行為が違う」返答
+   （ok-for-ask、def への tell、bad-reply など会話レベルの誤り）では発動しない。8B だとエスカレーションで救われず
+   「未完了」で止まる恐れ。次の候補: (a) qwen3:14b（約 9 GB、一部 CPU に逃がす）を同じテストで測る、
+   (b) 会話レベルの検証エラーも「無効」として数えて上げる条件に加える、(c) 役割文に AICL の短い実例を足す。
    以下は元の仕様（記録として残す）:
    - `aicl/vendors.py` に `local` を加える。中身は `aicl/muse.py` の `text_ask`（OpenAI 互換）を
      `base_url=$AICL_LOCAL_URL`（既定 `http://localhost:11434/v1`）、`model=$AICL_LOCAL_MODEL`（既定 `qwen3:8b`）、
