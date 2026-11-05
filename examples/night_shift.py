@@ -117,8 +117,11 @@ PRESETS = {
     "cloud": {r: "gemini" for r in ROLES},
     "local": {"chief": "local", "writer": "local", "scout": "local",
               "critic": "gemini", "coder": "gemini", "artist": "gemini"},
-    # The owner's choice for the home PC (2026-11-06): the busy roles on the local model, the final
-    # check and the apps on Claude (paid, called only a few times per task), illustrations on Gemini.
+    # The owner's choice for the home PC (2026-11-06), each AI covering another's weak side (measured
+    # with examples/local_acceptance.py, HANDOFF §6): the local model does the many-turn work for
+    # free and is slow, so it gets the roles where speed does not matter; Claude Haiku answered most
+    # honestly and fastest, so it checks, codes and takes over a local role in trouble; Gemini is
+    # free and fast but claimed undelivered work as done and invented sources, so it only draws.
     "home": {"chief": "local", "writer": "local", "scout": "local",
              "critic": "claude", "coder": "claude", "artist": "gemini"},
 }
@@ -139,8 +142,9 @@ def main(argv=None) -> int:
     ap.add_argument("--claude-model", default="claude-haiku-5-5",
                     help="model for roles on Claude (default claude-haiku-5-5, the cheapest; claude-opus-5-5 "
                          "for the strongest)")
-    ap.add_argument("--escalate-to", default="gemini", choices=vendors.VENDORS + ("none",),
-                    help="where a local role goes when the local model is in trouble (default gemini)")
+    ap.add_argument("--escalate-to", default=None, choices=vendors.VENDORS + ("none",),
+                    help="where a local role goes when the local model is in trouble (default: claude with "
+                         "--preset home, whose Haiku answered the acceptance test most honestly; else gemini)")
     ap.add_argument("--local-fallback", action="store_true",
                     help="a cloud role whose API is unavailable (quota, network) switches to the local model")
     ap.add_argument("--web-fallback", action="store_true",
@@ -156,6 +160,8 @@ def main(argv=None) -> int:
     for role in preset:
         if getattr(args, role) is None:
             setattr(args, role, preset[role])
+    if args.escalate_to is None:
+        args.escalate_to = "claude" if args.preset == "home" else "gemini"
     if args.local_model:
         import os
         os.environ["AICL_LOCAL_MODEL"] = args.local_model
@@ -176,7 +182,8 @@ def main(argv=None) -> int:
     def ask(v):
         if v == "local":
             up = None if args.escalate_to in ("none", "local") else args.escalate_to
-            return vendors.text_ask(v, escalate_to=up, note=echo)
+            return vendors.text_ask(v, escalate_to=up, note=echo,
+                                    escalate_model=args.claude_model if up == "claude" else None)
         fb = "local" if args.local_fallback else args.web_fallback
         model = args.claude_model if v == "claude" else None
         return vendors.text_ask(v, model=model, sleep=pause(v), fallback=fb, note=echo)

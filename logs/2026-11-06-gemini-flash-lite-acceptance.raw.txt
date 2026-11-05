@@ -1,0 +1,27 @@
+; no-data (15.3s)
+(ask #user.1 @user>@local (temp tokyo $t :at 2026-11-05T19:00+09:00 :unit C))
+(A local.1>user (temp tokyo $t :at 2026-11-05T19:00+09:00 :unit C))
+
+; unknown (5.1s)
+(ask #user.2 @user>@local (shinjuku-crowd-index $x))
+(Q local.2>user ^user.2 (unk shinjuku-crowd-index))
+
+; typed-def (17.2s)
+(def #user.3 @user>@local haiku :args [(topic symbol)] :gloss (nl en "compose one original haiku about the topic; deliver it in your done as (nl en \"…\")") :ret term)
+(K local.3>user ^user.3 :a 2026-11-05T18:46:34+09:00 :t PT0S)
+
+; deadline (5.1s)
+(do #user.4 @user>@local (haiku broccoli) :by 2026-11-06T23:59+09:00)
+(K local.4>user ^user.4 :a 2026-11-05T18:46:51+09:00 :t PT30S)
+
+; status (19.7s)
+(ask #user.5 @user>@local (status (ref #user.4) $s))
+(T local.5>user ^user.5 {$s done})
+
+; why (5.8s)
+(why #user.6 @user>@local ^local.5)
+(T local.6>user ^user.6 (source :uri "" :a 2026-11-05T18:46:51+09:00 :kind internal :value "action completed"))
+
+; end (5.4s)
+(end #user.7 @user>@local)
+(X local.7>user)

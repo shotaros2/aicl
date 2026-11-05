@@ -125,6 +125,23 @@ class EscalationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ask("S", [])
 
+    def test_escalation_target_model_is_used_and_named(self):
+        calls, notes = [], []
+
+        def fake_api(vendor, model, sleep):
+            calls.append((vendor, model))
+            if vendor == "local":
+                return lambda s, h: "junk"
+            return lambda s, h: "(T a.1>b true)"
+        with mock.patch.object(vendors, "_api_ask", fake_api):
+            ask = vendors.text_ask("local", escalate_to="claude", escalate_model="claude-haiku-5-5",
+                                   note=notes.append)
+            ask("S", []); ask.observe("invalid", "e1")
+            ask("S", []); ask.observe("invalid", "e2")
+            self.assertEqual(ask("S", []), "(T a.1>b true)")
+        self.assertIn(("claude", "claude-haiku-5-5"), calls)
+        self.assertIn("escalated to claude (claude-haiku-5-5)", notes[0])
+
     def test_text_ask_wiring(self):
         with self.assertRaises(ValueError):
             vendors.text_ask("local", escalate_to="local")

@@ -8,6 +8,8 @@ checklist at the end says which habits the model has.
 
 Run:  python examples/local_acceptance.py                 (AICL_LOCAL_MODEL, default qwen3:8b)
       python examples/local_acceptance.py --model llama3.1:8b
+      python examples/local_acceptance.py --vendor gemini   (any vendor, same probes, same score;
+      python examples/local_acceptance.py --vendor claude --model claude-haiku-5-5   for comparison)
 """
 from __future__ import annotations
 
@@ -41,21 +43,29 @@ PROBES = [
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    ap.add_argument("--model", default=None, help="Ollama model (default AICL_LOCAL_MODEL or qwen3:8b)")
+    ap.add_argument("--vendor", default="local", choices=vendors.VENDORS,
+                    help="which AI to test (default local); the agent is called @local whatever it is")
+    ap.add_argument("--model", default=None, help="model id (default: the vendor's default; local: "
+                                                     "AICL_LOCAL_MODEL or qwen3:8b)")
     ap.add_argument("--bare", action="store_true",
                     help="omit the '; next-id local.N' line the network adds to every input (harsher)")
     ap.add_argument("--dense-input", action="store_true",
                     help="send the probes in dense form; by default they are readable, as the night-shift "
                          "network shows incoming messages to local roles")
     args = ap.parse_args(argv)
-    model = args.model or local.model_name()
+    model = args.model or (local.model_name() if args.vendor == "local" else vendors.default_model(args.vendor))
 
     import re
-    system = re.sub(r"\bme\b", "local", DENSE)
-    agent = AiclAgent("local", local.text_ask(model=model), system)
+    # As aicl.network does, the agent is told who it can talk to: without a directory a small model
+    # guesses the counterpart's name from the header and writes `local.1>user.1`.
+    system = (re.sub(r"\bme\b", "local", DENSE)
+              + "\n\nDirectory - the agents you can reach (`x` = your own id):\n- @user: the person asking you things")
+    ask = (local.text_ask(model=model) if args.vendor == "local"
+           else vendors.text_ask(args.vendor, model=model, sleep=4.0 if args.vendor == "gemini" else 0.0))
+    agent = AiclAgent("local", ask, system)
     log, raw_log, notes = [], [], []
     started = time.monotonic()
-    print(f"--- acceptance test: {vendors.describe('local', model)} ---")
+    print(f"--- acceptance test: {vendors.describe(args.vendor, model)} ---")
 
     for label, probe in PROBES:
         if probe is None:
@@ -72,7 +82,7 @@ def main(argv=None) -> int:
         shown = probe if args.dense_input else aicl.to_text(sent.to_form())
         raw = agent.turn(now_line() + "\n" + shown + hint)
         took = time.monotonic() - t0
-        raw_log.append(f"; {label} ({took:.1f}s)\n{probe}\n{raw}")
+        raw_log.append(f"; {label} ({took:.1f}s)\n{shown}\n{raw}")
         print(f"\n[{label}] {took:.1f}s\n  -> {probe}")
         lines = [l for l in raw.splitlines() if l.strip() and not l.strip().startswith(";")]
         try:
@@ -114,7 +124,7 @@ def main(argv=None) -> int:
     for n in notes:
         print(f"  note: {n}")
 
-    out = ROOT / "out" / f"local_acceptance_{model.replace(':', '_').replace('/', '_')}.aicl"
+    out = ROOT / "out" / f"acceptance_{args.vendor}_{model.replace(':', '_').replace('/', '_')}.aicl"
     out.parent.mkdir(exist_ok=True)
     out.write_text("\n".join(aicl.to_text(m.to_form()) for m in log) + "\n", encoding="utf-8")
     out.with_suffix(".raw.txt").write_text("\n\n".join(raw_log) + "\n", encoding="utf-8")

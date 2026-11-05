@@ -156,6 +156,7 @@ def with_escalation(vendor: str, primary_factory: Callable[[], Ask], cloud: str,
 
 def text_ask(vendor: str, model: Optional[str] = None, sleep: float = 0.0,
              fallback: Union[bool, str] = False, escalate_to: Optional[str] = None,
+             escalate_model: Optional[str] = None,
              note: Callable[[str], None] = print) -> Ask:
     vendor = vendor.lower()
     if vendor not in VENDORS:
@@ -167,7 +168,8 @@ def text_ask(vendor: str, model: Optional[str] = None, sleep: float = 0.0,
         if escalate_to not in VENDORS or escalate_to == vendor:
             raise ValueError(f"cannot escalate {vendor} to {escalate_to!r}")
         cloud_sleep = 0.0 if escalate_to in ("claude", "local") else 4.0
-        return with_escalation(vendor, api, escalate_to, lambda: _api_ask(escalate_to, None, cloud_sleep),
+        label = f"{escalate_to} ({escalate_model})" if escalate_model else escalate_to
+        return with_escalation(vendor, api, label, lambda: _api_ask(escalate_to, escalate_model, cloud_sleep),
                                note=note)
 
     if fallback == "local" and vendor != "local":

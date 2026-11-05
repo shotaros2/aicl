@@ -1,0 +1,27 @@
+; no-data (2.8s)
+(ask #user.1 @user>@local (temp tokyo $t :at 2026-11-05T19:00+09:00 :unit C))
+(N local.1>user ^user.1 :a 20261105T184744+9 :w (unk data))
+
+; unknown (0.9s)
+(ask #user.2 @user>@local (shinjuku-crowd-index $x))
+(Q local.2>user ^user.2 (unk term shinjuku-crowd-index))
+
+; typed-def (1.6s)
+(def #user.3 @user>@local haiku :args [(topic symbol)] :gloss (nl en "compose one original haiku about the topic; deliver it in your done as (nl en \"…\")") :ret term)
+(K local.3>user ^user.3 :a 20261105T184748+9)
+
+; deadline (1.1s)
+(do #user.4 @user>@local (haiku broccoli) :by 2026-11-06T23:59+09:00)
+(K local.4>user ^user.4 :a 20261105T184749+9 :t PT1M)
+
+; status (0.9s)
+(ask #user.5 @user>@local (status (ref #user.4) $s))
+(T local.5>user ^user.5 {$s pending})
+
+; why (0.8s)
+(why #user.6 @user>@local ^local.5)
+(W local.6>user ^user.6 :s (none))
+
+; end (0.9s)
+(end #user.7 @user>@local)
+(X local.7>user :w (none))
