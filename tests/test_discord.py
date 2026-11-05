@@ -61,6 +61,18 @@ class DiscordTests(unittest.TestCase):
             self.assertEqual(l.pull_tasks(inbox), 0)                 # nothing is taken twice
             self.assertEqual(json.loads((Path(tmp) / "state.json").read_text())["after"], "5")
 
+    def test_an_empty_channel_still_starts_from_now(self):
+        import time
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = FakeDiscord([])
+            l, inbox = link(fake, tmp), Path(tmp) / "inbox"
+            self.assertEqual(l.pull_tasks(inbox), 0)
+            start = int(json.loads((Path(tmp) / "state.json").read_text())["after"])
+            now_id = (int(time.time() * 1000) - 1420070400000) << 22
+            self.assertLess(abs(now_id - start), 60_000 << 22)      # within a minute of now
+            fake.messages.append({"id": str(now_id + (5_000 << 22)), "author": OWNER, "content": "最初の依頼"})
+            self.assertEqual(l.pull_tasks(inbox), 1)                 # the first task is not taken for history
+
     def test_each_agent_speaks_under_its_own_account_or_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             fake = FakeDiscord()
@@ -98,6 +110,20 @@ class DiscordTests(unittest.TestCase):
             self.assertEqual(len(notes), 2)
             self.assertTrue(all("403" in n for n in notes))
             self.assertNotIn("HOUSE", " ".join(notes))               # the token never reaches a log line
+
+    def test_without_a_webhook_the_house_bot_posts_with_the_agents_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = FakeDiscord()
+            link(fake, tmp, wire_channel="300").mirror("scout", "(A scout.1>news (headlines $h))")
+            method, url, headers, data = fake.calls[0]
+            self.assertTrue(url.endswith("/channels/300/messages"))
+            self.assertEqual(headers["Authorization"], "Bot HOUSE")
+            self.assertTrue(json.loads(data)["content"].startswith("**@scout**"))
+        env = {"DISCORD_BOT_TOKEN": "T", "DISCORD_OWNER_ID": "1", "DISCORD_TASKS_CHANNEL": "2",
+               "DISCORD_REPORTS_CHANNEL": "3", "DISCORD_WIRE_WEBHOOK": "1567788048287010866"}
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch("aicl.discordlink.load_dotenv", lambda: 0):
+            l = Link.from_env()
+        self.assertEqual((l.wire_webhook, l.wire_channel), ("", "1567788048287010866"))   # a channel id, not a URL
 
     def test_discord_is_optional(self):
         with mock.patch.dict(os.environ, {"DISCORD_BOT_TOKEN": ""}, clear=False), \

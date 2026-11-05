@@ -108,9 +108,11 @@ class Link:
         if not all(e.get(k) for k in need):
             return None
         agents = {k[len("DISCORD_TOKEN_"):]: v for k, v in e.items() if k.startswith("DISCORD_TOKEN_") and v}
+        webhook, wire = e.get("DISCORD_WIRE_WEBHOOK", "").strip(), e.get("DISCORD_WIRE_CHANNEL", "").strip()
+        if webhook.isdigit():               # a channel id put where the webhook goes: use it as the wire channel
+            webhook, wire = "", wire or webhook
         return cls(e["DISCORD_BOT_TOKEN"], e["DISCORD_OWNER_ID"], e["DISCORD_TASKS_CHANNEL"],
-                   e["DISCORD_REPORTS_CHANNEL"], e.get("DISCORD_WIRE_WEBHOOK", ""), e.get("DISCORD_WIRE_CHANNEL", ""),
-                   agents, state_path, note)
+                   e["DISCORD_REPORTS_CHANNEL"], webhook, wire, agents, state_path, note)
 
     def _call(self, method, path, token=None, payload=None, files=(), auth=True):
         return http(method, path if path.startswith("http") else API + path, (token or self.token) if auth else None,
@@ -136,9 +138,10 @@ class Link:
             path = f"/channels/{self.tasks_channel}/messages?limit=50" + (f"&after={after}" if after else "")
             msgs = sorted(self._call("GET", path) or [], key=lambda m: int(m["id"]))
             if after is None:                     # first run: start from now, do not replay old history
-                if msgs:
-                    state["after"] = msgs[-1]["id"]
-                    self._save(state)
+                # An empty channel has no last id: use a Discord id made from the current time instead,
+                # so the first task written after this moment is not mistaken for history.
+                state["after"] = msgs[-1]["id"] if msgs else str((int(time.time() * 1000) - 1420070400000) << 22)
+                self._save(state)
                 return 0
             n = 0
             inbox.mkdir(parents=True, exist_ok=True)
@@ -175,6 +178,9 @@ class Link:
                 # A webhook URL carries its own secret: the bot token is never sent along.
                 self._call("POST", self.wire_webhook + ("&" if "?" in self.wire_webhook else "?") + "wait=true",
                            None, {"content": content, "username": f"@{sender}"[:80]}, auth=False)
+            elif self.wire_channel:          # no webhook: the house bot posts, with the agent's name up front
+                self._call("POST", f"/channels/{self.wire_channel}/messages", None,
+                           {"content": f"**@{sender}**\n{content}"[:2000]})
             else:
                 return
             if self.pause:
@@ -222,7 +228,16 @@ class Link:
                 out.append("ok   can read the tasks channel")
         except Exception as e:
             out.append(f"FAIL reading tasks: {e}")
-        out.append("ok   wire webhook set" if self.wire_webhook else "--   no wire webhook: the AIs' messages will not be shown")
+        if self.wire_webhook:
+            out.append("ok   wire webhook set: each AI posts under its own name")
+        elif self.wire_channel:
+            try:
+                c = self._call("GET", f"/channels/{self.wire_channel}")
+                out.append(f"ok   wire channel #{c.get('name')}: the house bot posts each AI's messages with its name")
+            except Exception as e:
+                out.append(f"FAIL wire channel {self.wire_channel}: {e}")
+        else:
+            out.append("--   no wire channel or webhook: the AIs' messages will not be shown")
         for agent, tok in sorted(self.agent_tokens.items()):
             try:
                 me = self._call("GET", "/users/@me", tok)
