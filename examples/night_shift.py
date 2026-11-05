@@ -124,7 +124,11 @@ PRESETS = {
     # free and is slow, so it gets the roles where speed does not matter; Claude Haiku answered most
     # honestly and fastest, so it checks, codes and takes over a local role in trouble; Gemini is
     # free and fast but claimed undelivered work as done and invented sources, so it only draws.
-    "home": {"chief": "local", "writer": "local", "scout": "local",
+    # Changed 2026-11-05 after the field test (HANDOFF §6): qwen3.5:9b could not hold the chief or
+    # the writer - thinking on, it filled the 12k context and answered nothing; thinking off, it
+    # repeated one request until its budget was gone. Both moved to Haiku; the scout, once a night,
+    # stays local and moves to Haiku if it stalls.
+    "home": {"chief": "claude", "writer": "claude", "scout": "local",
              "critic": "claude", "coder": "claude", "artist": "gemini"},
 }
 
@@ -137,8 +141,8 @@ def main(argv=None) -> int:
     ap.add_argument("--preset", default="cloud", choices=tuple(PRESETS),
                     help="cloud: every role on Gemini's free tier (default). local: the busy roles (chief, writer, "
                          "scout) on this PC's model, the checker, coder and artist on Gemini - a different company "
-                         "checks what the local model wrote. home: like local, but the checker and the coder on "
-                         "Claude (paid). --<role> overrides any of them.")
+                         "checks what the local model wrote. home: chief, writer, checker and coder on Claude "
+                         "(Haiku, paid), the scout local, the artist on Gemini. --<role> overrides any of them.")
     ap.add_argument("--local-model", default=None,
                     help="the local model for this run, e.g. qwen3:14b (default: AICL_LOCAL_MODEL or qwen3:8b)")
     ap.add_argument("--claude-model", default="claude-haiku-5-5",
@@ -227,7 +231,7 @@ def main(argv=None) -> int:
             f = m.to_form()
             link.mirror(m.sender, to_dense(Form(f.head, f.args, {k: v for k, v in f.kw.items() if k != "sig"}, f.conf)))
     echo(f"--- night shift {datetime.now(JST).isoformat(timespec='minutes')} ({args.mode}): chief = "
-         f"{vendors.describe(args.chief)}, writer = {args.writer}, critic = {args.critic}, scout = {args.scout}, "
+         f"{vendors.describe(args.chief, args.claude_model if args.chief == 'claude' else None)}, writer = {args.writer}, critic = {args.critic}, scout = {args.scout}, "
          f"coder = {args.coder}, artist = {args.artist}"
          + (f"; claude = {args.claude_model}" if "claude" in (args.chief, args.writer, args.critic, args.scout,
                                                                args.coder, args.artist) else "") + " ---")
@@ -241,6 +245,13 @@ def main(argv=None) -> int:
         echo(f"skipped: {e}")
         report = None
     echo(f"report: {report}" if report else "nothing to do")
+    from aicl import claude as claude_api
+    used = claude_api.usage_lines()
+    if used and report is not None:
+        with report.open("a", encoding="utf-8") as f:
+            f.write("\n## Claude の使用量（この実行の合計、料金は目安）\n\n" + "".join(f"- {u}\n" for u in used))
+    for u in used:
+        echo(f"claude usage: {u}")
     if link is not None and report is not None:
         link.post_report(report, sorted(report.parent.glob("*/*.md")) + sorted(report.parent.glob("*/*.html"))
                          + sorted(report.parent.glob("*/*.svg")))

@@ -105,6 +105,10 @@ class NightShiftTests(unittest.TestCase):
             self.assertTrue(deliverable_ok(done(digest)))
             self.assertEqual(_blob_path(done(digest)), p.resolve())
             self.assertFalse(deliverable_ok(done("0" * 64)))
+            beside = aicl.Message.from_form(aicl.parse_one(
+                f'(done #chief.11 @chief>@owner ^owner.1 (task (nl ja "t")) (blob sha256:{digest} '
+                f':bytes {p.stat().st_size} :media "text/markdown" :uri "{p.resolve().as_uri()}"))'))
+            self.assertTrue(deliverable_ok(beside))          # seen live: the blob second in the body
 
     def test_empty_inbox_does_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:

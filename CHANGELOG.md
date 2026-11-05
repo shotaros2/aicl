@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `night_shift.py --preset home` now puts the chief and the writer on Claude Haiku (the scout stays
+  local, the artist on Gemini), after qwen3.5:9b could not hold either role in the field test.
+  Measured on the Tokyo Tower task: done in 49 s, critic's signed acceptance verified, 13 Haiku
+  calls, about $0.0054.
+- `aicl/claude.py` turns on automatic prompt caching (top-level `cache_control`) and counts
+  tokens per model (`claude.USAGE`, `usage_lines()`, an estimated cost for Haiku); the night report
+  ends with a "Claude の使用量" section. In that run 82,784 of 104,000 input tokens were cache reads.
+- The night shift's owner finds the done's blob anywhere in its body (a chief sent
+  `(task …) (blob …)`), still only when the file has exactly that hash and size.
+
 - `aicl/tls.py`: the specialists (library, reader, weather, fx, news), the Discord link and the
   Muse client verify HTTPS against the system's trust store plus certifi's when certifi is
   installed (optional; no new dependency). On the home PC Windows lacked the root for

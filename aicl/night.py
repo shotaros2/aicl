@@ -141,16 +141,17 @@ def deliverable_ok(m: Message) -> bool:
 
 
 def _find_blob(m: Message) -> Optional[Form]:
-    """The done's blob: its body, or one level inside it - seen live, a chief wrapped the right
-    blob as (doc :blob (blob …) :title …) and a finished task was reported unfinished."""
-    b = m.body[0] if m.body else None
-    if not isinstance(b, Form):
-        return None
-    if b.head == "blob":
-        return b
-    for v in list(b.args) + list(b.kw.values()):
-        if isinstance(v, Form) and v.head == "blob":
-            return v
+    """The done's blob: a body term, or one level inside one - seen live, a chief wrapped the
+    right blob as (doc :blob (blob …) :title …), and another sent (task …) (blob …), and a
+    finished task was reported unfinished."""
+    for b in m.body:
+        if not isinstance(b, Form):
+            continue
+        if b.head == "blob":
+            return b
+        for v in list(b.args) + list(b.kw.values()):
+            if isinstance(v, Form) and v.head == "blob":
+                return v
     return None
 
 

@@ -18,6 +18,10 @@
   作って試した。リポジトリはまだ OneDrive のフォルダのまま（`C:\dev\aicl` への移設は `docs/home-pc-setup.ja.md` §2）、
   夜間作業の予定は未登録（ノートが稼働中）。Python は PATH に無く `%LOCALAPPDATA%\Programs\Python\Python312\python.exe` で呼ぶ。
   2026-11-05 夜にスマホの Discord から実地テスト済み（§6 の「実地テスト」）。受付箱に同期で戻った処理済み 3 件は `out/night/held/` に退避。
+- **家のパソコンの本番構成（2026-11-05 夜に持ち主が決定）: `--preset home`＝チーフ・ライター・チェッカー・コーダー＝Claude Haiku、
+  スカウト＝手元の qwen3.5:9b、挿絵＝Gemini。** 東京タワーの仕事で完了・49 秒・Haiku 13 回・約 $0.0054（報告書の末尾に使用量が出る。
+  プロンプトキャッシュ有効）。残る作業はユーザー本人: ノートの予定を `-Remove` で解除 → この PC で
+  `install_night_shift.ps1 -Preset home -LocalModel qwen3.5:9b`。
 - **ユーザーについて**: AICL は打ち込めないので、指示も結果も日本語。push・スケジュール登録・各種アカウント作成はユーザー本人が行う
   （Claude の環境では止められる）。秘密（`.env`）はチャットに出さない。
 

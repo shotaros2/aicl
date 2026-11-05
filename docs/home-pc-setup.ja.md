@@ -132,6 +132,14 @@ powershell -ExecutionPolicy Bypass -File C:\dev\aicl\tools\install_night_shift.p
    `%LOCALAPPDATA%\Programs\Python\Python3*` の本物を使う。表示される `python:` の行で確かめる。
    別のモデルを試すときは `.env` に `AICL_LOCAL_MODEL=llama3.1:8b` のように書く（先に `ollama pull`）。
 
+3. **家のパソコンの本番の設定は `--preset home`**（2026-11-05 の実地テストで決定）: チーフ・ライター・チェッカー・
+   コーダー＝Claude Haiku（有料・安価）、スカウト＝手元の AI、挿絵＝Gemini。RTX 3070 の qwen3.5:9b ではチーフと
+   ライターが務まらなかった（HANDOFF §6）。登録は:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\dev\aicl\tools\install_night_shift.ps1 -Preset home -LocalModel qwen3.5:9b
+```
+
 ## 7. どのフォルダでも AICL を使う設定（任意）
 
 ノートで行った設定を家でも行う場合（HANDOFF.md §5 の最後）:

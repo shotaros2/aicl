@@ -11,8 +11,9 @@
 #   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Remove     # undo both
 #   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Preset local
 #       chief, writer and scout on this PC's model (Ollama), the checker, coder and artist on Gemini
-#   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Preset home -LocalModel qwen3:14b
-#       as local, but the checker and the coder on Claude (paid); the home PC's setting
+#   powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1 -Preset home -LocalModel qwen3.5:9b
+#       chief, writer, checker and coder on Claude Haiku (paid), the scout on this PC's model, the
+#       artist on Gemini; the home PC's setting
 #   -Python C:\path\python.exe   use this interpreter (default: the first real one found; the
 #       Microsoft Store stub on PATH, which runs nothing, is skipped)
 param([string]$At = "02:00", [switch]$NoInbox, [switch]$Remove,
