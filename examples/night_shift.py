@@ -169,7 +169,8 @@ def main(argv=None) -> int:
     memory = Memory(NIGHT / "memory.jsonl")
 
     def model(name, role, blurb, vendor, offers=()):
-        n = ModelNode(name, role, ask(vendor), DENSE, offers=offers)
+        # local models mirror the dense header (user.1>me) into a wrong address; show them readable input
+        n = ModelNode(name, role, ask(vendor), DENSE, offers=offers, readable_input=(vendor == "local"))
         n.blurb = blurb
         return n
 

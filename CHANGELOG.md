@@ -21,6 +21,12 @@
   `me.1>b.3`), with an example. Measured on qwen3:14b it did not change the habit (it mirrors the
   incoming `user.1>local` header); the network's existing "not in the directory" bounce does fix
   it, at one extra model call per message.
+- `ModelNode(readable_input=True)` shows an agent its incoming messages in the readable form
+  (`#user.1 @user>@me`) instead of dense (`user.1>me`), leaving a small model nothing to mirror.
+  qwen3:14b in the network, same 3 asks: readable - 0 bounces, 3 calls, 109 s, all 3 answered;
+  dense - 3 bounces, 5 calls, 553 s, one call timed out and one ask ran out of attempts, so 1
+  answered. The runners turn it on for local roles only; `local_acceptance.py` asks in readable
+  form by default (`--dense-input` for the old way).
 
 - Apps: model agents can attach files (a fenced ```html block, referred to as `(file 1)`); the
   network stores the bytes and substitutes a `(blob sha256:…)` (`Network(files_dir=…)`). @coder

@@ -111,11 +111,15 @@ class ModelNode(Node):
     its role and the directory, and decides every reply itself."""
 
     def __init__(self, name: str, role: str, ask: Ask, rulebook: str, offers: Iterable[str] = (),
-                 attempts: int = 2):
+                 attempts: int = 2, readable_input: bool = False):
         super().__init__(name, role, offers)
         self.ask = ask
         self.rulebook = rulebook
         self.attempts = attempts
+        # Show incoming messages in the readable form (#user.1 @user>@me) instead of dense
+        # (user.1>me). Smaller models mirror the dense header into `me.1>user.1`, addressing a
+        # message id instead of an agent; the readable header gives them nothing to mirror.
+        self.readable_input = readable_input
         self.history: List[dict] = []
         self.calls = 0
         self.system: Optional[str] = None
@@ -196,7 +200,8 @@ class ModelNode(Node):
 
     def react(self, net, event, incoming):
         nxt = f"{self.name}.{self.seq + 1}"
-        content = event + (("\n" + to_dense(incoming.to_form())) if incoming is not None else "") + f"\n; next-id {nxt}"
+        show = to_text if self.readable_input else to_dense
+        content = event + (("\n" + show(incoming.to_form())) if incoming is not None else "") + f"\n; next-id {nxt}"
         if incoming is not None and incoming.act == "rej":
             why = incoming.kw.get("why")
             self._observe(net, "rejected", f"#{incoming.id} from @{incoming.sender}"

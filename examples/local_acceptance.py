@@ -44,6 +44,9 @@ def main(argv=None) -> int:
     ap.add_argument("--model", default=None, help="Ollama model (default AICL_LOCAL_MODEL or qwen3:8b)")
     ap.add_argument("--bare", action="store_true",
                     help="omit the '; next-id local.N' line the network adds to every input (harsher)")
+    ap.add_argument("--dense-input", action="store_true",
+                    help="send the probes in dense form; by default they are readable, as the night-shift "
+                         "network shows incoming messages to local roles")
     args = ap.parse_args(argv)
     model = args.model or local.model_name()
 
@@ -66,7 +69,8 @@ def main(argv=None) -> int:
         t0 = time.monotonic()
         own = sum(1 for m in log if m.sender == "local")
         hint = "" if args.bare else f"\n; next-id local.{own + 1}"   # as aicl.network.ModelNode does
-        raw = agent.turn(now_line() + "\n" + probe + hint)
+        shown = probe if args.dense_input else aicl.to_text(sent.to_form())
+        raw = agent.turn(now_line() + "\n" + shown + hint)
         took = time.monotonic() - t0
         raw_log.append(f"; {label} ({took:.1f}s)\n{probe}\n{raw}")
         print(f"\n[{label}] {took:.1f}s\n  -> {probe}")

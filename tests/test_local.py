@@ -132,6 +132,36 @@ class EscalationTests(unittest.TestCase):
         self.assertTrue(hasattr(ask, "observe"))
 
 
+class ReadableInputTests(unittest.TestCase):
+    """A local model mirrors the dense header (user.1>local) into `local.1>user.1`; the readable
+    form gives it nothing to mirror. The option only changes what the model is shown."""
+
+    def run_one(self, readable):
+        import aicl
+        from aicl.network import Node
+        seen = []
+
+        def ask(system, history):
+            seen.append(history[-1]["content"])
+            return "(no #local.1 @local>@user ^user.1 :why (unk data))"
+        owner = Node("user", "the person")
+        agent = ModelNode("local", "answer", ask, "rulebook for me", readable_input=readable)
+        net = Network([owner, agent], Limits(max_messages=5), sign=False, echo=None)
+        net.post(owner.msg("ask", "local", aicl.parse_one("(x $v)")))
+        res = net.run(wake=[])
+        return seen[0], res
+
+    def test_readable_input_shows_the_canonical_header(self):
+        shown, res = self.run_one(True)
+        self.assertIn("(ask #user.1 @user>@local (x $v))", shown)
+        self.assertNotIn("user.1>local", shown)
+        self.assertEqual([m.act for m in res.messages], ["ask", "no"])
+
+    def test_default_stays_dense(self):
+        shown, _ = self.run_one(False)
+        self.assertIn("(A user.1>local (x $v))", shown)
+
+
 class NetworkEscalationTests(unittest.TestCase):
     """End to end inside the network: the local chief answers junk twice, the role moves to the
     cloud, the cloud gets a fresh try at the same event, and the report says so."""

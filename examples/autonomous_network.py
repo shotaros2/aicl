@@ -79,8 +79,8 @@ def main(argv=None) -> int:
             return vendors.text_ask(v, escalate_to=up)
         return vendors.text_ask(v, sleep=pause(v), fallback=not args.no_web_fallback)
     nodes = [
-        ModelNode("editor", EDITOR_ROLE, ask(args.editor), DENSE),
-        ModelNode("critic", CRITIC_ROLE, ask(args.critic), DENSE),
+        ModelNode("editor", EDITOR_ROLE, ask(args.editor), DENSE, readable_input=(args.editor == "local")),
+        ModelNode("critic", CRITIC_ROLE, ask(args.critic), DENSE, readable_input=(args.critic == "local")),
         weather_node(),
         artist_node(ask(args.artist), OUT),
         desk_node(OUT, require_acceptance_from="critic"),
