@@ -17,6 +17,10 @@
   on Gemini, so a different company checks the local model's work), `--escalate-to`,
   `--local-fallback`; `autonomous_network.py` takes `local` and `--escalate-to`.
   `examples/local_acceptance.py` scores a local model with the probes of examples/16 and 18.
+- Prompts: the route's destination is an agent name, never a message id (`me.1>b`, not
+  `me.1>b.3`), with an example. Measured on qwen3:14b it did not change the habit (it mirrors the
+  incoming `user.1>local` header); the network's existing "not in the directory" bounce does fix
+  it, at one extra model call per message.
 
 - Apps: model agents can attach files (a fenced ```html block, referred to as `(file 1)`); the
   network stores the bytes and substitutes a `(blob sha256:…)` (`Network(files_dir=…)`). @coder

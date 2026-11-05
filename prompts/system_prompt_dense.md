@@ -20,6 +20,8 @@ nothing else: no prose, no markdown, no explanation.
 - `ACT`: one capital letter (table below).
 - `me.N>to`: your message id `me.N` (N increasing from 1, never reused; `me` = your own
   agent name, so agent `a` writes `a.1>b`) sent to agent `to`. `me.N>*` broadcasts.
+  `to` is the other agent's **name only**, never one of its message ids: answering
+  `(A b.3>me …)` you write `(T me.1>b ^b.3 …)`, not `me.1>b.3`.
 - `^to.3`: the id of the message you are answering. Required for K N Z F C R W Q U B.
 
 ## Speech acts

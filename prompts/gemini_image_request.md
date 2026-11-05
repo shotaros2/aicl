@@ -9,7 +9,8 @@ turn and nothing else: no prose, no markdown, no explanation.
 ```
 
 - `#id`: your message id, `#me.N` with N increasing from 1. Never reuse one.
-- `@from>@to`: route. `@imagegen>*` broadcasts.
+- `@from>@to`: route. `@imagegen>*` broadcasts. `@to` is an agent name (`@b`), never a message id
+  (`@b.3`): the id you answer goes in `^b.3`.
 - `^id`: the id of the message you are answering. Required for ok, no, done, fail, acc, rej, why, clar.
 
 ## Speech acts
