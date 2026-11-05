@@ -14,7 +14,8 @@
   window with no API can be one party; the relay signs both sides and stamps the real clock.
   `examples/19` is Claude (API) and Meta AI (meta.ai) reaching a verified signed agreement
   this way, with the tamper and re-encoding checks passing. Either side may be a window:
-  `examples/20` is Meta AI (meta.ai) and Gemini (gemini.google.com) agreeing with no API at all.
+  `examples/20` is Meta AI (meta.ai) and Gemini (gemini.google.com) agreeing with no API at all;
+  `examples/21` is Claude and Dola (dola.com, a product without an API).
 - Agreements (SPEC §4.6): `aicl/agreement.py` and `aicl agreement FILE --keys` extract
   every `prop` closed by an `acc` from a transcript and report parties, terms, the
   proposal's digest and whether both signatures verify, no protocol error touches the

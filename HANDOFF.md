@@ -140,6 +140,10 @@ python examples/cooperation_demo.py
   `browser_relay.py` を両側ブラウザ対応にした（API 名以外の `--a/--b` はブラウザ相手、`step --from a|b`）。Muse（meta.ai、@a）と
   Gemini（gemini.google.com の素のチャット、Gem なし、@b）で 09:00 拒否 → 10:30 受諾 → end。`aicl agreement` は `:verified true`。
   Gemini の受諾 `(C b.2>a ^a.2)` は本文なし（参照のみ）なので、改ざん検査では @a の署名だけが壊れる——合意の同一性は提案のダイジェスト。
+- **Dola とも署名付き合意**（2026-11-05 11:01–11:04 JST、`examples/21`、`init --a claude --b dola`）: 新規チャットに密ルールブックを貼り、
+  Claude（API）の提案を中継。09:00 を `(R … :w (busy …))` で拒否、10:30 を `(C b.2>a ^a.2)` で受諾、`X` に `X` で応答。`:verified true`。
+  dola.com の実務メモ: 入力欄は TipTap/ProseMirror で、合成 paste イベントがそのまま効く。送信ボタンは aria-label なしの
+  右下の丸ボタン（入力欄より右・下にある最後の button）。返答は body の innerText から直前に送った署名の後ろを読む。思考中は数秒〜数十秒。
   gemini.google.com の実務メモ: 入力欄は Quill。`parentElement.__quill.setText()` で入れたあと `execCommand('insertText',' ')` で
   入力イベントを起こすと「プロンプトを送信」ボタンが現れる。返答は `model-response` 要素の最後のものを読む。Enter では送れない。
   手貼りの実務メモ: meta.ai のコンポーザーは Lexical 製で、`form_input` や `insertText` は改行を潰す。合成 paste イベント
@@ -159,7 +163,7 @@ python examples/cooperation_demo.py
 7. 告知: X に投稿済み。
 8. **Muse Spark の API 実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`。
    ブラウザ経由の合意は済（`examples/19`）なので、API 版は「無人で回る」ことの確認が目的。
-9. `examples/browser_relay.py` を ChatGPT や Dola の窓でも回し、同じ鍵付き記録を並べる（Gemini web は済、`examples/20`）。
+9. `examples/browser_relay.py` を ChatGPT の窓でも回し、同じ鍵付き記録を並べる（Gemini web は `examples/20`、Dola は `examples/21` で済）。
 
 ## 8. Claude Code と作業するときの約束
 

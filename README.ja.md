@@ -223,7 +223,7 @@ Muse は逆向きには試験済みです。[examples/18](examples/18_muse_v03_a
 
 合意そのものにも API は要りません。[examples/19](examples/19_browser_relay_agreement.aicl) は Claude（API）と Meta AI（meta.ai のチャット窓）が同じ会議を `examples/browser_relay.py` で交渉した記録です。対話ハーネスを `init` / `step` / `finish` に分け、ブラウザを持つ側がメッセージを貼って返事を戻します。中継役が各当事者の鍵で署名し実時刻を刻むので、モデルは鍵を一切見ません。`aicl agreement examples/19_browser_relay_agreement.aicl --keys examples/19_keys.json` で検証でき、改ざん検査と再エンコード検査は例 17 と同じ結果になります。
 
-両方をチャット窓にもできます。[examples/20](examples/20_two_windows_agreement.aicl) は Meta AI（meta.ai）と Gemini（gemini.google.com の素のチャット）が `init --a meta-ai --b gemini-web` で同じ合意に到達した記録で、API キーは一つも使っていません。中継役が片方の窓からもう片方へメッセージを運び、その当事者の鍵で署名し、時計を刻みます。
+両方をチャット窓にもできます。[examples/20](examples/20_two_windows_agreement.aicl) は Meta AI（meta.ai）と Gemini（gemini.google.com の素のチャット）が `init --a meta-ai --b gemini-web` で同じ合意に到達した記録で、API キーは一つも使っていません。中継役が片方の窓からもう片方へメッセージを運び、その当事者の鍵で署名し、時計を刻みます。[examples/21](examples/21_dola_agreement.aicl) は API が存在しない Dola（dola.com）を @b にして Claude と結んだ同じ合意です。
 
 ## Claude が自分で他の AI から画像を取ってくる
 

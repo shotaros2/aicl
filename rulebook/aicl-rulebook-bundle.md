@@ -786,6 +786,36 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
+# FILE: examples/21_dola_agreement.aicl
+
+```
+; A real exchange, 2026-11-05 11:01-11:04 JST: Claude (@a, the API, claude-opus-5-5) and Dola
+; (@b, dola.com's chat window: no API exists for it) negotiating a meeting through
+; examples/browser_relay.py (`init --a claude --b dola`). Dola got the dense rulebook and its
+; private goal as its first chat message - it also holds the AICL skill ZIP, but a fresh chat was
+; used so the rulebook in the message is the only instruction it had - and Claude Code relayed
+; each message through the desktop app's browser pane. Public keys: examples/21_keys.json.
+;
+; The relay signed each party's messages with that party's Ed25519 key and stamped the real wall
+; clock as `; now` (SPEC §3.1). `aicl agreement examples/21_dola_agreement.aicl --keys
+; examples/21_keys.json --known meeting --known busy` reports :signed {@a true @b true}
+; :verified true for the 10:30 meeting.
+;
+; Dola rejected 09:00 with the structured busy window and accepted 10:30 by reference,
+; `(acc #b.2 @b>@a ^a.2)`, exactly as Gemini did in example 20; it answered the closing `end`
+; with its own `(end #b.3 @b>@a ^a.3)` (not part of the record). Fourth product to sign an
+; agreement this way, after Gemini (API), Meta AI and Gemini (both windows). Domain terms:
+; meeting, busy.
+
+(prop #a.1 @a>@b (meeting :at 2026-11-12T09:00+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T11:01+09:00 :sig (ed25519 "KZ1A8X_ntYtQtAhx7q-9ID0V0wm9e2tXESx_VXL58JvPX6dy6_bp2s_xULMcRwzfQDcFdp7BNI1berZj6AcuDw"))
+(rej #b.1 @b>@a ^a.1 :sig (ed25519 "HZs7QBXfuEF6JHr5bUXqrGkrEpLtRqFcEOQudp6PveNhY4ziCX_wV9fISowX9qlKJknk8h13iaJPfjKj-G5hBg") :why (busy @b :from 2026-11-12T09:00+09:00 :to 2026-11-12T10:30+09:00))
+(prop #a.2 @a>@b (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T11:04+09:00 :sig (ed25519 "D2HN8azYIXzUTUWgR29GBWkFMYCo962wdQifGk5_cFTV7G47zkpLMh0peVw09AQlCGcsQOC2tK_eoLxF0rS2AQ"))
+(acc #b.2 @b>@a ^a.2 :sig (ed25519 "7JncJu3o6sxXC_XozhTylPFZWMUkb3m-U1pEn2gm_E4IkenC_VY4vb-DZXiJD6bQNv6InEbWQrX8FA_yWj08CQ"))
+(end #a.3 @a>@b ^b.2 :at 2026-11-05T11:04+09:00 :sig (ed25519 "qdQQZyOy02vecun6pA5rJbhdu0up_Kepkn3zXyY5J50esaEEBvbOA6o_5W4np6OHSdFjufc_hfgfpuiu34uZAw"))
+```
+
+---
+
 # FILE: schemas/cooperation.md
 
 # AICL cooperation schema (`coop:` namespace), v0.1

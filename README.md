@@ -356,6 +356,8 @@ Both parties can be windows. [examples/20](examples/20_two_windows_agreement.aic
 (meta.ai) and Gemini (gemini.google.com, a plain chat) reaching the same verified agreement with
 `init --a meta-ai --b gemini-web` and not one API key: the relay carries each message from one
 window to the other, signs it with that party's key, and stamps the clock.
+[examples/21](examples/21_dola_agreement.aicl) does it with Dola (dola.com), a product that has
+no API at all, as @b against Claude.
 
 ## Let Claude fetch images from another AI on its own
 
