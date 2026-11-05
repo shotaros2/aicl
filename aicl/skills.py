@@ -21,7 +21,7 @@ from typing import Callable, List, Optional
 
 from . import tls
 from .build import form, nl
-from .model import Form, KMap, Message, Str, Symbol, Var
+from .model import Form, KMap, Message, Ref, Str, Symbol, Var
 from .network import Ask, SkillNode
 from .parser import parse
 from .printer import to_text
@@ -199,6 +199,17 @@ def desk_node(out_dir: Path, name: str = "desk", require_acceptance_from: Option
             return [node.msg("no", m.sender, reply=m.id, kw={"why": form("unsupported", Symbol(m.act))})] if m.act in ("ask", "prop", "def") else []
         job = m.body[0] if m.body and isinstance(m.body[0], Form) else None
         doc = job.args[0] if job is not None and job.head == "publish" and job.args and isinstance(job.args[0], Form) else None
+        if doc is not None and doc.head == "ref":
+            # (publish (ref #chief.10)): publish the content of that earlier prop, so nobody copies a
+            # long page by hand (seen live: unbalanced parentheses in a hand-copied publish).
+            # The acceptance check below is the same as for a copied page.
+            target = doc.args[0].name if doc.args and isinstance(doc.args[0], Ref) else None
+            log = getattr(getattr(node, "net", None), "log", [])
+            src = next((x for x in log if x.id == target), None)
+            if src is None or src.act != "prop" or not src.body or not isinstance(src.body[0], Form):
+                return [node.msg("no", m.sender, reply=m.id, kw={"why": nl(
+                    "en", f"#{target} is not a proposal in this conversation; refer to the prop that was accepted")})]
+            doc = src.body[0]
         if doc is not None and doc.head == "app":
             return publish_app(node, m, doc)
         if doc is None or "title" not in doc.kw or "body" not in doc.kw:
@@ -231,4 +242,5 @@ def desk_node(out_dir: Path, name: str = "desk", require_acceptance_from: Option
     return SkillNode(name, "publishing desk (no model): publishes the document you send as a page and replies "
                            "done with the page's blob; it publishes exactly what it receives", handler,
                      offers=['(D x.4>desk (publish (doc :title (nl ja "…") :body (nl ja "…") '
-                             ':sources [(source :uri "…")] :image (blob sha256:… :uri "…"))))'])
+                             ':sources [(source :uri "…")] :image (blob sha256:… :uri "…"))))',
+                             "(D x.5>desk (publish (ref #x.3)))   ; the accepted prop #x.3, by reference"])

@@ -65,13 +65,15 @@ def _native_ask(model: str, base_url: str, ctx: int, sleep: float, timeout: floa
     url = root + "/api/chat"
     opener = opener or urllib.request.urlopen
 
-    def ask(system: str, history: List[dict]) -> str:
+    def ask(system: str, history: List[dict], schema: dict = None) -> str:
         body = {"model": model, "stream": False,
                 "options": {"num_ctx": ctx, "temperature": 0},
                 "messages": [{"role": "system", "content": system}]
                             + [{"role": h["role"], "content": h["content"]} for h in history]}
         if think is not None:
             body["think"] = think
+        if schema is not None:          # Ollama constrains decoding to this JSON schema (aicl.actions)
+            body["format"] = schema
         req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
                                      headers={"Content-Type": "application/json", "User-Agent": "aicl/0.3"})
         try:
@@ -103,6 +105,8 @@ def text_ask(model: Optional[str] = None, base_url: Optional[str] = None, sleep:
     inner = muse.text_ask(model=model, base_url=base_url, api_key="ollama", system_role="system",
                           sleep=sleep, timeout=timeout, attempts=1, opener=opener)
 
-    def ask(system: str, history: List[dict]) -> str:
+    def ask(system: str, history: List[dict], schema: dict = None) -> str:
+        if schema is not None:
+            raise RuntimeError("schema-checked answers need Ollama's own API (AICL_LOCAL_API=ollama)")
         return strip_think(inner(system, history))
     return ask

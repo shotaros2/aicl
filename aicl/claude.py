@@ -63,11 +63,15 @@ def text_ask(model: str = DEFAULT_MODEL, effort: str = "low", max_tokens: int = 
         import anthropic
         client = anthropic.Anthropic()
 
-    def ask(system: str, history: List[dict]) -> str:
+    def ask(system: str, history: List[dict], schema: dict = None) -> str:
         # Automatic caching: the system prompt (rulebook, role, directory: thousands of tokens)
         # and the history so far are the same prefix on every call of a network agent.
+        # With `schema`, the answer is JSON guaranteed to match it (aicl.actions).
+        out = {"effort": effort}
+        if schema is not None:
+            out["format"] = {"type": "json_schema", "schema": schema}
         kw = dict(model=model, max_tokens=max_tokens, system=system, messages=history,
-                  output_config={"effort": effort}, cache_control={"type": "ephemeral"})
+                  output_config=out, cache_control={"type": "ephemeral"})
         if model in FALLBACK_MODELS:
             resp = client.beta.messages.create(**kw, betas=["server-side-fallback-2026-07-01"],
                                                fallbacks="default")

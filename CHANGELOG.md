@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- `aicl/actions.py`: `StructuredModelNode`, an agent that answers in schema-checked JSON
+  (Claude's `output_config.format`, Ollama's `format`) while the network writes, validates, signs
+  and records the AICL. Long text travels in JSON strings; content is passed on by message id
+  (`copy_of`) and published by reference (`publish_accepted` -> `(publish (ref #id))`, which the
+  desk resolves and checks against the critic's acceptance exactly as before). `ModelNode._call`
+  is the one place a model is called; `claude.text_ask`, `local.text_ask` and the escalation and
+  web-fallback wrappers pass `schema=` through. `night_shift.py --structured` uses it for the
+  Claude and local roles except the coder. Measured on the Tokyo Tower task, five runs each,
+  Haiku: both ways 5/5 done; JSON 2 bounced answers vs 14, 0 validator errors vs 3, 64 model
+  calls vs 95, about $0.031 vs $0.038 for the five. JSON chiefs sometimes reported done with the
+  writer's page instead of the desk's blob (4 refused by the owner, then corrected).
+- The desk publishes `(publish (ref #id))`: the content of that earlier prop, under the same
+  acceptance check.
+
 - Retrospective after each night-shift task (`aicl/night.py`): every model agent that took part is
   told who it is and may propose one `(prop … (advice (nl ja "…")))` to a teammate about that
   teammate's own job; the receiver answers acc or rej with a reason. Accepted advice goes to

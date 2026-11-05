@@ -385,6 +385,14 @@ teammate accepts it or rejects it with a reason. Accepted advice is kept in
 never overrides the role or the network's rules. The report lists every proposal and its answer.
 Example: [examples/24](examples/24_retro_advice.aicl).
 
+With `--structured`, the Claude and local agents (not the coder) do not write AICL text at all.
+They answer in JSON that the provider guarantees to match a schema (`aicl/actions.py`), and the
+network turns each action into an AICL message, then validates, signs and records it as before.
+Long text never needs hand-balanced parentheses, and content is passed on by message id: the
+chief publishes the accepted page as `(publish (ref #id))`. On the Tokyo Tower task (five runs
+each, Claude Haiku) both ways finished 5/5; the JSON agents had 2 answers bounced instead of 14,
+no validator errors instead of 3, and used about a fifth less.
+
 ## What only AICL can do: an agreement a third party can verify
 
 Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those

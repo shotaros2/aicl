@@ -219,6 +219,10 @@ class ModelNode(Node):
             out.append(m)
         return out
 
+    def _call(self, net: "Network") -> str:
+        """One model call on the history so far (aicl.actions.StructuredModelNode adds a schema)."""
+        return self.ask(self._system(net), self.history)
+
     @staticmethod
     def _key(m: Message):
         return (m.act, m.receiver, tuple(repr(b) for b in m.body))
@@ -254,7 +258,7 @@ class ModelNode(Node):
             self.history.append({"role": "user", "content": text})
             self.calls += 1
             try:
-                raw = self.ask(self._system(net), self.history).strip()
+                raw = self._call(net).strip()
             except Exception as e:  # provider outage or quota: reported, never guessed around
                 self.history.append({"role": "assistant", "content": ""})
                 self._drain_notes(net)

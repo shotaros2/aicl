@@ -182,7 +182,9 @@ RETRO = (
     "(C {me}.N>them ^<their prop id>) if following it in your own job would have made this task go better, "
     "or (R {me}.N>them ^<their prop id> :w (nl ja \"why not\")) if not. Never send end (X); do not repeat "
     "or ask about advice.\n"
-    "; If you have nothing to propose or answer, reply with the single comment line: ; nothing")
+    "; If you have nothing to propose or answer, reply with the single comment line: ; nothing\n"
+    "; (If you answer in JSON: advice is act prop with the advice field; your answer to advice is act acc "
+    "or rej with reply_to and, for rej, why; nothing to say is an empty messages list.)")
 
 
 class Lessons:

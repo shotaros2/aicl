@@ -45,6 +45,7 @@ from aicl.discordlink import Link
 from aicl.model import Form
 from aicl.network import JST, Limits, ModelNode
 from aicl.night import Lessons, night_shift
+from aicl.actions import StructuredModelNode
 from aicl.apps import tester_node
 from aicl.research import library_node, reader_node
 from aicl.skills import artist_node, desk_node, weather_node
@@ -156,6 +157,9 @@ def main(argv=None) -> int:
     ap.add_argument("--web-fallback", action="store_true",
                     help="switch a role to the vendor's chat website when its API is unavailable (needs a sign-in)")
     ap.add_argument("--no-discord", action="store_true", help="do not use Discord even when it is configured")
+    ap.add_argument("--structured", action="store_true",
+                    help="Claude and local roles (not the coder) answer in schema-checked JSON and the network "
+                         "writes the AICL: no hand-written parentheses, content passed on by message id")
     ap.add_argument("--no-retro", action="store_true",
                     help="skip the retrospective after each task (the agents' advice to each other)")
     ap.add_argument("--max-tasks", type=int, default=5, help="inbox tasks per run")
@@ -201,8 +205,12 @@ def main(argv=None) -> int:
     def model(name, role, blurb, vendor, offers=()):
         # local models mirror the dense header (user.1>me) into a wrong address; show them readable input.
         # Advice this agent accepted from teammates in earlier retrospectives goes below its role.
-        n = ModelNode(name, role + lessons.role_note(name), ask(vendor), DENSE, offers=offers,
-                      readable_input=(vendor == "local"))
+        # With --structured, Claude and local roles answer in schema-checked JSON and the network
+        # writes the AICL (aicl/actions.py); the coder keeps writing AICL, for its attached file.
+        cls = (StructuredModelNode if args.structured and vendor in ("claude", "local") and name != "coder"
+               else ModelNode)
+        n = cls(name, role + lessons.role_note(name), ask(vendor), DENSE, offers=offers,
+                readable_input=(vendor == "local" or cls is StructuredModelNode))
         n.blurb = blurb
         return n
 
@@ -239,7 +247,8 @@ def main(argv=None) -> int:
          f"{vendors.describe(args.chief, args.claude_model if args.chief == 'claude' else None)}, writer = {args.writer}, critic = {args.critic}, scout = {args.scout}, "
          f"coder = {args.coder}, artist = {args.artist}"
          + (f"; claude = {args.claude_model}" if "claude" in (args.chief, args.writer, args.critic, args.scout,
-                                                               args.coder, args.artist) else "") + " ---")
+                                                               args.coder, args.artist) else "")
+         + ("; agents answer in JSON" if args.structured else "") + " ---")
     try:
         report = night_shift(NIGHT / "inbox", NIGHT, make_nodes,
                              Limits(args.max_messages, args.max_calls, args.max_seconds, stop),

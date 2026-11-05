@@ -73,7 +73,7 @@ def with_web_fallback(vendor: str, api_factory: Callable[[], Ask], web_factory: 
         note(f"! {vendor} API unavailable ({why[:120]}); switching this role to {target}")
         state["web"] = web_factory()
 
-    def ask(system: str, history: List[dict]) -> str:
+    def ask(system: str, history: List[dict], **kw) -> str:
         if state["web"] is None:
             if forced:
                 switch("AICL_FORCE_WEB")
@@ -81,12 +81,12 @@ def with_web_fallback(vendor: str, api_factory: Callable[[], Ask], web_factory: 
                 try:
                     if state["api"] is None:
                         state["api"] = api_factory()
-                    return state["api"](system, history)
+                    return state["api"](system, history, **kw)
                 except Exception as e:
                     if not is_unavailable(e):
                         raise
                     switch(f"{type(e).__name__}: {e}")
-        return state["web"](system, history)
+        return state["web"](system, history, **kw)
 
     ask.state = state
     return ask
@@ -109,13 +109,13 @@ def with_escalation(vendor: str, primary_factory: Callable[[], Ask], cloud: str,
         note(f"! {vendor} role {msg}")
         state["cloud"] = cloud_factory()
 
-    def ask(system: str, history: List[dict]) -> str:
+    def ask(system: str, history: List[dict], **kw) -> str:     # kw: schema= for aicl.actions
         if state["cloud"] is None:
             try:
                 if state["primary"] is None:
                     state["primary"] = primary_factory()
                 started = time.monotonic()
-                out = state["primary"](system, history)
+                out = state["primary"](system, history, **kw)
                 took = time.monotonic() - started
                 if took > slow_seconds:            # this answer is kept; the next ones go to the cloud
                     escalate(f"too slow ({took:.0f}s for one answer)"
@@ -123,13 +123,13 @@ def with_escalation(vendor: str, primary_factory: Callable[[], Ask], cloud: str,
                     if not out.strip():
                         # Seen with qwen3.5:9b as chief: 201 s of thinking, then nothing, and the
                         # network fell quiet. The cloud answers this same event instead.
-                        return state["cloud"](system, history)
+                        return state["cloud"](system, history, **kw)
                 return out
             except Exception as e:
                 if not (is_unavailable(e) or is_timeout(e)):
                     raise
                 escalate(f"{vendor} unavailable or stalled ({type(e).__name__}: {str(e)[:100]})")
-        return state["cloud"](system, history)
+        return state["cloud"](system, history, **kw)
 
     def observe(kind: str, detail: str = "") -> bool:
         """Returns True when this observation moved the role to the cloud just now."""
