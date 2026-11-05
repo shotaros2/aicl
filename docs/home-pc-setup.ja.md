@@ -121,8 +121,15 @@ python -X utf8 examples\local_acceptance.py
 python -X utf8 examples\night_shift.py --mode inbox --preset local
 ```
 
-   報告書に「手元の AI からクラウドに上げた回数」が出る（料金の目安）。うまく回ったら、
-   `tools\install_night_shift.ps1` が登録する 2 つの予定の引数に `--preset local` を足す（Claude に頼めばよい）。
+   報告書に「手元の AI からクラウドに上げた回数」が出る（料金の目安）。うまく回ったら、§5 の登録を
+   `-Preset local` 付きでやり直す（同じ名前の予定が上書きされる）:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\dev\aicl\tools\install_night_shift.ps1 -Preset local
+```
+
+   登録スクリプトは PATH にある Microsoft Store の「python」（実行しても何もしないダミー）を自動で避け、
+   `%LOCALAPPDATA%\Programs\Python\Python3*` の本物を使う。表示される `python:` の行で確かめる。
    別のモデルを試すときは `.env` に `AICL_LOCAL_MODEL=llama3.1:8b` のように書く（先に `ollama pull`）。
 
 ## 7. どのフォルダでも AICL を使う設定（任意）
