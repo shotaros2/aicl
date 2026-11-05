@@ -25,6 +25,7 @@ KNOWN = {
     "15_blob_and_part.aicl": ["top-terms", "term"],
     "16_gem_v03_acceptance.aicl": ["fx-rate"],
     "17_signed_agreement.aicl": ["meeting", "busy"],
+    "18_muse_v03_acceptance.aicl": ["temp", "haiku"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;
@@ -37,6 +38,7 @@ EXPECTED_WARNINGS = {
     "11_standard_codebook.aicl": ["open-ask", "open-do", "status-unclosed"],
     "13_dola_research_task.aicl": ["open-ask", "unresolved-term", "unresolved-term", "unresolved-term"],
     "16_gem_v03_acceptance.aicl": ["open-do", "status-unclosed"],
+    "18_muse_v03_acceptance.aicl": ["eta-unanchored", "unresolved-term"],
 }
 
 # Errors an example keeps on purpose, as a specimen its header explains (11: a live run where

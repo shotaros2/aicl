@@ -7,6 +7,9 @@
   only, and to any other OpenAI-compatible endpoint via `base_url`. `aicl/vendors.py` picks
   `claude` / `gemini` / `muse` by name; `examples/contract_dialogue.py --a X --b Y` uses it.
   Not yet recorded live: the API preview is open to US developers only.
+- `examples/18`: Meta AI (meta.ai, Thinking mode) passes the v0.3 acceptance test from the
+  dense rulebook alone, relayed by hand: 0 errors, 2 warnings; no invented data, `clar` on an
+  unknown term, `:src (none)` when challenged; the accepted `do` was delivered only on `end`.
 - Agreements (SPEC §4.6): `aicl/agreement.py` and `aicl agreement FILE --keys` extract
   every `prop` closed by an `acc` from a transcript and report parties, terms, the
   proposal's digest and whether both signatures verify, no protocol error touches the

@@ -122,8 +122,16 @@ python examples/cooperation_demo.py
   既定モデル `muse-spark-1.1`）を標準ライブラリだけで叩くコネクタ。`aicl/vendors.py` で `claude / gemini / muse` を名前で選べ、
   `python examples/contract_dialogue.py --b muse` で Claude と Muse が署名付き合意を結ぶ。**未実走**: API プレビューが
   米国限定でキーを取れていない。鍵が取れたら `.env` に `MODEL_API_KEY=` を書いて 1 コマンドで再現できる。
-  それまでは meta.ai に密ルールブックを貼る手動実験（5 節）で、Muse が作法を守れるかを Gem と同じ形で確かめる。
   同じコネクタは `base_url` を変えれば OpenAI 互換の他社・ローカル（Ollama など）にも使える。
+- **Muse の手貼り受け入れテストは合格**（2026-11-05 19:00 JST、meta.ai 思考モード、Claude Code がブラウザペインで中継）:
+  17 メッセージ、エラー 0、警告 2（`eta-unanchored` は時計行なしで `:a` を省いた規則 9 どおりの挙動、`unresolved-term` は
+  わざと未定義にした語）。気温を捏造せず `N :w (unk data)`、未知語に `Q (unk …)`、型付き def に `K`、`do` に `K :t PT1M`、
+  時計行 `; now …` を `:a` に転記、`W` には本文つきで `:s (none)`。Gem（例 16）が落とした点を全部通した。
+  唯一の弱点: `do` を受理しても status 照会 2 回（約束の 1 分経過後も）`pending` のままで、`X` を送った返事として
+  ようやく `Z`（俳句）を納品。1 ターン 1 メッセージのチャットには「納品のための手番」がないのが原因で、ハーネスなら解ける。
+  全文は `examples/18`、生ログは `logs/2026-11-05-muse-v03-acceptance.aicl`。
+  手貼りの実務メモ: meta.ai のコンポーザーは Lexical 製で、`form_input` や `insertText` は改行を潰す。合成 paste イベント
+  （`DataTransfer` に text/plain を載せて `dispatchEvent(new ClipboardEvent('paste', …))`）なら改行が残る。
 
 ## 7. 次にやる候補
 
@@ -137,8 +145,8 @@ python examples/cooperation_demo.py
 5. `examples/cooperation_gemini.py` を `aicl/gemini.py` と `aicl.dialogue` を使う形に整理（コード二重の解消）。
 6. 読み戻し評価を `gemini-3.7-flash` など標準モデルでも取り、README の表を更新（無料枠は日本時間の夕方にリセット）。
 7. 告知: X に投稿済み。
-8. **Muse Spark の実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`、
-   通れば `examples/18` として収録。先に meta.ai への手貼り実験で作法の遵守を記録しておく（Gem の実験 16 と同じ採点）。
+8. **Muse Spark の API 実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`、
+   通れば署名付き合意の例として収録（手貼りの受け入れテストは済、`examples/18`）。
 
 ## 8. Claude Code と作業するときの約束
 

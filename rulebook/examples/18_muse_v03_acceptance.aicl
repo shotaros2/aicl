@@ -1,0 +1,39 @@
+; A real exchange, 2026-11-05 ~19:00 JST: Meta AI on meta.ai in "Thinking" mode (Muse Spark), a
+; consumer chat window with no system prompt and no API. The v0.3 dense rulebook (`me` -> `muse`)
+; was its first chat message; Claude Code then relayed one AICL message per turn through the
+; desktop app's browser pane. The raw dense transcript is logs/2026-11-05-muse-v03-acceptance.aicl;
+; this file is the canonical form. Domain terms: temp, haiku; shinjuku-crowd-index is deliberately
+; undefined.
+;
+; Third vendor family to pass the acceptance test (after Gemini and Claude; Dola partially).
+; `aicl check` finds 0 errors and 2 warnings:
+;  - eta-unanchored (#muse.5): `ok :eta PT1M` without `:at` - no clock line had been sent, and
+;    rule 9 says not to guess the time, so this is the rulebook's own trade-off, not a slip.
+;  - unresolved-term (#user.2): the undefined probe term, answered correctly with `clar (unk …)`.
+; What it got right that the Gemini Gem (example 16) did not: no invented temperature (`no :why
+; (unk data)`), ids never reused, `ok` pointing at the `do` itself, a bodied `tell` when challenged
+; with `why`, and `:src (none)` rather than a fabricated source. The transport's clock line
+; (`; now 2026-11-05T19:12+09:00`, sent before #user.6) was copied into `:at` as rule 9 asks.
+; What it did not do: deliver the haiku while the `do` was open - two status checks, one after the
+; promised minute, still said `pending`; the `done` only came in reply to `end`, closing #user.4
+; after the conversation was being closed. A one-message-per-turn chat has no idle turn in which
+; to deliver, which the harness (examples/relay_dialogue.py) solves and a chat window cannot.
+
+(tell #muse.1 @muse>@user true)
+(ask #user.1 @user>@muse (temp tokyo $t :at 2026-11-05T19:00+09:00 :unit C))
+(no #muse.2 @muse>@user ^user.1 :why (unk data))
+(ask #user.2 @user>@muse (shinjuku-crowd-index $x))
+(clar #muse.3 @muse>@user ^user.2 (unk shinjuku-crowd-index))
+(def #user.3 @user>@muse haiku :args [(topic symbol)] :gloss (nl en "compose one original haiku") :ret term)
+(ok #muse.4 @muse>@user ^user.3)
+(do #user.4 @user>@muse (haiku broccoli) :by 2026-11-06T00:00+09:00)
+(ok #muse.5 @muse>@user ^user.4 :eta PT1M)
+(ask #user.5 @user>@muse (status (ref #user.4) $s))
+(tell #muse.6 @muse>@user ^user.5 {$s pending})
+; now 2026-11-05T19:12+09:00
+(ask #user.6 @user>@muse (status (ref #user.4) $s))
+(tell #muse.7 @muse>@user ^user.6 {$s pending} :at 2026-11-05T19:12+09:00)
+(why #user.7 @user>@muse ^muse.7)
+(tell #muse.8 @muse>@user ^user.7 true :src (none))
+(end #user.8 @user>@muse)
+(done #muse.9 @muse>@user ^user.4 (nl en "broccoli crowns / winter steam in quiet bowl / evening forest green"))

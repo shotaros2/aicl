@@ -1,0 +1,24 @@
+; Raw dense transcript, 2026-11-05 ~19:00 JST: Meta AI on meta.ai in "Thinking" mode (Muse Spark),
+; given only the v0.3 dense rulebook (rulebook/aicl-rulebook-dense.md, `me` -> `muse`) as the first
+; chat message, driven by Claude Code through the desktop app's browser pane. No system prompt, no
+; API: a consumer chat window. Every line below is exactly what was sent or received, except that the
+; `; now` clock line was sent glued to the following message because the composer collapsed the
+; newline; Muse still read it as the transport's clock.
+(T muse.1>user true)
+(A user.1>muse (temp tokyo $t :a 20261105T1900+9 :u C))
+(N muse.2>user ^user.1 :w (unk data))
+(A user.2>muse (shinjuku-crowd-index $x))
+(Q muse.3>user ^user.2 (unk shinjuku-crowd-index))
+(E user.3>muse haiku :r [(topic symbol)] :g (nl en "compose one original haiku") :v term)
+(K muse.4>user ^user.3)
+(D user.4>muse (haiku broccoli) :b 20261106T0000+9)
+(K muse.5>user ^user.4 :t PT1M)
+(A user.5>muse (status (ref #user.4) $s))
+(T muse.6>user ^user.5 {$s pending})
+; now 20261105T1912+9
+(A user.6>muse (status (ref #user.4) $s))
+(T muse.7>user ^user.6 {$s pending} :a 20261105T1912+9)
+(W user.7>muse ^muse.7)
+(T muse.8>user ^user.7 true :s (none))
+(X user.8>muse)
+(Z muse.9>user ^user.4 (nl en "broccoli crowns / winter steam in quiet bowl / evening forest green"))

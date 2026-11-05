@@ -337,6 +337,13 @@ The runner takes `--a` / `--b` to choose the vendors: `claude`, `gemini`, or `mu
 the preview is open to US developers only, so that pairing is wired but not yet recorded live).
 `aicl/muse.py` is a dependency-free client for any OpenAI-compatible endpoint.
 
+Muse has been tested the other way: [examples/18](examples/18_muse_v03_acceptance.aicl) is
+Meta AI on meta.ai (Thinking mode, no API, no system prompt) given the dense rulebook as its
+first chat message and relayed one message per turn. `aicl check`: 0 errors, 2 warnings. It
+refused to invent a temperature (`no :why (unk data)`), answered an undefined term with
+`clar (unk …)`, kept its ids, and admitted `:src (none)` when challenged; the one thing it did
+not do was deliver the accepted `do` until the conversation was being ended.
+
 ## Let Claude fetch images from another AI on its own
 
 The end goal of the cooperation layer: a model that needs something it cannot do
