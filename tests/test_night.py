@@ -110,6 +110,54 @@ class NightShiftTests(unittest.TestCase):
                 f':bytes {p.stat().st_size} :media "text/markdown" :uri "{p.resolve().as_uri()}"))'))
             self.assertTrue(deliverable_ok(beside))          # seen live: the blob second in the body
 
+    @unittest.skipUnless(HAVE_CRYPTO, "needs the cryptography package")
+    def test_retrospective_advice_is_decided_by_the_receiver_and_kept_only_when_accepted(self):
+        from datetime import datetime
+        from aicl.network import Limits as L
+        from aicl.night import Lessons, run_task, write_report
+
+        def chief(system, history):
+            e = last(history)
+            if "; retro" in e:
+                return '(P chief.3>writer (advice (nl ja "出典のURLはそのまま書いて")))'
+            if "P writer." in e:
+                return '(R chief.4>writer ^writer.2 :w (nl ja "速さより正確さを優先する"))'
+            if "(task " in e:
+                return '(A chief.1>writer (draft :about (nl ja "x") $d))'
+            if "T writer." in e:
+                return '(F chief.2>owner ^owner.1 :e not-found :w (nl en "test"))'
+            return ""
+
+        def writer(system, history):
+            e = last(history)
+            if "; retro" in e:
+                return '(P writer.2>chief (advice (nl ja "もっと早く頼んで")))'
+            if "P chief." in e:
+                return "(C writer.3>chief ^chief.3)"
+            if "(draft" in e:
+                return '(T writer.1>chief ^chief.1 {$d (doc :title (nl ja "t"))})'
+            return ""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            lessons = Lessons(tmp / "lessons.jsonl")
+            make = lambda out: [ModelNode("chief", "lead", chief, RULEBOOK), ModelNode("writer", "writes", writer, RULEBOOK)]
+            o = run_task("t1", "テスト", tmp / "t1", make, L(max_messages=40, max_calls_per_agent=10),
+                         known_terms=["draft", "doc", "advice"], echo=lambda s: None, lessons=lessons)
+            self.assertEqual(o.status, "fail")
+            self.assertEqual([(r["from"], r["to"], r["answer"]) for r in o.retro],
+                             [("chief", "writer", "acc"), ("writer", "chief", "rej")])
+            self.assertEqual(o.retro[1]["why"], "速さより正確さを優先する")
+            kept = lessons.all()
+            self.assertEqual([(r["from"], r["to"], r["text"]) for r in kept], [("chief", "writer", "出典のURLはそのまま書いて")])
+            self.assertIn("from @chief: 出典のURLはそのまま書いて", lessons.role_note("writer"))
+            self.assertIn("never overrides your role", lessons.role_note("writer"))
+            self.assertEqual(lessons.role_note("chief"), "")
+            self.assertIn("(prop #chief.3 @chief>@writer (advice", (tmp / "t1" / "transcript.aicl").read_text(encoding="utf-8"))
+            report = write_report(tmp, [o], datetime.now()).read_text(encoding="utf-8")
+            self.assertIn("振り返り（AI 同士の提案）: 2 件、うち受け入れ 1 件", report)
+            self.assertIn("@writer → @chief: 「もっと早く頼んで」 … 断り（速さより正確さを優先する）", report)
+
     def test_empty_inbox_does_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(night_shift(Path(tmp) / "inbox", Path(tmp), self.nodes, echo=lambda s: None))

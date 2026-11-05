@@ -884,6 +884,27 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
+# FILE: examples/24_retro_advice.aicl
+
+```
+; A retrospective after a task (aicl/night.py): the agents that took part each propose one piece
+; of advice to a teammate, and the teammate decides. Accepted advice is a signed-able agreement
+; like any prop/acc pair; the night shift keeps it in lessons.jsonl and adds it below the
+; receiver's role on later tasks. It never ranks above the role or the network's rules.
+; The advice below is what the 2026-11-05 field test called for (HANDOFF section 6).
+; Domain terms: advice
+
+(prop #critic.9 @critic>@chief (advice (nl ja "ページの確認は質問(A)ではなく提案(P)で送ってほしい。そうすれば受け入れ(C)で答えられる")))
+(acc  #chief.30 @chief>@critic ^critic.9)
+(prop #chief.31 @chief>@writer (advice (nl ja "出典のURLは受け取ったとおりに書き、言い換えないでほしい")))
+(acc  #writer.8 @writer>@chief ^chief.31)
+; Advice can be refused, with a reason, like any proposal.
+(prop #writer.9 @writer>@critic (advice (nl ja "細かい表現の違いは差し戻さず、受け入れてほしい")))
+(rej  #critic.10 @critic>@writer ^writer.9 :why (nl ja "「日本のシンボル」と「東京のシンボル」の違いは事実の違いなので、差し戻しは続ける"))
+```
+
+---
+
 # FILE: schemas/cooperation.md
 
 # AICL cooperation schema (`coop:` namespace), v0.1
@@ -937,6 +958,21 @@ Rules, on top of SPEC §4.4:
 2. A hub MUST NOT delegate a task whose `:needs` are not all `done`.
 3. A specialist failure (`fail`) is propagated to the requester as `fail` with `:why (ref #<the specialist's fail id>)`; the hub never silently retries with a different interpretation.
 4. Artifacts are the only way results move between tasks. A task never refers to "the previous result".
+
+## Retrospective: advice between teammates
+
+After a task, the agents that took part may each propose **one** piece of advice to another
+agent that took part. The receiver decides; nothing is imposed.
+
+| Form | Meaning |
+|---|---|
+| `(prop … (advice (nl lang "…")))` | "Next time, do this differently." Concrete and short; never about rules, permissions or where facts come from. |
+| `(acc … ^<prop>)` | Taken on. In `aicl/night.py` it is stored in `lessons.jsonl` and added below the receiver's role on later tasks (the newest five), worded as advice that never overrides the role or the network's rules. |
+| `(rej … ^<prop> :why …)` | Declined, with the reason. |
+
+`advice` is a plain term the night shift's agents know by agreement (its `known_terms`), not a
+`coop:` term. Worked example: `examples/24_retro_advice.aicl`. The owner can drop any lesson by
+deleting its line.
 
 ## Planning
 

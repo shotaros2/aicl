@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Retrospective after each night-shift task (`aicl/night.py`): every model agent that took part is
+  told who it is and may propose one `(prop … (advice (nl ja "…")))` to a teammate about that
+  teammate's own job; the receiver answers acc or rej with a reason. Accepted advice goes to
+  `out/night/lessons.jsonl` (`Lessons`) and below the receiver's role on later tasks (newest five,
+  worded as advice that never overrides the role or the rules); the report lists every proposal
+  and answer; `night_shift.py --no-retro` skips it. `Network.run` takes a per-agent
+  `wake_event` and returns snapshots, so a network can run again after its task. Documented in
+  `schemas/cooperation.md`, example `examples/24_retro_advice.aicl`. Four live rounds on the Tokyo
+  Tower task tuned the prompt: misdirected advice was accepted until each agent was named and
+  asked whether following the advice in its own job would have helped. A retrospective costs
+  about $0.004 with Haiku.
+- A specialist's `(unsupported do)` refusal now carries `:use` with its own example request (a
+  critic had read it as a bad URL and retried); an invalid answer's note shows its end as well as
+  its start.
+
 - `night_shift.py --preset home` now puts the chief and the writer on Claude Haiku (the scout stays
   local, the artist on Gemini), after qwen3.5:9b could not hold either role in the field test.
   Measured on the Tokyo Tower task: done in 49 s, critic's signed acceptance verified, 13 Haiku

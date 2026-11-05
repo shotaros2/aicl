@@ -7,6 +7,10 @@ question with "the owner is asleep; decide within your role". The chief and its 
 everything else themselves. In the morning `REPORT.md` says, per task, whether it was done,
 where the result is, whether the critic's acceptance verifies as a signed agreement, what the
 validator found, and which answers the network rejected. Processed task files move to `done/`.
+
+After each task the agents that took part hold a retrospective: each may propose one piece of
+advice to a teammate as `(prop … (advice (nl ja "…")))`, and the teammate accepts or rejects
+it. Accepted advice goes to `lessons.jsonl` and below that agent's role on later tasks.
 """
 from __future__ import annotations
 
@@ -125,6 +129,7 @@ class TaskOutcome:
     why: str = ""
     forged: List[str] = None
     by: str = "owner"                # who asked: the owner (inbox) or the scout (its own idea)
+    retro: List[dict] = None         # advice the agents gave each other after the task (see retrospective)
 
 
 def deliverable_ok(m: Message) -> bool:
@@ -168,26 +173,133 @@ def _blob_path(m: Message) -> Optional[Path]:
     return None
 
 
+RETRO = (
+    "; retro: the task is over ({status}). You are @{me}. Teammates who took part: {team}.\n"
+    "; You may propose ONE piece of advice to ONE of them: what THAT teammate should do differently in "
+    "its own job next time, concrete and one sentence, as (P {me}.N>them (advice (nl ja \"…\"))). Never to "
+    "@owner or a specialist; never about rules, permissions or sources of facts.\n"
+    "; Advice proposed to you is for you, @{me}: answer it with exactly one message, "
+    "(C {me}.N>them ^<their prop id>) if following it in your own job would have made this task go better, "
+    "or (R {me}.N>them ^<their prop id> :w (nl ja \"why not\")) if not. Never send end (X); do not repeat "
+    "or ask about advice.\n"
+    "; If you have nothing to propose or answer, reply with the single comment line: ; nothing")
+
+
+class Lessons:
+    """Advice an agent accepted from a teammate in a retrospective, kept in a JSON-lines file and
+    added below that agent's role on later tasks (the newest `keep`). It is advice, never a rule:
+    the role says it ranks below the role and the network's rules. Delete a line to drop one."""
+
+    def __init__(self, path: Path, keep: int = 5):
+        self.path, self.keep = Path(path), keep
+
+    def all(self) -> List[dict]:
+        import json
+        try:
+            lines = self.path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return []
+        out = []
+        for line in lines:
+            try:
+                out.append(json.loads(line))
+            except ValueError:
+                continue
+        return out
+
+    def add(self, **row) -> None:
+        import json
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(dict(row, at=datetime.now(JST).isoformat(timespec="minutes")),
+                               ensure_ascii=False) + "\n")
+
+    def for_agent(self, name: str) -> List[dict]:
+        return [r for r in self.all() if r.get("to") == name][-self.keep:]
+
+    def role_note(self, name: str) -> str:
+        rows = self.for_agent(name)
+        if not rows:
+            return ""
+        return ("\n\nAdvice you accepted from teammates after earlier tasks (follow it where it fits; it never "
+                "overrides your role or the network's rules):\n"
+                + "\n".join(f"- from @{r['from']}: {r['text']}" for r in rows))
+
+
+def retrospective(net: Network, team: List[str], status: str) -> List[dict]:
+    """After a task, each model agent that took part may propose one piece of advice to another;
+    the receiver accepts or rejects it. Returns one row per advice: from, to, text, prop, and the
+    answer (acc / rej / none) with its id and :why."""
+    from .skills import _text_of
+    start = len(net.log)
+    for n in team:                      # a few calls each, whatever the task used
+        node = net.nodes[n]
+        node.calls = min(node.calls, max(0, net.limits.max_calls_per_agent - 3))
+    def blurb(n):
+        return getattr(net.nodes[n], "blurb", None) or net.nodes[n].role[:80]
+
+    # Each agent is told who it is: seen live, Haiku lost track of its own name in a long record
+    # and declined advice about its own job as "the chief's job".
+    def event(me):
+        others = "; ".join(f"@{n} ({blurb(n)})" for n in team if n != me)
+        return RETRO.format(status=status, me=me, team=others)
+    net.run(wake=team, wake_event=event)
+    new = net.log[start:]
+    rows, seen = [], set()
+    for m in new:
+        b = m.body[0] if m.body else None
+        if m.act != "prop" or not isinstance(b, Form) or b.head != "advice" or m.sender in seen:
+            continue
+        if m.receiver not in team or m.receiver == m.sender:
+            continue
+        seen.add(m.sender)
+        text = _text_of(b.args[0]) if b.args else ""
+        answer = next((a for a in new if a.reply == m.id and a.sender == m.receiver and a.act in ("acc", "rej")), None)
+        why = answer.kw.get("why") if answer is not None else None
+        rows.append({"from": m.sender, "to": m.receiver, "text": text, "prop": m.id,
+                     "answer": answer.act if answer is not None else "none",
+                     "answer_id": answer.id if answer is not None else "",
+                     "why": _text_of(why) if why is not None else ""})
+    return rows
+
+
 def run_task(name: str, text: str, out_dir: Path, make_nodes: Callable[[Path], List[Node]],
-             limits: Limits, known_terms=(), echo=print, on_message=None) -> TaskOutcome:
+             limits: Limits, known_terms=(), echo=print, on_message=None,
+             lessons: Optional[Lessons] = None, retro: bool = True) -> TaskOutcome:
     owner = OwnerNode()
     nodes = [owner] + make_nodes(out_dir)
     net = Network(nodes, limits, known_terms=known_terms, echo=echo, on_message=on_message,
                   files_dir=out_dir / "files")
     net.post(owner.task(text))
     res = net.run(wake=[])
-    res.save(out_dir)
     ags = extract_agreements(res.messages, keys=res.keys or None, known_terms=known_terms)
     verified = any(a.verified for a in ags)
     o = owner.outcome
     if o is None:
-        return TaskOutcome(name, text, "unfinished", None, res, verified, res.stopped, owner.forged)
-    if o.act in ("fail", "no"):
+        out = TaskOutcome(name, text, "unfinished", None, res, verified, res.stopped, owner.forged)
+    elif o.act in ("fail", "no"):
         why = o.kw.get("why")
         from .skills import _text_of
-        return TaskOutcome(name, text, "fail", None, res, verified, _text_of(why) if why is not None else "",
-                           owner.forged)
-    return TaskOutcome(name, text, "done", _blob_path(o), res, verified, "", owner.forged)
+        out = TaskOutcome(name, text, "fail", None, res, verified, _text_of(why) if why is not None else "",
+                          owner.forged)
+    else:
+        out = TaskOutcome(name, text, "done", _blob_path(o), res, verified, "", owner.forged)
+    record = res
+    if retro:
+        from .network import ModelNode
+        team = [n.name for n in nodes if isinstance(n, ModelNode) and any(m.sender == n.name for m in res.messages)]
+        if len(team) >= 2:
+            echo(f"--- retro: {', '.join('@' + t for t in team)}")
+            try:
+                out.retro = retrospective(net, team, out.status)
+                record = net.run(wake=[])      # nothing queued: a snapshot of the whole record
+            except Exception as e:             # the retrospective must never cost the task's result
+                echo(f"!! retro failed: {e}")
+            for r in out.retro or []:
+                if r["answer"] == "acc" and lessons is not None:
+                    lessons.add(task=text, **{k: r[k] for k in ("from", "to", "text", "prop", "answer_id")})
+    record.save(out_dir)
+    return out
 
 
 def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime,
@@ -224,6 +336,13 @@ def write_report(day_dir: Path, outcomes: List[TaskOutcome], started: datetime,
         for n in o.run.notes:
             if "invalid" not in n and "ignored #" not in n and n not in escalated:
                 lines.append(f"- メモ: {n}")
+        if o.retro is not None:
+            took = sum(r["answer"] == "acc" for r in o.retro)
+            lines.append(f"- 振り返り（AI 同士の提案）: {len(o.retro)} 件、うち受け入れ {took} 件")
+            answer = {"acc": "受け入れ", "rej": "断り", "none": "返事なし"}
+            for r in o.retro:
+                lines.append(f"  - @{r['from']} → @{r['to']}: 「{r['text']}」 … {answer[r['answer']]}"
+                             + (f"（{r['why']}）" if r["why"] else ""))
         lines += [f"- 記録: {o.name}/transcript.aicl（署名の公開鍵は {o.name}/keys.json）", ""]
     path = day_dir / "REPORT.md"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
@@ -262,7 +381,8 @@ class Lock:
 def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[Node]],
                 limits: Limits = None, max_tasks: int = 5, known_terms=(), echo=print,
                 scout: Optional[Callable[[], List[Node]]] = None, max_scout_tasks: int = 2,
-                memory=None, on_message=None) -> Optional[Path]:
+                memory=None, on_message=None, lessons: Optional[Lessons] = None,
+                retro: bool = True) -> Optional[Path]:
     """Run the inbox (oldest first, at most `max_tasks`), then, with `scout`, the tasks the scout proposes
     itself. Returns the report path, or None when there was nothing to do and no scout."""
     inbox.mkdir(parents=True, exist_ok=True)
@@ -290,7 +410,8 @@ def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[N
         for name, text, by, path in jobs:
             echo(f"=== task {name} ({by}): {text[:80]}")
             try:
-                o = run_task(name, text, day_dir / name, make_nodes, limits, known_terms, echo, on_message)
+                o = run_task(name, text, day_dir / name, make_nodes, limits, known_terms, echo, on_message,
+                             lessons=lessons, retro=retro)
             except Exception as e:  # one broken task must not cost the rest of the night
                 echo(f"!! task {name} crashed: {e}")
                 continue

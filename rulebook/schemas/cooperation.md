@@ -50,6 +50,21 @@ Rules, on top of SPEC §4.4:
 3. A specialist failure (`fail`) is propagated to the requester as `fail` with `:why (ref #<the specialist's fail id>)`; the hub never silently retries with a different interpretation.
 4. Artifacts are the only way results move between tasks. A task never refers to "the previous result".
 
+## Retrospective: advice between teammates
+
+After a task, the agents that took part may each propose **one** piece of advice to another
+agent that took part. The receiver decides; nothing is imposed.
+
+| Form | Meaning |
+|---|---|
+| `(prop … (advice (nl lang "…")))` | "Next time, do this differently." Concrete and short; never about rules, permissions or where facts come from. |
+| `(acc … ^<prop>)` | Taken on. In `aicl/night.py` it is stored in `lessons.jsonl` and added below the receiver's role on later tasks (the newest five), worded as advice that never overrides the role or the network's rules. |
+| `(rej … ^<prop> :why …)` | Declined, with the reason. |
+
+`advice` is a plain term the night shift's agents know by agreement (its `known_terms`), not a
+`coop:` term. Worked example: `examples/24_retro_advice.aicl`. The owner can drop any lesson by
+deleting its line.
+
 ## Planning
 
 The hub's planner is pluggable. The reference implementation ships a `RecipePlanner`

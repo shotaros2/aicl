@@ -24,7 +24,7 @@ from typing import Callable, Deque, Dict, Iterable, List, Optional
 
 from .build import msg as build_msg, nl
 from .dense import ACT_CODE, expand as dense_expand, to_dense
-from .model import ACTS, AICLError, Form, Message, ParseError, Symbol
+from .model import ACTS, AICLError, Form, Message, ParseError, Str, Symbol
 from .parser import parse
 from .printer import to_text
 from .validate import Issue, validate_conversation, validate_message
@@ -100,10 +100,21 @@ class SkillNode(Node):
             return []
         self.net = net          # lets a specialist check the record, e.g. the desk's acceptance gate
         try:
-            return self.handler(self, incoming)
+            return [self._with_example(f, incoming) for f in self.handler(self, incoming)]
         except Exception as e:  # the specialist's own failure, reported, never hidden
             return [self.msg("fail", incoming.sender, reply=incoming.id,
                              kw={"code": Symbol("internal"), "why": nl("en", str(e)[:200])})]
+
+
+    def _with_example(self, f: Form, incoming: Message) -> Form:
+        """A bare `(unsupported do)` refusal also shows how to ask. Seen live: a critic sent the
+        reader a do instead of an ask, read `(unsupported do)` as a bad address, and retried the
+        same request with other spellings of the URL until it gave up."""
+        why = f.kw.get("why")
+        if (f.head == "no" and self.offers and isinstance(why, Form) and why.head == "unsupported"
+                and "use" not in why.kw):
+            f.kw["why"] = Form("unsupported", why.args, dict(why.kw, use=Str(self.offers[0])))
+        return f
 
 
 class ModelNode(Node):
@@ -264,7 +275,8 @@ class ModelNode(Node):
                 break
             except AICLError as e:
                 error = str(e)[:200]
-                net.note(f"@{self.name} invalid (attempt {attempt + 1}): {error} | {raw[:160]}")
+                shown = raw if len(raw) <= 260 else raw[:160] + " … " + raw[-100:]   # the end shows truncation
+                net.note(f"@{self.name} invalid (attempt {attempt + 1}): {error} | {shown}")
                 if self._observe(net, "invalid", error):
                     tries += 1      # the role just moved to the cloud: give the new model one try at this event
             attempt += 1
@@ -397,12 +409,15 @@ class Network:
             return f"stop file {self.limits.stop_file}"
         return ""
 
-    def run(self, wake: Iterable[str] = None) -> NetworkResult:
-        """Wake the given agents (default: every model agent), then deliver until quiet."""
+    def run(self, wake: Iterable[str] = None, wake_event="; wake: you are online") -> NetworkResult:
+        """Wake the given agents (default: every model agent) with `wake_event` (a string, or a
+        function of the agent's name), then deliver until quiet. A network may run again (e.g. a
+        retrospective after a task); each result is a snapshot of the whole record so far."""
         started = time.monotonic()
         stopped = ""
         for name in (wake if wake is not None else [n.name for n in self.nodes.values() if isinstance(n, ModelNode)]):
-            for f in self.nodes[name].react(self, now_line(self.clock()) + "\n; wake: you are online", None):
+            event = wake_event(name) if callable(wake_event) else wake_event
+            for f in self.nodes[name].react(self, now_line(self.clock()) + "\n" + event, None):
                 self.post(f)
         while self.queue:
             stopped = self._stop_reason(started)
@@ -433,5 +448,5 @@ class Network:
         stopped = stopped or "quiet: no agent had anything left to say"
         issues = validate_conversation(self.log, self.known_terms, keys=self.keys or None)
         calls = {n.name: n.calls for n in self.nodes.values() if isinstance(n, ModelNode)}
-        return NetworkResult(self.log, self.wire, issues, self.notes, self.keys, stopped,
+        return NetworkResult(list(self.log), list(self.wire), issues, list(self.notes), dict(self.keys), stopped,
                              time.monotonic() - started, calls)

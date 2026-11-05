@@ -31,6 +31,7 @@ KNOWN = {
     "21_dola_agreement.aicl": ["meeting", "busy"],
     "22_gemini_drives_claude.aicl": ["meeting", "busy"],
     "23_autonomous_network.aicl": ["doc", "publish", "weather-now", "weather", "source"],
+    "24_retro_advice.aicl": ["advice"],
 }
 
 # Warnings an example produces on purpose (terms used before they are resolvable, caught by clar;

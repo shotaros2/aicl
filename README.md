@@ -378,6 +378,13 @@ own bot account if you created one for it, and through a webhook otherwise. The 
 and the pages arrive in a reports channel. The thinking, signing and validation stay on the PC.
 A Discord failure is noted in the report and never stops a shift.
 
+After each task the agents that took part hold a retrospective. Each may propose one piece of
+advice to a teammate, as an ordinary `prop` with an `(advice (nl ja "…"))` body, and the
+teammate accepts it or rejects it with a reason. Accepted advice is kept in
+`out/night/lessons.jsonl` and added below that agent's role on later tasks, worded as advice that
+never overrides the role or the network's rules. The report lists every proposal and its answer.
+Example: [examples/24](examples/24_retro_advice.aicl).
+
 ## What only AICL can do: an agreement a third party can verify
 
 Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those

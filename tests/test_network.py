@@ -221,6 +221,15 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(owner.outcome.act, "fail")
         self.assertEqual(owner.forged, ["chief.1"])
 
+    def test_an_unsupported_refusal_shows_how_to_ask(self):
+        # Seen live: a critic sent the reader a do, read (unsupported do) as a bad address, and retried.
+        from aicl.research import reader_node
+        r = reader_node(fetch=lambda url: (url, "<title>t</title>x"), allow=lambda u: "ok")
+        m = aicl.Message.from_form(aicl.parse_one('(do #c.1 @c>@reader (read "https://example.org/" $p))'))
+        out = aicl.to_text(r.react(None, "", m)[0])
+        self.assertIn("(unsupported do :use", out)
+        self.assertIn("(A x.3>reader (read", out)
+
     def test_a_third_identical_request_is_bounced(self):
         # Seen with qwen3.5:9b, thinking off: the same draft request twelve times.
         from aicl.network import Node
