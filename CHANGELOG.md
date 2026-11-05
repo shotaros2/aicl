@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Apps: model agents can attach files (a fenced ```html block, referred to as `(file 1)`); the
+  network stores the bytes and substitutes a `(blob sha256:…)` (`Network(files_dir=…)`). @coder
+  builds single-file web apps; @tester (`aicl/apps.py`) accepts or rejects them mechanically (hash,
+  parse, nothing loaded from or sent to other addresses, `node --check` syntax, size); the desk
+  publishes only tester-accepted apps as `.html` (`desk_node(app_reviewer="tester")`).
 - Discord link (`aicl/discordlink.py`, `docs/discord-setup.ja.md`): the owner's messages in a
   tasks channel become night-shift tasks (others and bots ignored); each delivered AICL message
   is posted under its sender's name (its own bot token if configured, else a webhook); reports

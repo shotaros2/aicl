@@ -362,6 +362,15 @@ gives the European Central Bank's exchange rates. `tools/install_night_shift.ps1
 two jobs: the full night shift at 02:00, and an inbox check every 30 minutes. With the inbox
 check, a task dropped into the inbox from a phone through OneDrive starts soon.
 
+The team can also build small apps. `@coder` writes a single-file web app (HTML, CSS and
+JavaScript) and attaches it to its message as a file. The network stores the bytes and puts a
+`(blob sha256:…)` in the message, because bytes never travel inside AICL. `@tester`
+(`aicl/apps.py`, no model) checks the app before the desk will publish it. It checks that the file
+matches its hash, that the page parses, and that the JavaScript has no syntax errors (`node --check`
+parses without running). It also checks that the app loads nothing from other addresses and sends
+nothing over the network, so it cannot leak what you type into it. The finished app arrives as an
+`.html` file you open in a phone browser.
+
 The team can also live in Discord (`aicl/discordlink.py`, setup in `docs/discord-setup.ja.md`).
 Your messages in a tasks channel become tasks; messages from anyone else, or from bots, are
 ignored. Each AI's messages appear in a wire channel under its own name. An agent posts with its

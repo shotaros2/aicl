@@ -132,7 +132,8 @@ def run_task(name: str, text: str, out_dir: Path, make_nodes: Callable[[Path], L
              limits: Limits, known_terms=(), echo=print, on_message=None) -> TaskOutcome:
     owner = OwnerNode()
     nodes = [owner] + make_nodes(out_dir)
-    net = Network(nodes, limits, known_terms=known_terms, echo=echo, on_message=on_message)
+    net = Network(nodes, limits, known_terms=known_terms, echo=echo, on_message=on_message,
+                  files_dir=out_dir / "files")
     net.post(owner.task(text))
     res = net.run(wake=[])
     res.save(out_dir)

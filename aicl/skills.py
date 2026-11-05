@@ -164,19 +164,42 @@ def accepted_by(log: List[Message], reviewer: str, doc: Form) -> bool:
                for m in log)
 
 
-def desk_node(out_dir: Path, name: str = "desk", require_acceptance_from: Optional[str] = None) -> SkillNode:
+def desk_node(out_dir: Path, name: str = "desk", require_acceptance_from: Optional[str] = None,
+              app_reviewer: Optional[str] = None) -> SkillNode:
     """Answers (do … (publish (doc :title … :body … [:sources […]] [:image (blob …)]))) by
     writing a Markdown file, with ok, then done carrying the file's blob.
 
     With `require_acceptance_from="critic"` the desk enforces the review rule in code: it publishes
     only a doc that the reviewer accepted, word for word, earlier in this run - a role text alone is
-    not enough, because a model can ignore it (seen live: a chief published before the critic agreed)."""
+    not enough, because a model can ignore it (seen live: a chief published before the critic agreed).
+
+    With `app_reviewer="tester"` it also publishes apps, (publish (app :title … :file (blob …))): only
+    an app the tester accepted, word for word, whose file still matches its blob; it is copied into
+    the output folder as an .html page and returned as a blob."""
+
+    def publish_app(node: SkillNode, m: Message, app: Form) -> List[Form]:
+        from .apps import blob_ok
+        if app_reviewer is None:
+            return [node.msg("no", m.sender, reply=m.id, kw={"why": nl("en", "this desk does not publish apps")})]
+        if not accepted_by(getattr(getattr(node, "net", None), "log", []), app_reviewer, app):
+            return [node.msg("no", m.sender, reply=m.id, kw={"why": nl(
+                "en", f"@{app_reviewer} has not accepted this exact app: propose it to @{app_reviewer} first")})]
+        data, why = blob_ok(app.kw.get("file"))
+        if data is None:
+            return [node.msg("no", m.sender, reply=m.id, kw={"why": nl("en", why)})]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / f"{m.id.replace('.', '-')}.html"
+        path.write_bytes(data)
+        return [node.msg("ok", m.sender, reply=m.id),
+                node.msg("done", m.sender, _blob(data, "text/html", path), reply=m.id)]
 
     def handler(node: SkillNode, m: Message) -> List[Form]:
         if m.act != "do":
             return [node.msg("no", m.sender, reply=m.id, kw={"why": form("unsupported", Symbol(m.act))})] if m.act in ("ask", "prop", "def") else []
         job = m.body[0] if m.body and isinstance(m.body[0], Form) else None
         doc = job.args[0] if job is not None and job.head == "publish" and job.args and isinstance(job.args[0], Form) else None
+        if doc is not None and doc.head == "app":
+            return publish_app(node, m, doc)
         if doc is None or "title" not in doc.kw or "body" not in doc.kw:
             return [node.msg("no", m.sender, reply=m.id,
                              kw={"why": nl("en", "expected (publish (doc :title … :body …))")})]

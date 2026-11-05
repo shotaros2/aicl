@@ -127,10 +127,45 @@ class ModelNode(Node):
             self.system = rb + "\n\n" + NETWORK_RULES.format(role=self.role, directory=net.directory(self.name))
         return self.system
 
+    def _attach(self, raw: str, net: "Network") -> str:
+        """Files travel beside messages, never inside them (SPEC: bytes are sent as a blob). A model puts
+        each file in a fenced block (```html … ```) and refers to it as (file 1), (file 2) … in its AICL;
+        the network stores the bytes, hashes them, and puts the (blob sha256:…) form in their place.
+        A fenced block of AICL itself (```aicl / ```lisp / unlabelled, starting with "(") is just unwrapped."""
+        import hashlib
+        import re
+        fence = re.compile(r"```([A-Za-z0-9_+-]*)[ \t]*\r?\n(.*?)```", re.S)
+        files, kept = [], []
+        for lang, body in fence.findall(raw):
+            if lang.lower() in ("", "aicl", "lisp", "scheme") and body.lstrip().startswith("("):
+                kept.append(body)
+            else:
+                files.append((lang.lower(), body))
+        text = fence.sub("", raw)
+        text = "\n".join([text] + kept)
+        refs = sorted({int(n) for n in re.findall(r"\(file (\d+)\)", text)})
+        if not refs and not files:
+            return text
+        if net.files_dir is None:
+            raise ParseError("this network does not accept files")
+        mimes = {"html": "text/html", "htm": "text/html", "js": "text/javascript", "javascript": "text/javascript",
+                 "css": "text/css", "svg": "image/svg+xml", "json": "application/json", "md": "text/markdown"}
+        for n in refs:
+            if n < 1 or n > len(files):
+                raise ParseError(f"(file {n}) has no matching ``` block; put the file's content in a fenced block")
+            lang, body = files[n - 1]
+            ext = {"javascript": "js", "htm": "html"}.get(lang, lang if lang in mimes else "txt")
+            data = body.encode("utf-8")
+            Path(net.files_dir).mkdir(parents=True, exist_ok=True)
+            path = Path(net.files_dir) / f"{self.name}-{self.seq + 1}-file{n}.{ext}"
+            path.write_bytes(data)
+            blob = (f'(blob sha256:{hashlib.sha256(data).hexdigest()} :media "{mimes.get(lang, "text/plain")}" '
+                    f':bytes {len(data)} :uri "{path.resolve().as_uri()}")')
+            text = text.replace(f"(file {n})", blob)
+        return text
+
     def _parse(self, raw: str, net: "Network") -> List[Message]:
-        raw = raw.strip()
-        if raw.startswith("```"):
-            raw = raw.strip("`").removeprefix("lisp").removeprefix("aicl").strip()
+        raw = self._attach(raw.strip(), net).strip()
         lines = [l for l in raw.splitlines() if l.strip() and not l.strip().startswith(";")]
         if not lines:
             return []
@@ -240,8 +275,10 @@ class Network:
     def __init__(self, nodes: Iterable[Node], limits: Limits = None, sign: bool = True,
                  known_terms: Iterable[str] = (), clock: Callable[[], datetime] = None,
                  echo: Optional[Callable[[str], None]] = print,
-                 on_message: Optional[Callable[[Message], None]] = None):
+                 on_message: Optional[Callable[[Message], None]] = None,
+                 files_dir: Optional[Path] = None):
         self.on_message = on_message      # an observer of every delivered message, e.g. the Discord mirror
+        self.files_dir = files_dir        # where files that models attach (```html … ``` + (file 1)) are stored
         self.nodes: Dict[str, Node] = {n.name: n for n in nodes}
         self.limits = limits or Limits()
         self.known_terms = tuple(known_terms)
