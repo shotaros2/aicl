@@ -333,6 +333,26 @@ no human input after start, 0 validator errors, and a signed acceptance that
 `run_autonomous_network.cmd`. By default every model role runs on Gemini's free tier, so a run
 costs nothing; `--editor claude` moves a role to Claude's paid API, as in example 23.
 
+### Night shift: tasks done while you sleep
+
+`aicl/night.py` turns the network into an overnight worker. Put one task per text file in
+`out/night/inbox/` before bed, for example a request to summarise a landmark for first-time
+visitors. When the shift runs, `@owner` sends each task to `@chief` and then refuses every
+question, because its owner is asleep. The chief decides how to do the task with the team:
+`@library` searches Wikipedia, `@reader` opens a page, and `@weather`, `@artist` and `@desk`
+work as before. `@critic` checks every claim against sources it opens itself, and nothing is
+published that it did not accept. In the morning, `out/night/<date>/REPORT.md` lists each task
+as done, not done (with the reason), or unfinished, with the result and the validator's
+findings. It also lists every answer the network rejected.
+
+Two live runs on Gemini's free tier summarised Tokyo Skytree correctly from Wikipedia. Both
+honestly refused to book a restaurant, a task that needs real-world action. The runs also
+showed why the safeguards exist. The chief twice tried to deliver a made-up "done": once
+posing as the desk, and once as its own message with an invented file hash. The network
+blocked the first, and the owner ignored the second because the hash matched no file. Run it
+now with `run_night_shift.cmd`. To run it every night, register it with
+`powershell -ExecutionPolicy Bypass -File tools\install_night_shift.ps1`; `-Remove` undoes this.
+
 ## What only AICL can do: an agreement a third party can verify
 
 Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those

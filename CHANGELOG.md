@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Night shift (`aicl/night.py`, `examples/night_shift.py`, `run_night_shift.cmd`,
+  `tools/install_night_shift.ps1`): the network works through `out/night/inbox/*.txt` while the
+  owner sleeps and writes `REPORT.md`; @owner refuses every question and accepts a `done` only if
+  its blob's hash and size match the file it names (a live run produced a forged one). Research
+  specialists in `aicl/research.py`: @library (Wikipedia search and summaries, keyless) and
+  @reader (public http(s) pages only; local addresses and `file:` refused; DNS failure is `fail`).
 - Autonomous network (`aicl/network.py`, `aicl/skills.py`, `examples/autonomous_network.py`):
   model agents get a role and a directory once, then decide for themselves whom to message about
   what; the network signs, clocks, numbers, validates and limits (call budget, message and time

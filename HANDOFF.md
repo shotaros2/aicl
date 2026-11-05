@@ -154,6 +154,17 @@ python examples/cooperation_demo.py
   時刻の書式違反、**デスクになりすました偽の done（偽の blob つき）**、ID のない ask。どれも記録に入らず、本人に差し戻された。
   同一性をモデルに任せずネットワークが持つ理由の実例。ページの「曇り空」は天気の `partly-cloudy`（一部曇り）の言い換えで、チェッカーは通した。
   Claude を使う構成は `--editor claude` など。ダブルクリック用 `run_autonomous_network.cmd`。
+- **夜間作業**（2026-11-05 13:12/13:16 JST、`aicl/night.py` + `aicl/research.py`、ランナー `examples/night_shift.py`、
+  `run_night_shift.cmd`、毎晩の登録 `tools/install_night_shift.ps1`）: ユーザーの要望「寝ている間にも他の AI と協力してタスクをこなして」から。
+  受付箱 `out/night/inbox/*.txt` → 1 件ずつネットワーク実行 → `out/night/<日時>/REPORT.md`。@owner は寝ていて質問を全部断る。
+  調べ物は Gemini の検索グラウンディングが無料枠で 429 だったため、Wikipedia API（@library、キー不要）と @reader（公開ページだけ、
+  ローカルや file: は拒否、DNS 失敗は denied ではなく fail）にした。実走で分かったこと:
+  - チーフが**偽の完了**を 2 種類作った: デスクのなりすまし（ネットワークが拒否）と、自分名義で空ファイルのハッシュ
+    `e3b0c442…` と架空 URI を付けた done。後者を止めるため @owner は blob のハッシュとサイズを実ファイルと照合し、合わなければ無視する。
+  - チェッカーが長いパーセントエンコードの URL を写し間違えて 404 になり、それを理由に差し戻した。チーフが平文の URL で出し直して解決。
+  - 予約タスクは `no`（1 回目）/`fail`（2 回目）で正直に断った。どちらも「できなかった」として報告する。
+  - チーフは @owner の do に `ok` を返さず done した（done-without-ok）。役割文に「まず ok」を追記済み（未再走）。
+  毎晩動かすには PC が起動中かスリープで、電源オプションの「スリープ解除タイマー」が有効である必要がある。登録はユーザー本人が行う。
 - **逆向き（Gemini が主導、Claude が応じる）**（2026-11-05 11:30–11:32 JST、`examples/22`、`init --a gemini-web --b claude`）:
   ユーザーの質問「Gemini から Claude に指示できる？」から。Gemini web が提案し、Claude（API）が 09:00 を拒否・10:30 を受諾、`:verified true`。
   Gemini は時差を `+0900` と書く（ルールブック外だがパーサは +09:00 と読む）。最後の `end` の `:at` を時計行より 1 分進めた（規則 9 から小さく逸脱）。
