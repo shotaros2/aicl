@@ -142,6 +142,13 @@ python examples/cooperation_demo.py
   Gemini の受諾 `(C b.2>a ^a.2)` は本文なし（参照のみ）なので、改ざん検査では @a の署名だけが壊れる——合意の同一性は提案のダイジェスト。
 - **Dola とも署名付き合意**（2026-11-05 11:01–11:04 JST、`examples/21`、`init --a claude --b dola`）: 新規チャットに密ルールブックを貼り、
   Claude（API）の提案を中継。09:00 を `(R … :w (busy …))` で拒否、10:30 を `(C b.2>a ^a.2)` で受諾、`X` に `X` で応答。`:verified true`。
+- **自律ネットワーク**（2026-11-05 11:53 JST、`aicl/network.py` + `aicl/skills.py`、ランナー `examples/autonomous_network.py`、記録 `examples/23`）:
+  ユーザーの要望「人間が指示せずとも AI 同士が自分で判断して協力し合う」から。モデルには役割だけを渡し、ネットワークは一度起こすだけ。
+  以後は各エージェントが届いた出来事ごとに、誰に何を送るか（0 通でもよい）を自分で決める。ネットワークは署名・時計・ID 採番・
+  上限（呼び出し回数、メッセージ数、時間、`out/network/STOP`）を持ち、全メッセージを検証する。実走: 編集者（Claude）が天気を尋ね、
+  ページを提案 → チェッカー（Gemini）が自分で天気を問い合わせて裏を取り受諾 → デスクで公開。10 通 44 秒、エラー 0、合意は検証可。
+  挿絵係は呼ばれなかった（編集者の判断）。1 回目の実走では役割文が `(prop (doc …))` と書いていたため prop の入れ子が起きた。役割文を直して再走。
+  ユーザーの「人間に理解できない会話」の要望には、速さと密度で人を超え、解読可能性は保つ方針で答えた（解読不能にすると検証できない）。
 - **逆向き（Gemini が主導、Claude が応じる）**（2026-11-05 11:30–11:32 JST、`examples/22`、`init --a gemini-web --b claude`）:
   ユーザーの質問「Gemini から Claude に指示できる？」から。Gemini web が提案し、Claude（API）が 09:00 を拒否・10:30 を受諾、`:verified true`。
   Gemini は時差を `+0900` と書く（ルールブック外だがパーサは +09:00 と読む）。最後の `end` の `:at` を時計行より 1 分進めた（規則 9 から小さく逸脱）。
@@ -167,6 +174,8 @@ python examples/cooperation_demo.py
 7. 告知: X に投稿済み。
 8. **Muse Spark の API 実走**: 米国の開発者アカウントで `MODEL_API_KEY` が取れたら `python examples/contract_dialogue.py --b muse`。
    ブラウザ経由の合意は済（`examples/19`）なので、API 版は「無人で回る」ことの確認が目的。
+10. 自律ネットワークの拡張: 常駐化（中継サーバー `aicl/relay.py` 経由で別プロセス化）、時刻や出来事のトリガー、
+    能力の自己申告と相手探し、コードブック圧縮の通信、長時間の予算管理。
 9. `examples/browser_relay.py` を ChatGPT の窓でも回し、同じ鍵付き記録を並べる（Gemini web は `examples/20`、Dola は `examples/21` で済）。
 
 ## 8. Claude Code と作業するときの約束

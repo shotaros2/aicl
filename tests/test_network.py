@@ -1,0 +1,154 @@
+import hashlib
+import json
+import tempfile
+import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import aicl
+from aicl.network import Limits, ModelNode, Network
+from aicl.skills import artist_node, desk_node, weather_node
+
+try:
+    from aicl.signing import generate_key
+    generate_key()
+    HAVE_CRYPTO = True
+except Exception:
+    HAVE_CRYPTO = False
+
+RULEBOOK = "Your agent id is `me`. Speak AICL."
+JST = timezone(timedelta(hours=9))
+CLOCK = lambda: datetime(2026, 11, 5, 12, 0, tzinfo=JST)
+
+
+def fake_fetch(url):
+    if "geocoding" in url:
+        return {"results": [{"latitude": 35.68, "longitude": 139.69}]} if "tokyo" in url else {}
+    return {"utc_offset_seconds": 32400,
+            "current": {"time": "2026-11-05T12:00", "temperature_2m": 15.5, "relative_humidity_2m": 60,
+                        "wind_speed_10m": 3.0, "weather_code": 1},
+            "daily": {"time": ["2026-11-05", "2026-11-06"], "weather_code": [1, 61],
+                      "temperature_2m_max": [18.0, 16.2], "temperature_2m_min": [10.0, 11.4],
+                      "precipitation_probability_max": [5, 80]}}
+
+
+def last(history):
+    return history[-1]["content"]
+
+
+def editor_ask(system, history):
+    """A scripted editor: it only reacts to what it receives, like a model would."""
+    e = last(history)
+    if "; wake" in e:
+        return "(A editor.1>weather (forecast tokyo 2026-11-06 $f))"
+    if e.count("T weather.") and "^editor.1" in e:
+        return ('(P editor.1>critic (doc :title (nl ja "明日の東京") :body (nl ja "明日は雨、最高16.2C")))\n'
+                '; the id above is reused on purpose: the network must renumber it')
+    if "C critic." in e:
+        return '(D editor.3>desk (publish (doc :title (nl ja "明日の東京") :body (nl ja "明日は雨、最高16.2C"))))'
+    return ""
+
+
+def critic_ask(system, history):
+    e = last(history)
+    if "P editor." in e:
+        return "(A critic.1>weather (forecast tokyo 2026-11-06 $f))"
+    if "T weather." in e and "16.2C" in e:
+        return "(C critic.2>editor ^editor.2)"
+    return ""
+
+
+class NetworkTests(unittest.TestCase):
+    def build(self, tmp, editor=editor_ask, critic=critic_ask, **limits):
+        nodes = [ModelNode("editor", "newsroom editor", editor, RULEBOOK),
+                 ModelNode("critic", "fact checker", critic, RULEBOOK),
+                 weather_node(fetch=fake_fetch), desk_node(Path(tmp))]
+        return Network(nodes, Limits(**limits), sign=HAVE_CRYPTO, clock=CLOCK, echo=None)
+
+    def test_agents_decide_the_whole_exchange(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            res = self.build(tmp).run()
+            acts = [(m.sender, m.act, m.receiver) for m in res.messages]
+            self.assertEqual(acts, [
+                ("editor", "ask", "weather"), ("weather", "tell", "editor"),
+                ("editor", "prop", "critic"), ("critic", "ask", "weather"), ("weather", "tell", "critic"),
+                ("critic", "acc", "editor"), ("editor", "do", "desk"), ("desk", "ok", "editor"),
+                ("desk", "done", "editor")])
+            self.assertTrue(res.stopped.startswith("quiet"))
+            ids = [m.id for m in res.messages]
+            self.assertEqual(len(ids), len(set(ids)))                  # the reused editor.1 was renumbered
+            self.assertEqual(res.messages[2].id, "editor.2")
+            self.assertEqual([i for i in res.issues if i.level == "error"], [])
+            blob = res.messages[-1].body[0]
+            path = Path(tmp) / "editor-3.md"
+            self.assertTrue(path.exists())
+            self.assertIn(hashlib.sha256(path.read_bytes()).hexdigest(), aicl.to_text(blob))
+            self.assertIn("明日は雨", path.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(HAVE_CRYPTO, "needs the cryptography package")
+    def test_every_message_is_signed_and_the_review_is_a_verifiable_agreement(self):
+        from aicl.agreement import extract_agreements
+        with tempfile.TemporaryDirectory() as tmp:
+            res = self.build(tmp).run()
+            self.assertEqual(set(res.keys), {"editor", "critic", "weather", "desk"})
+            ags = extract_agreements(res.messages, keys=res.keys, known_terms=("doc",))
+            self.assertEqual(len(ags), 1)
+            self.assertEqual(ags[0].parties, ("editor", "critic"))
+            self.assertTrue(ags[0].verified)
+
+    def test_budget_and_message_cap_stop_a_chatty_network(self):
+        def ping(system, history):
+            return "(T editor.9>critic true)"
+        def pong(system, history):
+            return "(T critic.9>editor true)"
+        with tempfile.TemporaryDirectory() as tmp:
+            res = self.build(tmp, editor=ping, critic=pong, max_calls_per_agent=4, max_messages=50).run()
+            self.assertLessEqual(len(res.messages), 8)
+            self.assertTrue(any("budget" in n for n in res.notes))
+            res = self.build(tmp, editor=ping, critic=pong, max_calls_per_agent=100, max_messages=6).run()
+            self.assertEqual(res.stopped, "message cap (6)")
+
+    def test_stop_file_halts_the_network(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stop = Path(tmp) / "STOP"
+            stop.write_text("")
+            res = self.build(tmp, stop_file=stop).run()
+            self.assertEqual(len(res.messages), 1)                     # the wake-up answer, then nothing
+            self.assertTrue(res.stopped.startswith("stop file"))
+
+    def test_unknown_recipient_and_prose_get_one_correction(self):
+        replies = iter(["Sure! Here is my plan: ask the weather.", "(A editor.1>oracle (x $y))",
+                        "(A editor.1>weather (weather-now tokyo $w))"])
+        def flaky(system, history):
+            return next(replies, "")
+        with tempfile.TemporaryDirectory() as tmp:
+            res = self.build(tmp, editor=flaky, critic=lambda s, h: "").run()
+            self.assertEqual(sum("invalid" in n for n in res.notes), 2)
+            self.assertEqual(res.messages, [])                          # two bad answers: the wake-up is dropped
+            nodes = [ModelNode("editor", "e", lambda s, h: next(replies, ""), RULEBOOK), weather_node(fetch=fake_fetch)]
+            res = Network(nodes, sign=False, clock=CLOCK, echo=None).run()
+            self.assertEqual([m.act for m in res.messages], ["ask", "tell"])
+
+    def test_weather_answers_only_what_it_has(self):
+        w = weather_node(fetch=fake_fetch)
+        ask = lambda s: aicl.Message.from_form(aicl.parse_one(s))
+        out = [aicl.to_text(f) for f in w.react(None, "", ask("(ask #e.1 @e>@weather (forecast tokyo 2026-11-06 $f))"))]
+        self.assertIn(":max 16.2C", out[0])
+        self.assertIn(":src (source", out[0])
+        self.assertIn("(no ", w.react(None, "", ask("(ask #e.2 @e>@weather (forecast atlantis 2026-11-06 $f))"))[0].head
+                      .join(["(", " "]))
+        self.assertEqual(w.react(None, "", ask("(ask #e.3 @e>@weather (crowd-index tokyo $x))"))[0].head, "clar")
+        self.assertEqual(w.react(None, "", ask("(ask #e.4 @e>@weather (forecast tokyo 2027-01-01 $f))"))[0].head, "no")
+
+    def test_artist_returns_a_blob_of_what_it_drew(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a = artist_node(lambda s, h: '<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>', Path(tmp))
+            m = aicl.Message.from_form(aicl.parse_one('(do #e.5 @e>@artist (draw (nl en "a square")))'))
+            ok, done = a.react(None, "", m)
+            self.assertEqual((ok.head, done.head), ("ok", "done"))
+            data = (Path(tmp) / "e-5.svg").read_bytes()
+            self.assertIn(hashlib.sha256(data).hexdigest(), aicl.to_text(done))
+
+
+if __name__ == "__main__":
+    unittest.main()

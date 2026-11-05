@@ -845,6 +845,42 @@ turn and nothing else: no prose, no markdown, no explanation.
 
 ---
 
+# FILE: examples/23_autonomous_network.aicl
+
+```
+; A real run, 2026-11-05 11:53 JST, of examples/autonomous_network.py: an AICL network where no
+; human relays anything and no script says who speaks next. Five agents came online. Two are models
+; given a role and nothing else - @editor (Claude, claude-opus-5-5: "run a small newsroom for visitors
+; to Tokyo; publish only what @critic accepted") and @critic (Gemini, gemini-3.5-flash-lite: "check
+; every claim against data you obtain yourself") - and three are specialists with real effects:
+; @weather (live open-meteo.com data), @artist (draws SVG), @desk (publishes a page). The network woke
+; the two models once; everything after that was their own decision. 10 messages in 44 seconds.
+;
+; What the agents decided: the editor chose the topic (current conditions), asked @weather, wrote the
+; page and proposed it to @critic; the critic did not trust the page's numbers but asked @weather
+; itself, found every claim held, and accepted; the editor published exactly the accepted page through
+; @desk and closed. Nobody asked @artist: the editor decided the page needed no picture.
+; The network signed every message with its sender's key (public keys: examples/23_keys.json) and
+; stamped the real clock. `aicl check … --keys` reports 0 errors and 0 warnings, and
+; `aicl agreement examples/23_autonomous_network.aicl --keys examples/23_keys.json` verifies the
+; critic's acceptance as an agreement signed by both. The page's one non-factual sentence (advice to
+; bring a light layer) passed review as advice.
+; Domain terms: doc, publish, weather-now, weather, source.
+
+(ask #editor.1 @editor>@weather (weather-now tokyo $w) :at 2026-11-05T11:53+09:00 :sig (ed25519 "Sj6gUDzMrq97m9N47qVx2Bk7gr7ZgswmRzKO-g1u60gYOqC_P8yib50a93djD6jxBPQxMg5pKW-5pPDjrk1_Dg"))
+(tell #weather.1 @weather>@editor ^editor.1 {$w (weather :at 2026-11-05T11:45+09:00 :city tokyo :humidity 88% :sky partly-cloudy :temp 14.8C :wind 2.24m/s)} :sig (ed25519 "WbDCaWGu_wfigMmhqPBYPo7INlzj9OAwREIlJkMMQqe_PCKumww2_4RbvFsYmXkHIPy4PHyeu0-Ywyc0llfwAw") :src (source :at 2026-11-05T11:53+09:00 :kind forecast :uri "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.69171&timezone=auto&current=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cweather_code&daily=weather_code%2Ctemperature_2m_max%2Ctemperature_2m_min%2Cprecipitation_probability_max&wind_speed_unit=ms&forecast_days=7"))
+(prop #editor.2 @editor>@critic (doc :body (nl ja "2026年11月5日11時45分(日本時間)時点の東京は一部曇り、気温14.8℃、湿度88%、風速2.24m/s。少し肌寒いので羽織るものがあると安心です。") :sources [(source :at 2026-11-05T11:53+09:00 :uri "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.69171&timezone=auto&current=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cweather_code&daily=weather_code%2Ctemperature_2m_max%2Ctemperature_2m_min%2Cprecipitation_probability_max&wind_speed_unit=ms&forecast_days=7")] :title (nl ja "東京の今の天気")) :at 2026-11-05T11:53+09:00 :sig (ed25519 "SHRlgIWfnC9fg5CRa3PfYMJQdzKMMLUPaBfPtlAAjJeN2jr_NV96pOzqG4nF20VNPSlGTcfp-cZFRoDzssduDw"))
+(ask #critic.1 @critic>@weather (weather-now tokyo $w :at 2026-11-05T11:53+09:00) :sig (ed25519 "uBXtL2oCTmZVVdssdz3ItdB-yQU0aDWdPvy58NEoNVxhKNgSF7CoJOs6HCK8PPSXxDm8cwC80UHRlFe3XB7ZAA"))
+(tell #weather.2 @weather>@critic ^critic.1 {$w (weather :at 2026-11-05T11:45+09:00 :city tokyo :humidity 88% :sky partly-cloudy :temp 14.8C :wind 2.24m/s)} :sig (ed25519 "2FcHQbc8OE6vWolCntq64Sl8XQFT7Ss_NzQKPTHku5SAbP9Ur01ITC79I2Wd7IkN1Wum2MTozhzvQ3gRlnNhCA") :src (source :at 2026-11-05T11:53+09:00 :kind forecast :uri "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.69171&timezone=auto&current=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cweather_code&daily=weather_code%2Ctemperature_2m_max%2Ctemperature_2m_min%2Cprecipitation_probability_max&wind_speed_unit=ms&forecast_days=7"))
+(acc #critic.2 @critic>@editor ^editor.2 :sig (ed25519 "A0pO-1LDAypQFgonAl2-jqIn0aHDkM3fvBytcafTL38h4kMzlHOSgFGyxxYNBkSJMD6YSQ98KWHe6OzhKHpPAQ"))
+(do #editor.3 @editor>@desk (publish (doc :body (nl ja "2026年11月5日11時45分(日本時間)時点の東京は一部曇り、気温14.8℃、湿度88%、風速2.24m/s。少し肌寒いので羽織るものがあると安心です。") :sources [(source :at 2026-11-05T11:53+09:00 :uri "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.69171&timezone=auto&current=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cweather_code&daily=weather_code%2Ctemperature_2m_max%2Ctemperature_2m_min%2Cprecipitation_probability_max&wind_speed_unit=ms&forecast_days=7")] :title (nl ja "東京の今の天気"))) :at 2026-11-05T11:53+09:00 :sig (ed25519 "GAtg8zLc6KaxAqEDRe7T6xGLJIBUeGF7L0R8rln25AkbLVRi5vMxQPGoNCVKBWFMMeWXOSShGxN9LEBg_OdxDg"))
+(ok #desk.1 @desk>@editor ^editor.3 :sig (ed25519 "oyDAb6z4zTQ04DPhFXkqhKr60eln5LkDLr53MXB9Auz4RGFqO0vxnf0v4m_7hm4TfP9U2eMwSfVOUH_SuQrkCw"))
+(done #desk.2 @desk>@editor ^editor.3 (blob sha256:f5803cfdbcb82926b75275681a16f61e491190ed7b5b9fa2992b0ea15f403a04 :bytes 610 :media "text/markdown" :uri "file:///C:/Users/showk/OneDrive/AI%E8%A8%80%E8%AA%9E/out/network/editor-3.md") :sig (ed25519 "M1tfD0pxydB59iQdcxOMJUbz2iVWauX3dygnv1oTuIY0kK4t42YJTqS4pkbRSaUqiKvEoFAOxxQeAWGkLD7_AA"))
+(end #editor.4 @editor>@desk :at 2026-11-05T11:53+09:00 :sig (ed25519 "t0Rzp22dNihZes83uTlcWuGbICHnZUso9jKMPL9Xj93GBv6bzJIgcYe426q4ExvM8qHp0tK6VHDYj7ds97U-Dw"))
+```
+
+---
+
 # FILE: schemas/cooperation.md
 
 # AICL cooperation schema (`coop:` namespace), v0.1

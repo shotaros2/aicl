@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Autonomous network (`aicl/network.py`, `aicl/skills.py`, `examples/autonomous_network.py`):
+  model agents get a role and a directory once, then decide for themselves whom to message about
+  what; the network signs, clocks, numbers, validates and limits (call budget, message and time
+  caps, STOP file) and keeps wire and transcript. Specialists: live weather (open-meteo), SVG
+  artist, publishing desk. `examples/23` is a live run (Claude editor, Gemini critic): 10 messages,
+  0 errors, the critic verified the editor's numbers itself before a signed acceptance.
 - Meta Muse Spark connector: `aicl/muse.py` talks to the OpenAI-compatible Meta Model API
   (`https://api.meta.ai/v1`, `muse-spark-1.1`, key `MODEL_API_KEY`) with the standard library
   only, and to any other OpenAI-compatible endpoint via `base_url`. `aicl/vendors.py` picks

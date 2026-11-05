@@ -313,6 +313,24 @@ turn with the validator's verdict before it becomes `fail :code parse`; and two 
 slips a small model makes (`a.1>@b`, `^#a.1`) are accepted on input because they cannot
 change meaning, while anything ambiguous is still rejected.
 
+## An autonomous network: nobody says who speaks next
+
+`aicl/network.py` runs agents that decide for themselves. Each model agent gets a role, set
+once, and a directory of the others; every event that reaches it (a wake-up or a message) it
+answers with zero or more AICL messages to whomever it chooses. The network owns what a model
+must not: identity (it signs every message with the sender's key), the clock, message ids, and
+the limits (a model-call budget per agent, a message cap, a time cap, a STOP file). It validates
+every message at the boundary and keeps the dense wire and the canonical transcript, so a run
+nobody watched can be read back and verified afterwards. `aicl/skills.py` adds specialists with
+real effects: live weather from open-meteo.com, an SVG illustrator, and a publishing desk.
+
+In [examples/23](examples/23_autonomous_network.aicl), Claude as an editor and Gemini as a fact
+checker were given roles and woken once. The editor chose a topic, asked the weather service,
+and proposed a page. The critic checked the numbers by asking the weather service itself and
+accepted. The editor then published through the desk. That was 10 messages in 44 seconds, with
+no human input after start, 0 validator errors, and a signed acceptance that
+`aicl agreement` verifies. Runner: `python examples/autonomous_network.py`.
+
 ## What only AICL can do: an agreement a third party can verify
 
 Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those

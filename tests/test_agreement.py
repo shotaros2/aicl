@@ -115,6 +115,15 @@ class AgreementTests(unittest.TestCase):
         self.assertEqual(len(ags), 1)
         self.assertTrue(ags[0].verified)
 
+    def test_example_23_autonomous_network_verifies(self):
+        keys = {k: v for k, v in json.loads((ROOT / "examples" / "23_keys.json").read_text(encoding="utf-8")).items()
+                if not k.startswith("_")}
+        msgs = aicl.parse_messages((ROOT / "examples" / "23_autonomous_network.aicl").read_text(encoding="utf-8"))
+        ags = extract_agreements(msgs, keys=keys, known_terms=("doc", "publish", "weather-now", "weather", "source"))
+        self.assertEqual(len(ags), 1)
+        self.assertEqual(ags[0].parties, ("editor", "critic"))
+        self.assertTrue(ags[0].verified)
+
     def test_example_17_live_run_verifies(self):
         keys = {k: v for k, v in json.loads((ROOT / "examples" / "17_keys.json").read_text(encoding="utf-8")).items()
                 if not k.startswith("_")}
