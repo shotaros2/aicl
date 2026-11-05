@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Discord link (`aicl/discordlink.py`, `docs/discord-setup.ja.md`): the owner's messages in a
+  tasks channel become night-shift tasks (others and bots ignored); each delivered AICL message
+  is posted under its sender's name (its own bot token if configured, else a webhook); reports
+  and pages go to a reports channel. Standard library only; failures never stop a shift.
+  `Network(on_message=…)` observer; `--no-discord`.
 - Bigger night team: @writer (drafts only from given facts) and @scout (wakes once a night, looks at
   news, weather and the team's memory, proposes up to two tasks itself) join @chief and @critic.
   New specialists in `aicl/tools.py`: @calc (safe arithmetic and dates), @fx (ECB rates via

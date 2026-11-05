@@ -36,6 +36,9 @@ sys.path.insert(0, str(ROOT))
 
 from aicl import vendors
 from aicl.env import load_dotenv
+from aicl.dense import to_dense
+from aicl.discordlink import Link
+from aicl.model import Form
 from aicl.network import JST, Limits, ModelNode
 from aicl.night import night_shift
 from aicl.research import library_node, reader_node
@@ -96,6 +99,7 @@ def main(argv=None) -> int:
         ap.add_argument(f"--{role}", default="gemini", choices=vendors.VENDORS)
     ap.add_argument("--web-fallback", action="store_true",
                     help="switch a role to the vendor's chat website when its API is unavailable (needs a sign-in)")
+    ap.add_argument("--no-discord", action="store_true", help="do not use Discord even when it is configured")
     ap.add_argument("--max-tasks", type=int, default=5, help="inbox tasks per run")
     ap.add_argument("--max-scout-tasks", type=int, default=2)
     ap.add_argument("--max-messages", type=int, default=70, help="per task")
@@ -139,6 +143,15 @@ def main(argv=None) -> int:
         return [model("scout", SCOUT_ROLE, "scout", args.scout),
                 news_node(), weather_node(), memory_node(memory), library_node(), calc_node()]
 
+    link = None if args.no_discord else Link.from_env(NIGHT / "discord_state.json", note=echo)
+    on_message = None
+    if link is not None:
+        pulled = link.pull_tasks(NIGHT / "inbox")
+        if pulled:
+            echo(f"discord: {pulled} new task(s) from the tasks channel")
+        def on_message(m):     # each AI speaks in Discord under its own name; signatures are left out of the view
+            f = m.to_form()
+            link.mirror(m.sender, to_dense(Form(f.head, f.args, {k: v for k, v in f.kw.items() if k != "sig"}, f.conf)))
     echo(f"--- night shift {datetime.now(JST).isoformat(timespec='minutes')} ({args.mode}): chief = "
          f"{vendors.describe(args.chief)}, writer = {args.writer}, critic = {args.critic}, scout = {args.scout} ---")
     try:
@@ -146,11 +159,13 @@ def main(argv=None) -> int:
                              Limits(args.max_messages, args.max_calls, args.max_seconds, stop),
                              max_tasks=args.max_tasks, known_terms=KNOWN, echo=echo,
                              scout=make_scout_nodes if args.mode == "night" else None,
-                             max_scout_tasks=args.max_scout_tasks, memory=memory)
+                             max_scout_tasks=args.max_scout_tasks, memory=memory, on_message=on_message)
     except RuntimeError as e:          # another shift holds the lock
         echo(f"skipped: {e}")
         report = None
     echo(f"report: {report}" if report else "nothing to do")
+    if link is not None and report is not None:
+        link.post_report(report, sorted(report.parent.glob("*/*.md")) + sorted(report.parent.glob("*/*.svg")))
     log.close()
     return 0
 

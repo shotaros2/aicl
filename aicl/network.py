@@ -239,7 +239,9 @@ class Network:
 
     def __init__(self, nodes: Iterable[Node], limits: Limits = None, sign: bool = True,
                  known_terms: Iterable[str] = (), clock: Callable[[], datetime] = None,
-                 echo: Optional[Callable[[str], None]] = print):
+                 echo: Optional[Callable[[str], None]] = print,
+                 on_message: Optional[Callable[[Message], None]] = None):
+        self.on_message = on_message      # an observer of every delivered message, e.g. the Discord mirror
         self.nodes: Dict[str, Node] = {n.name: n for n in nodes}
         self.limits = limits or Limits()
         self.known_terms = tuple(known_terms)
@@ -281,6 +283,11 @@ class Network:
         self.log.append(m)
         self.wire.append(to_dense(m.to_form()))
         shown = self.wire[-1]
+        if self.on_message is not None:
+            try:
+                self.on_message(m)
+            except Exception as e:          # an observer must never break the network
+                self.notes.append(f"observer failed: {str(e)[:120]}")
         self.say(shown if len(shown) < 400 else shown[:400] + " …")
         self.queue.append(m)
 

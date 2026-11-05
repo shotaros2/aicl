@@ -362,6 +362,13 @@ gives the European Central Bank's exchange rates. `tools/install_night_shift.ps1
 two jobs: the full night shift at 02:00, and an inbox check every 30 minutes. With the inbox
 check, a task dropped into the inbox from a phone through OneDrive starts soon.
 
+The team can also live in Discord (`aicl/discordlink.py`, setup in `docs/discord-setup.ja.md`).
+Your messages in a tasks channel become tasks; messages from anyone else, or from bots, are
+ignored. Each AI's messages appear in a wire channel under its own name. An agent posts with its
+own bot account if you created one for it, and through a webhook otherwise. The morning report
+and the pages arrive in a reports channel. The thinking, signing and validation stay on the PC.
+A Discord failure is noted in the report and never stops a shift.
+
 ## What only AICL can do: an agreement a third party can verify
 
 Two agents can cooperate in plain English, in JSON, over MCP or A2A. What none of those

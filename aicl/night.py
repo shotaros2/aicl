@@ -81,10 +81,10 @@ class ProposalBox(Node):
 
 
 def scout_session(make_scout_nodes: Callable[[], List[Node]], limits: Limits, max_tasks: int = 2,
-                  known_terms=(), echo=print):
+                  known_terms=(), echo=print, on_message=None):
     """Wake the scout among the read-only specialists; return (proposed task texts, run)."""
     box = ProposalBox(max_tasks)
-    net = Network([box] + make_scout_nodes(), limits, known_terms=known_terms, echo=echo)
+    net = Network([box] + make_scout_nodes(), limits, known_terms=known_terms, echo=echo, on_message=on_message)
     res = net.run(wake=["scout"])
     return box.tasks, res
 
@@ -129,10 +129,10 @@ def _blob_path(m: Message) -> Optional[Path]:
 
 
 def run_task(name: str, text: str, out_dir: Path, make_nodes: Callable[[Path], List[Node]],
-             limits: Limits, known_terms=(), echo=print) -> TaskOutcome:
+             limits: Limits, known_terms=(), echo=print, on_message=None) -> TaskOutcome:
     owner = OwnerNode()
     nodes = [owner] + make_nodes(out_dir)
-    net = Network(nodes, limits, known_terms=known_terms, echo=echo)
+    net = Network(nodes, limits, known_terms=known_terms, echo=echo, on_message=on_message)
     net.post(owner.task(text))
     res = net.run(wake=[])
     res.save(out_dir)
@@ -217,7 +217,7 @@ class Lock:
 def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[Node]],
                 limits: Limits = None, max_tasks: int = 5, known_terms=(), echo=print,
                 scout: Optional[Callable[[], List[Node]]] = None, max_scout_tasks: int = 2,
-                memory=None) -> Optional[Path]:
+                memory=None, on_message=None) -> Optional[Path]:
     """Run the inbox (oldest first, at most `max_tasks`), then, with `scout`, the tasks the scout proposes
     itself. Returns the report path, or None when there was nothing to do and no scout."""
     inbox.mkdir(parents=True, exist_ok=True)
@@ -236,7 +236,7 @@ def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[N
         if scout is not None:
             echo("=== scout: looking for work nobody asked for")
             try:
-                proposals, scout_run = scout_session(scout, limits, max_scout_tasks, known_terms, echo)
+                proposals, scout_run = scout_session(scout, limits, max_scout_tasks, known_terms, echo, on_message)
                 scout_run.save(day_dir / "scout")
             except Exception as e:
                 echo(f"!! scout crashed: {e}")
@@ -245,7 +245,7 @@ def night_shift(inbox: Path, out_root: Path, make_nodes: Callable[[Path], List[N
         for name, text, by, path in jobs:
             echo(f"=== task {name} ({by}): {text[:80]}")
             try:
-                o = run_task(name, text, day_dir / name, make_nodes, limits, known_terms, echo)
+                o = run_task(name, text, day_dir / name, make_nodes, limits, known_terms, echo, on_message)
             except Exception as e:  # one broken task must not cost the rest of the night
                 echo(f"!! task {name} crashed: {e}")
                 continue
