@@ -15,6 +15,7 @@ Configuration (.env or the environment):
     AICL_LOCAL_MODEL  default qwen3:8b
     AICL_LOCAL_CTX    default 12288   (Ollama only)
     AICL_LOCAL_API    ollama (default) | openai
+    AICL_LOCAL_THINK  unset (Ollama's default) | false | true   (Ollama only: a reasoning model's thinking)
 
 Reasoning models may put their thinking in <think>…</think>; it is removed, because the
 network expects AICL and nothing else.
@@ -48,7 +49,17 @@ def strip_think(text: str) -> str:
     return _THINK.sub("", text).strip()
 
 
-def _native_ask(model: str, base_url: str, ctx: int, sleep: float, timeout: float, opener):
+def _think_setting(think) -> Optional[bool]:
+    """None leaves Ollama's default; AICL_LOCAL_THINK=false/true turns a reasoning model's thinking off/on."""
+    if think is None:
+        think = os.environ.get("AICL_LOCAL_THINK") or None
+    if isinstance(think, str):
+        think = {"false": False, "0": False, "off": False, "no": False,
+                 "true": True, "1": True, "on": True, "yes": True}.get(think.strip().lower())
+    return think
+
+
+def _native_ask(model: str, base_url: str, ctx: int, sleep: float, timeout: float, opener, think=None):
     root = base_url.rstrip("/")
     root = root[:-3] if root.endswith("/v1") else root
     url = root + "/api/chat"
@@ -59,6 +70,8 @@ def _native_ask(model: str, base_url: str, ctx: int, sleep: float, timeout: floa
                 "options": {"num_ctx": ctx, "temperature": 0},
                 "messages": [{"role": "system", "content": system}]
                             + [{"role": h["role"], "content": h["content"]} for h in history]}
+        if think is not None:
+            body["think"] = think
         req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
                                      headers={"Content-Type": "application/json", "User-Agent": "aicl/0.3"})
         try:
@@ -74,7 +87,7 @@ def _native_ask(model: str, base_url: str, ctx: int, sleep: float, timeout: floa
 
 def text_ask(model: Optional[str] = None, base_url: Optional[str] = None, sleep: float = 0.0,
              timeout: float = 300.0, ctx: Optional[int] = None, api: Optional[str] = None,
-             opener=None) -> Callable[[str, List[dict]], str]:
+             opener=None, think=None) -> Callable[[str, List[dict]], str]:
     """ask(system, history) -> str against the local server.
 
     No retries here: a local server that is down or too slow is a reason to escalate to the
@@ -86,7 +99,7 @@ def text_ask(model: Optional[str] = None, base_url: Optional[str] = None, sleep:
     api = (api or os.environ.get("AICL_LOCAL_API") or "ollama").lower()
     if api == "ollama":
         ctx = ctx or int(os.environ.get("AICL_LOCAL_CTX") or DEFAULT_CTX)
-        return _native_ask(model, base_url, ctx, sleep, timeout, opener)
+        return _native_ask(model, base_url, ctx, sleep, timeout, opener, _think_setting(think))
     inner = muse.text_ask(model=model, base_url=base_url, api_key="ollama", system_role="system",
                           sleep=sleep, timeout=timeout, attempts=1, opener=opener)
 

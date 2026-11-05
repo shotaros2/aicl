@@ -16,6 +16,13 @@
   counts as invalid; a local answer that is both slower than the limit and empty is answered by
   the cloud at once. Each was a way a qwen3.5:9b chief left a task silently unfinished, and each
   now feeds the escalation to the cloud instead.
+- `AICL_LOCAL_THINK=false|true` (or `local.text_ask(think=…)`) sets Ollama's `think`. Measured
+  with the night shift's real chief prompt (about 3,900 tokens) on qwen3.5:9b: thinking on, 206 s
+  and an empty answer (8,392 tokens of thinking filled the 12,288 context); thinking off, 2.8 s and
+  a correct request - but over a whole task the model then lost its manners (a malformed ok, the
+  same draft request twelve times). The default stays Ollama's.
+- The network bounces a third identical ask/do/prop/def to the same agent, and an ask whose body
+  is an act letter (`(A writer.1>chief ^chief.3 K (ok …))`); both now feed the escalation.
 - An agent that answers an `ask` with ok alone also gets a turn to continue (it was only for
   `do`); the night shift's owner answers a done it ignores with a `no` saying how to finish,
   instead of falling silent.

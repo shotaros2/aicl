@@ -123,6 +123,7 @@ class ModelNode(Node):
         self.history: List[dict] = []
         self.calls = 0
         self.system: Optional[str] = None
+        self.sent: Counter = Counter()      # (act, receiver, body) -> times sent; see _parse
 
     def _system(self, net: "Network") -> str:
         if self.system is None:
@@ -174,6 +175,7 @@ class ModelNode(Node):
         if not lines:
             return []
         out = []
+        batch: Counter = Counter()
         for f in parse(dense_expand("\n".join(lines))):
             errors = [i for i in validate_message(f) if i.level == "error"]
             if errors:
@@ -183,7 +185,19 @@ class ModelNode(Node):
                 raise ParseError(f"message claims to be from @{m.sender}; you are @{self.name}")
             if m.receiver != "*" and m.receiver not in net.nodes:
                 raise ParseError(f"@{m.receiver} is not in the directory")
-            inner = m.body[0] if m.body and isinstance(m.body[0], Form) else None
+            first = m.body[0] if m.body else None
+            if (m.act in ("ask", "do") and isinstance(first, Symbol)
+                    and (first.name in ACTS or first.name in ACT_CODE.values())):
+                raise ParseError(f"{first.name} is an act, not a body: the act goes first, e.g. "
+                                 f"(K {m.id}>{m.receiver} ^<the id you answer>) for ok")
+            batch[self._key(m)] += 1
+            if m.act in ("ask", "do", "prop", "def") and self.sent[self._key(m)] + batch[self._key(m)] > 2:
+                # Seen with qwen3.5:9b, thinking off: the same draft request twelve times, each
+                # answered ok, until the call budget was gone. A third copy is bounced, so a stuck
+                # local model counts as invalid and moves to the cloud.
+                raise ParseError(f"you already sent this exact {m.act} to @{m.receiver} twice; wait for "
+                                 "its answer or take a different step")
+            inner = first if isinstance(first, Form) else None
             if m.act in ("ask", "do") and inner is not None and inner.head in ACTS:
                 # Valid AICL, wrong meaning: a small model wraps every act in an ask, e.g.
                 # (A chief.6>owner (fail …)), which nobody can read as the fail it meant.
@@ -193,6 +207,10 @@ class ModelNode(Node):
                     f"({inner.head} …)")
             out.append(m)
         return out
+
+    @staticmethod
+    def _key(m: Message):
+        return (m.act, m.receiver, tuple(repr(b) for b in m.body))
 
     def _observe(self, net: "Network", kind: str, detail: str = "") -> bool:
         """Tell an escalating ask (vendors.with_escalation) how its answers fared, and record
@@ -252,6 +270,8 @@ class ModelNode(Node):
             attempt += 1
         else:
             return []
+        for m in msgs:
+            self.sent[self._key(m)] += 1
         # The network owns numbering: a reused or out-of-order id is renumbered, and the agent's
         # own ^references to it follow, so ids stay unique without trusting the model.
         renamed: Dict[str, str] = {}

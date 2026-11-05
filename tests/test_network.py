@@ -177,7 +177,7 @@ class NetworkTests(unittest.TestCase):
         def stubborn(system, history):
             calls.append(1)
             n = len(calls)
-            return f'(A chief.{n}>owner (task :status failed))'
+            return f'(A chief.{n}>owner (task :status failed :try {n}))'
         owner = OwnerNode()
         net = Network([owner, ModelNode("chief", "lead", stubborn, RULEBOOK)],
                       Limits(max_messages=40, max_calls_per_agent=20), sign=False, clock=CLOCK, echo=None)
@@ -220,6 +220,33 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual([m.act for m in res.messages], ["do", "done", "no", "fail"])
         self.assertEqual(owner.outcome.act, "fail")
         self.assertEqual(owner.forged, ["chief.1"])
+
+    def test_a_third_identical_request_is_bounced(self):
+        # Seen with qwen3.5:9b, thinking off: the same draft request twelve times.
+        from aicl.network import Node
+        shown = []
+
+        def repeater(system, history):
+            shown.append(history[-1]["content"])
+            return '(A chief.9>writer (draft :about (nl ja "x") $d))'
+        writer = Node("writer", "writes")
+        writer.react = lambda net, event, m: ([writer.msg("tell", m.sender, aicl.parse_one("{$d 1}"), reply=m.id)]
+                                              if m is not None and m.act == "ask" else [])
+        chief = ModelNode("chief", "lead", repeater, RULEBOOK)
+        net = Network([chief, writer], Limits(max_messages=30, max_calls_per_agent=6), sign=False, clock=CLOCK, echo=None)
+        res = net.run(wake=["chief"])
+        asks = [m for m in res.messages if m.sender == "chief"]
+        self.assertEqual(len(asks), 2)
+        self.assertTrue(any("you already sent this exact ask to @writer twice" in n for n in res.notes))
+
+    def test_an_act_letter_as_a_body_is_bounced(self):
+        from aicl.night import OwnerNode
+        chief = ModelNode("chief", "lead", lambda s, h: "", RULEBOOK)
+        owner = OwnerNode()
+        net = Network([owner, chief], sign=False, clock=CLOCK, echo=None)
+        with self.assertRaises(aicl.ParseError) as cm:
+            chief._parse("(A chief.1>owner ^owner.1 K (ok :a 20261105T221331+9))", net)
+        self.assertIn("K is an act, not a body", str(cm.exception))
 
     def test_an_act_wrapped_in_an_ask_is_bounced_with_the_right_form(self):
         # Seen on the home PC: qwen3.5:9b wrote (A chief.6>owner (fail …)) and (A chief.3>critic (prop …)).

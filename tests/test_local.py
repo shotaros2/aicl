@@ -27,7 +27,8 @@ def fake_opener(reply="(T b.1>a ^a.1 {$t 18.5C})", seen=None, fail=None):
     return opener
 
 
-ENV_CLEAR = {"AICL_LOCAL_URL": "", "AICL_LOCAL_MODEL": "", "AICL_LOCAL_CTX": "", "AICL_LOCAL_API": ""}
+ENV_CLEAR = {"AICL_LOCAL_URL": "", "AICL_LOCAL_MODEL": "", "AICL_LOCAL_CTX": "", "AICL_LOCAL_API": "",
+             "AICL_LOCAL_THINK": ""}
 
 
 class LocalTests(unittest.TestCase):
@@ -51,6 +52,18 @@ class LocalTests(unittest.TestCase):
             self.assertEqual(vendors.describe("local"), "local (qwen3.5:9b)")
         self.assertEqual(seen[0][1]["options"]["num_ctx"], 8192)
         self.assertEqual(seen[0][1]["model"], "qwen3.5:9b")
+
+    def test_thinking_is_left_alone_unless_set(self):
+        seen = []
+        with mock.patch.dict(os.environ, ENV_CLEAR):
+            local.text_ask(opener=fake_opener(seen=seen))("S", [])
+            local.text_ask(opener=fake_opener(seen=seen), think=False)("S", [])
+        with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_THINK="false")):
+            local.text_ask(opener=fake_opener(seen=seen))("S", [])
+        with mock.patch.dict(os.environ, dict(ENV_CLEAR, AICL_LOCAL_THINK="on")):
+            local.text_ask(opener=fake_opener(seen=seen))("S", [])
+        self.assertNotIn("think", seen[0][1])
+        self.assertEqual([s[1].get("think") for s in seen[1:]], [False, False, True])
 
     def test_openai_compatible_servers(self):
         seen = []
