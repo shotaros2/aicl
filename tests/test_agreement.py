@@ -4,7 +4,13 @@ from pathlib import Path
 
 import aicl
 from aicl.agreement import describe, extract_agreements
-from aicl.signing import sign_form
+from aicl.signing import generate_key, sign_form
+
+try:                                                 # the crypto extra is optional (pip install aicl-lang[crypto])
+    generate_key()
+    HAVE_CRYPTO = True
+except Exception:
+    HAVE_CRYPTO = False
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = json.loads((ROOT / "examples" / "demo_keys.json").read_text(encoding="utf-8"))
@@ -28,6 +34,7 @@ def signed_messages(src=SRC):
     return out
 
 
+@unittest.skipUnless(HAVE_CRYPTO, "needs the cryptography package (pip install aicl-lang[crypto])")
 class AgreementTests(unittest.TestCase):
     def test_extracts_the_accepted_proposal_only(self):
         ags = extract_agreements(aicl.parse_messages(SRC), known_terms=KNOWN)
