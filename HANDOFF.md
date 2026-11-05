@@ -142,6 +142,10 @@ python examples/cooperation_demo.py
   Gemini の受諾 `(C b.2>a ^a.2)` は本文なし（参照のみ）なので、改ざん検査では @a の署名だけが壊れる——合意の同一性は提案のダイジェスト。
 - **Dola とも署名付き合意**（2026-11-05 11:01–11:04 JST、`examples/21`、`init --a claude --b dola`）: 新規チャットに密ルールブックを貼り、
   Claude（API）の提案を中継。09:00 を `(R … :w (busy …))` で拒否、10:30 を `(C b.2>a ^a.2)` で受諾、`X` に `X` で応答。`:verified true`。
+- **逆向き（Gemini が主導、Claude が応じる）**（2026-11-05 11:30–11:32 JST、`examples/22`、`init --a gemini-web --b claude`）:
+  ユーザーの質問「Gemini から Claude に指示できる？」から。Gemini web が提案し、Claude（API）が 09:00 を拒否・10:30 を受諾、`:verified true`。
+  Gemini は時差を `+0900` と書く（ルールブック外だがパーサは +09:00 と読む）。最後の `end` の `:at` を時計行より 1 分進めた（規則 9 から小さく逸脱）。
+  この日、Gemini API のホスト名だけ DNS で引けない時間帯があり、`--a gemini`（API）は `getaddrinfo failed` で失敗した。ブラウザ経由なら影響なし。
   dola.com の実務メモ: 入力欄は TipTap/ProseMirror で、合成 paste イベントがそのまま効く。送信ボタンは aria-label なしの
   右下の丸ボタン（入力欄より右・下にある最後の button）。返答は body の innerText から直前に送った署名の後ろを読む。思考中は数秒〜数十秒。
   gemini.google.com の実務メモ: 入力欄は Quill。`parentElement.__quill.setText()` で入れたあと `execCommand('insertText',' ')` で

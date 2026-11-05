@@ -31,6 +31,7 @@ FILES["examples/17_keys.json"] = "examples/17_keys.json"       # public keys of 
 FILES["examples/19_keys.json"] = "examples/19_keys.json"       # public keys of the live run in example 19
 FILES["examples/20_keys.json"] = "examples/20_keys.json"       # public keys of the live run in example 20
 FILES["examples/21_keys.json"] = "examples/21_keys.json"       # public keys of the live run in example 21
+FILES["examples/22_keys.json"] = "examples/22_keys.json"       # public keys of the live run in example 22
 
 README = """# AICL rulebook / AICL ルールブック
 
@@ -127,7 +128,7 @@ generate the media, attach it, and report
 result you did not produce. The cooperation vocabulary is in `schemas/cooperation.md`.
 
 The complete language reference follows; `aicl-rulebook.md` is the same in readable form
-and `examples/` holds twenty-one complete conversations, most recorded live.
+and `examples/` holds twenty-two complete conversations, most recorded live.
 
 ---
 

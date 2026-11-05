@@ -1,0 +1,22 @@
+; A real exchange, 2026-11-05 11:30-11:32 JST, in the other direction: Gemini (@a, gemini.google.com
+; plain chat, "Gemini Flash", given the dense rulebook and its goal as its first chat message) drives the
+; negotiation, and Claude (@b, the API, claude-opus-5-5) answers. Runner: examples/browser_relay.py
+; (`init --a gemini-web --b claude`); Claude Code relayed each message through the desktop app's
+; browser pane while the relay ran Claude's turns. Public keys: examples/22_keys.json.
+;
+; The relay signed each party's messages with that party's Ed25519 key and stamped the real wall
+; clock as `; now` (SPEC §3.1). `aicl agreement examples/22_gemini_drives_claude.aicl --keys
+; examples/22_keys.json --known meeting --known busy` reports :signed {@a true @b true}
+; :verified true for the 10:30 meeting.
+;
+; Gemini wrote every offset as `+0900`, a form the rulebook does not list; the parser read it as
+; +09:00, so nothing was lost. Its closing `end` carries `:at 11:32` although the clock line it was
+; given said 11:31: rule 9 asks it to copy the clock, and it did not, though by a minute and in the
+; direction of real time. Claude, given the busy morning, rejected 09:00 with the structured window
+; and accepted 10:30. Domain terms: meeting, busy.
+
+(prop #a.1 @a>@b (meeting :at 2026-11-12T09:00+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T11:30+09:00 :sig (ed25519 "G27dDC-zqlIjjgBtRidJRCJNXk2DwdzAb6D-f2l1wpW-phcx6cCQtsFO-AZ7APbonsf0oovtdev1WzXz9YsoDg"))
+(rej #b.1 @b>@a ^a.1 :at 2026-11-05T11:31+09:00 :sig (ed25519 "ufoQKt5-l-olC5_rYu0WL-a18t8OUVYgOpO2y7_zwuXs_NCbKOtDs9v53jbXHFb0E61ZM-lqLzICIrK2DnNgAg") :why (busy @b :from 2026-11-12T09:00+09:00 :to 2026-11-12T10:30+09:00))
+(prop #a.2 @a>@b (meeting :at 2026-11-12T10:30+09:00 :dur PT45M :with [@a @b]) :at 2026-11-05T11:31+09:00 :sig (ed25519 "i74Sv8FKShfVX4tBnqc7ZVfMBFmg7mOoRMk5rDnqpsBgeTYfno3r2VIj1EVOarLDPAAD6G3Knc12187GxX5NAg"))
+(acc #b.2 @b>@a ^a.2 :at 2026-11-05T11:31+09:00 :sig (ed25519 "3D5SyFra5ovhCfwGhsCENaMfeazqZRW6lK8BqJAjyyprKENVT1sxwUxKJQCvj3s-0lQfcLeJZOSAO8FVZnX2Dw"))
+(end #a.3 @a>@b ^b.2 :at 2026-11-05T11:32+09:00 :sig (ed25519 "yV9vsEOtJ1J-X4VcsllQmflt48pmkPAobXT_3vFj1_lfFllQcQzz66itIMTGYwjh2a5eLLnF4IVPHtDrpvtRBA"))
