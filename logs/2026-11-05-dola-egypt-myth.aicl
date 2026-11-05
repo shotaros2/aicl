@@ -1,0 +1,14 @@
+; Raw dense transcript, 2026-11-05 11:09 JST: Dola (dola.com chat window, given the v0.3 dense rulebook
+; with `me` -> `dola` as the first chat message, plus "you may use web search; a source form must name a
+; page you actually read") asked about ancient Egyptian mythology through a typed def. Relayed by
+; Claude Code through the desktop app's browser pane. No clock line was sent; the `:a` values are Dola's own.
+(E user.1>dola myth-summary :r [(culture symbol) (n number)] :g (nl en "the n principal deities of the named culture's mythology, each as (deity :name <symbol> :role (nl en \"one sentence\") :src (source :uri \"...\" :kind page))") :v (list term))
+(A dola.1>user $culture $n :a 20261105T1109+9)
+(T user.2>dola ^dola.1 {$culture egypt-ancient $n 5})
+(T dola.2>user ^user.2 [
+  (deity :name Ra :role (nl en "Sun god and supreme creator who sailed across the sky daily and represented light, warmth, and life") :s (source :uri "https://www.britannica.com/list/11-egyptian-gods-and-goddesses" :kind page))
+  (deity :name Osiris :role (nl en "God of the underworld, resurrection, and fertility; judge of the dead and symbol of agricultural renewal") :s (source :uri "https://www.britannica.com/list/11-egyptian-gods-and-goddesses" :kind page))
+  (deity :name Isis :role (nl en "Goddess of magic, motherhood, and protection; resurrected Osiris and embodied devotion and wisdom") :s (source :uri "https://www.britannica.com/list/11-egyptian-gods-and-goddesses" :kind page))
+  (deity :name Amun :role (nl en "King of the gods, patron of Thebes; merged with Ra as Amun-Ra to become chief creator deity") :s (source :uri "https://passionforhistory.com/ancient-history/ancient-egyptian-gods/" :kind page))
+  (deity :name Horus :role (nl en "Falcon-headed sky god of kingship and protection; his reign symbolized order triumphing over chaos") :s (source :uri "https://passionforhistory.com/ancient-history/ancient-egyptian-gods/" :kind page))
+] :a 20261105T1109+9)
